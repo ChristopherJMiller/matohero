@@ -9,6 +9,10 @@ and make it practical to modify or replace engine modules.
 This repository contains **no game code or assets**. You need your own copy of the
 game.
 
+Licensed under GPL-3.0. Parts of the Nu2 engine code are ported from
+[opensagadev/saga](https://github.com/opensagadev/saga) (GPL-3.0), a matching decomp of
+LEGO Star Wars: The Complete Saga, which shares the engine.
+
 ## Setup
 
 Requires Nix with flakes. `nix develop` (or `direnv allow`) provides Ghidra, rizin,
@@ -45,6 +49,28 @@ This assembles a portable toolchain in `toolchain/msvc71` (gitignored): the RTM
 compiler, CRT and Platform SDK, with SP1's replacement files overlaid from the
 patch's embedded cabinet, so no installer runs. `tools/msvc` uses a private Wine prefix
 in `toolchain/wineprefix`.
+
+## Building and comparing
+
+```sh
+tools/build.py                           # compile src/ under Wine, link build/Bionicle.exe + PDB
+tools/reccmp project detect --what recompiled --search-path build   # once
+tools/reccmp reccmp --target BIONICLE    # per-function similarity report
+tools/reccmp reccmp --target BIONICLE --verbose 0x565550            # diff one function
+```
+
+Source lives in `src/<library>/`, mirroring the original tree (`src/nu2/listman.c` was
+`.\listman.c` in the engine project). Annotate each decompiled function with its
+original address:
+
+```c
+// FUNCTION: BIONICLE 0x565840
+NULNKHDR *NuLstGetByIdx(NULSTHDR *list, i32 index) {
+```
+
+Globals use `// GLOBAL:`, string literals `// STRING:`, and placeholders for
+not-yet-decompiled callees `// STUB:`. See the
+[reccmp annotation docs](https://github.com/isledecomp/reccmp/blob/master/docs/annotations.md).
 
 ## Ghidra
 

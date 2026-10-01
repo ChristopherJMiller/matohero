@@ -31,6 +31,14 @@ typedef struct nulsthdr_s {
     u16 padding[2];
 } NULSTHDR;
 
+NULSTHDR *NuLstCreate(i32 element_count, i32 element_size);
+NULSTHDR *NuLstCreateBuff(i32 element_count, i32 element_size, VARIPTR *buffer, VARIPTR end, i32 alignment);
+NULNKHDR *NuLstAlloc(NULSTHDR *list);
+NULNKHDR *NuLstAllocHead(NULSTHDR *list);
+NULNKHDR *NuLstAllocTail(NULSTHDR *list);
+NULNKHDR *NuLstAllocFree(NULSTHDR *list);
+void NuLstAttachTail(NULSTHDR *list, NULNKHDR *node);
+void NuLstFree(NULNKHDR *node);
 NULNKHDR *NuLstGetByIdx(NULSTHDR *list, i32 index);
 NULNKHDR *NuLstGetNext(NULSTHDR *list, NULNKHDR *node);
 
