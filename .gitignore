@@ -1,0 +1,19 @@
+# Copyrighted game data — never commit
+*.iso
+*.zip
+*.cab
+*.exe
+*.dll
+*.msi
+orig/
+extracted/
+
+# Tooling output
+build/
+result
+result-*
+.direnv/
+__pycache__/
+*.gzf
+*.rep/
+*.gpr
