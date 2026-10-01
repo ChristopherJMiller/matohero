@@ -35,6 +35,13 @@ exact; `tools/permute.py` automates some of them.
 - **A local `__declspec(align(16))` matrix gives `push ebp; mov ebp, esp; and esp, -16`.**
   `NuCameraBuildClipPlanes` keeps its plane matrices in the PS2's `_VUMTX` (now a 16-byte
   aligned union in `numath/nuvu0.h`).
+- **MSVC picks the operand order of a sum itself; the source only fixes the grouping.**
+  `p->x * m._03 + p->y * m._13` and `p->y * m._13 + p->x * m._03` give the same code (the
+  `y` product first), and a plain `A + B + C` comes out as `C, A, +, B, +` while
+  `C0 + (Z + (X + Y))` gives `Y, X, +, Z, +, C0`. The order of the leaves follows when they
+  were first referenced in the function: a statement reading `p->y` beforehand puts the
+  `x` product first. Parentheses, product operand order, array or union access and
+  `__inline` helpers don't change it (tested in `msvctest` files).
 - **Repeated constant stores are grouped.** A float constant stored more than once goes
   into a register, and all its stores are emitted together where its group starts;
   single stores stay `mov [mem], imm32` in source order. Which register a constant gets

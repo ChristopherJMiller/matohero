@@ -358,10 +358,17 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       declaration orders, reusing a live-across-calls local, the dot written out twice, an
       `__inline` dot helper, chained/duplicated copies; `fDot = _20*_30 + (_21*_31 +
       _22*_32)` gets the original's add grouping but scores lower.
-- [ ] `nu3d/nucamera_gen.c` part 3: `0x538cf0` (2451 bytes, called from `0x597f50`:
-      `ClipTestExtentsGeneric`?), `0x5399b0` (726 bytes, from `0x4e5cd0`). After it, the
-      rest of `nuvport_gen` (`0x53a140`–`0x53a4d0`, `NuVpUpdate` `0x53a6a0`) and the PC
-      `NuCameraSet` (`0x53d640`).
+- [x] `nu3d/nucamera_gen.c` part 3: `NuMtxCalcCheapFaceOn` and `NuMtxCalcDebrisFaceOn`
+      (`0x53a030`/`0x53a0c0`, after `SetEx`; they use `vmtx` directly) exact;
+      `NuCameraClipTestExtentsAxisAligned` (`0x5399b0`) 87%: the right sums and their
+      grouping (saga's `C + (Z + (X + Y))` for the distances, plain `X + Y + Z (+ C)` for
+      the radii), but the original evaluates the `x` product before `y` everywhere, which
+      in our build only happens when `->y` is referenced earlier in the function (see
+      matching.md), and the argument pushes are scheduled differently.
+- [ ] `nu3d/nucamera_gen.c` part 4: `0x538cf0` (2451 bytes, called from `0x597f50` and
+      `0x59c7a4`; `NuCameraClipTestExtentsGeneric`?). Then the rest of `nuvport_gen`
+      (`0x53a140`–`0x53a4d0`, `NuVpUpdate` `0x53a6a0`) and the PC `NuCameraSet`
+      (`0x53d640`).
 - [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
       `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
 

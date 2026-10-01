@@ -91,7 +91,10 @@ void NuCameraTransformScreenClip(NUVEC *dest, NUVEC *src, int n, NUMTX *w);
 void NuCameraTransformScreen(NUVEC *dest, NUVEC *src, int n, NUMTX *w);
 int NuCameraClipTestSphere(NUVEC *pnt, float radius, NUMTX *wm);
 float NuCameraDistSqr(NUVEC *p);
+int NuCameraClipTestExtentsAxisAligned(NUVEC4 *Pos, NUVEC4 *Extents, float FarClip);
 void NuCameraUnlock(void);
+void NuMtxCalcCheapFaceOn(NUMTX *mtx, NUVEC *pos);
+void NuMtxCalcDebrisFaceOn(NUMTX *mtx);
 void NuCameraRelock(void);
 
 #endif

@@ -430,6 +430,46 @@ void NuCameraRelock(void) {
     }
 }
 
+// FUNCTION: BIONICLE 0x5399b0
+int NuCameraClipTestExtentsAxisAligned(NUVEC4 *Pos, NUVEC4 *Extents, float FarClip) {
+    _VUVEC Distances[2];
+    _VUVEC Radii[2];
+    float OldFarClip;
+
+    OldFarClip = ClipPlanes.NearFarPlanes.m._30;
+    if (FarClip != 0.0f) {
+        ClipPlanes.NearFarPlanes.m._30 = ClipPlanes.NearFarPlanes.m._30 - global_camera.farclip + FarClip;
+    }
+
+    NuVecMtxTransform(&Distances[0].v, (NUVEC *)Pos, &ClipPlanes.FrustrumPlanes.m);
+    Distances[0].v4.w = ClipPlanes.FrustrumPlanes.m._33 + (Pos->z * ClipPlanes.FrustrumPlanes.m._23 + (Pos->x * ClipPlanes.FrustrumPlanes.m._03 + Pos->y * ClipPlanes.FrustrumPlanes.m._13));
+    Distances[1].v4.x = ClipPlanes.NearFarPlanes.m._30 + (Pos->z * ClipPlanes.NearFarPlanes.m._20 + (Pos->x * ClipPlanes.NearFarPlanes.m._00 + Pos->y * ClipPlanes.NearFarPlanes.m._10));
+    Distances[1].v4.y = ClipPlanes.NearFarPlanes.m._31 + (Pos->z * ClipPlanes.NearFarPlanes.m._21 + (Pos->x * ClipPlanes.NearFarPlanes.m._01 + Pos->y * ClipPlanes.NearFarPlanes.m._11));
+    NuVecMtxTransform(&Radii[0].v, (NUVEC *)Extents, &ClipPlanes.AbsFrustrumPlanes.m);
+    Radii[0].v4.w = Extents->x * ClipPlanes.AbsFrustrumPlanes.m._03 + Extents->y * ClipPlanes.AbsFrustrumPlanes.m._13 + Extents->z * ClipPlanes.AbsFrustrumPlanes.m._23;
+    Radii[1].v4.x = Extents->x * ClipPlanes.NearFarPlanes.m._02 + Extents->y * ClipPlanes.NearFarPlanes.m._12 + Extents->z * ClipPlanes.NearFarPlanes.m._22;
+    Radii[1].v4.y = Extents->x * ClipPlanes.NearFarPlanes.m._03 + Extents->y * ClipPlanes.NearFarPlanes.m._13 + Extents->z * ClipPlanes.NearFarPlanes.m._23;
+    ClipPlanes.NearFarPlanes.m._30 = OldFarClip;
+
+    if (Distances[0].v4.x < -Radii[0].v4.x || Distances[0].v4.y < -Radii[0].v4.y ||
+        Distances[0].v4.z < -Radii[0].v4.z || Distances[0].v4.w < -Radii[0].v4.w ||
+        Distances[1].v4.x < -Radii[1].v4.x || Distances[1].v4.y < -Radii[1].v4.y) {
+        return 0;
+    }
+    if (Distances[0].v4.x < Radii[0].v4.x || Distances[0].v4.y < Radii[0].v4.y || Distances[0].v4.z < Radii[0].v4.z ||
+        Distances[0].v4.w < Radii[0].v4.w) {
+        NuVecMtxTransform(&Distances[0].v, (NUVEC *)Pos, &ClipPlanes.ScissorPlanes.m);
+        Distances[0].v4.w = ClipPlanes.ScissorPlanes.m._33 + (Pos->z * ClipPlanes.ScissorPlanes.m._23 + (Pos->x * ClipPlanes.ScissorPlanes.m._03 + Pos->y * ClipPlanes.ScissorPlanes.m._13));
+        NuVecMtxTransform(&Radii[0].v, (NUVEC *)Extents, &ClipPlanes.AbsScissorPlanes.m);
+        Radii[0].v4.w = Extents->x * ClipPlanes.AbsScissorPlanes.m._03 + Extents->y * ClipPlanes.AbsScissorPlanes.m._13 + Extents->z * ClipPlanes.AbsScissorPlanes.m._23 + ClipPlanes.AbsScissorPlanes.m._33;
+        if (Distances[0].v4.x < Radii[0].v4.x || Distances[0].v4.y < Radii[0].v4.y ||
+            Distances[0].v4.z < Radii[0].v4.z || Distances[0].v4.w < Radii[0].v4.w) {
+            return 2;
+        }
+    }
+    return 1;
+}
+
 // FUNCTION: BIONICLE 0x539c90
 void NuCameraSetEx(NUCAMERA *camera, int fast) {
     NUMTX mci;
@@ -510,4 +550,45 @@ void NuCameraSetEx(NUCAMERA *camera, int fast) {
     NuRndrSetViewMtx(&vpsmtx, &vpc_vport_mtx, &vpc_sci_mtx);
     NuRndrSetSpecularLight(NULL, NULL);
     NuRndrStateUpdateCameraState();
+}
+
+// FUNCTION: BIONICLE 0x53a030
+void NuMtxCalcCheapFaceOn(NUMTX *mtx, NUVEC *pos) {
+    NUMTX *viewmtx = &vmtx;
+
+    mtx->_00 = -viewmtx->_00;
+    mtx->_10 = viewmtx->_01;
+    mtx->_20 = -viewmtx->_02;
+    mtx->_01 = -viewmtx->_10;
+    mtx->_11 = viewmtx->_11;
+    mtx->_21 = -viewmtx->_12;
+    mtx->_02 = -viewmtx->_20;
+    mtx->_12 = viewmtx->_21;
+    mtx->_22 = -viewmtx->_22;
+    mtx->_23 = 0.0f;
+    mtx->_13 = 0.0f;
+    mtx->_03 = 0.0f;
+    mtx->_33 = 1.0f;
+    mtx->_30 = pos->x;
+    mtx->_31 = pos->y;
+    mtx->_32 = pos->z;
+}
+
+// FUNCTION: BIONICLE 0x53a0c0
+void NuMtxCalcDebrisFaceOn(NUMTX *mtx) {
+    NUMTX *viewmtx = &vmtx;
+
+    mtx->_00 = -viewmtx->_00;
+    mtx->_10 = viewmtx->_01;
+    mtx->_20 = -viewmtx->_02;
+    mtx->_01 = -viewmtx->_10;
+    mtx->_11 = viewmtx->_11;
+    mtx->_21 = -viewmtx->_12;
+    mtx->_02 = -viewmtx->_20;
+    mtx->_12 = viewmtx->_21;
+    mtx->_22 = -viewmtx->_22;
+    mtx->_23 = 0.0f;
+    mtx->_13 = 0.0f;
+    mtx->_03 = 0.0f;
+    mtx->_33 = 1.0f;
 }
