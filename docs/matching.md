@@ -201,6 +201,11 @@ exact; `tools/permute.py` automates some of them.
 
 ## Open questions
 
+- **`nuheap.c`'s swapped registers.** `NuHeapAllocAlignedNamed` keeps `reqsize` in `eax`
+  and the loop's block in `ecx`; ours swaps them, and the register-argument static
+  `SplitFreeBlock` follows the caller (its parameter order changes nothing). Untried:
+  other spellings of `size += align`, a `do`/`while` search loop.
+
 - **`pop ecx` vs `add esp, 4`.** After a final call whose float result is returned, the
   original cleans the 4-byte argument with `add esp, 4` and we emit `pop ecx`
   (`NuPowFast`, `NuVecDist`, `NuVecXZDist`). `/G5`–`/G7`, `/Ox`, `/Gy`, `/GF` and

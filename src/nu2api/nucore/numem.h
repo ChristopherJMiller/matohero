@@ -2,6 +2,7 @@
 #define NUMEM_H
 
 #include "nutypes.h"
+#include "nuheap.h"
 
 /* Debug block header in front of every heap allocation, and the tail mark after it
  * (followed by the allocating file's name). */
@@ -31,8 +32,6 @@ typedef struct memdiscardable_s {
     int pad;
 } MEMDISCARDABLE;
 
-typedef void *NUHEAP;
-
 extern NUHEAP NuMem_Heap;
 extern int highallocaddr;
 
@@ -42,10 +41,6 @@ void NuMemFreeFn(void *addr, char *file, int line);
 
 /* Byte-wise memmove (the name is ours). */
 void NuMemMove(void *dest, void *src, int size);
-
-/* nuheap.c, not decompiled yet. */
-void *NuHeapAllocAligned(NUHEAP heap, int size, int align);
-void NuHeapFree(NUHEAP heap, void *ptr);
 
 #define NuMemAlloc(size) NuMemAllocFn((size), __FILE__, __LINE__)
 #define NuMemFree(addr) NuMemFreeFn((addr), __FILE__, __LINE__)

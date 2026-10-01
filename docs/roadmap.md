@@ -245,8 +245,14 @@ headless boot to title) → commit.
       `NuHeapAllocAligned` `0x56d300`). The hook DLL now sends our `malloc`/`free` to the
       exe's CRT per object (DLL-wide crashed it, `docs/running.md`). Hook test: 271
       functions, every engine allocation through our code, input works.
-- [ ] `nucore/nuheap.c` (`0x56d0a0–0x56d319`: create, aligned alloc, free) and the
-      leftovers around numem: `0x565c40` (fills `count * 16` bytes), `0x565930` (index
+- [x] `nucore/nuheap.c` (saga): `RemoveFromFreeList` (`0x56d080`), `SplitFreeBlock`
+      (`0x56d0a0`, register-argument static), `NuHeapAllocAlignedNamed`, `NuHeapFree`,
+      `NuHeapAllocAligned`: 2 exact; near-misses `Split` 63%, `AllocAlignedNamed` 66%
+      (`eax`/`ecx` roles swapped throughout; loop shape, declaration order, parameter
+      order and macro-vs-inline accessors don't change it), `Free` 80% (the original
+      reloads `block->size` around `SetSize`). No `NuHeapCreate` on PC, so the engine
+      heap is unused there. Hook test: 273 functions, input works.
+- [ ] Leftovers around numem: `0x565c40` (fills `count * 16` bytes), `0x565930` (index
       lookup in 0x50-byte records; maybe gamelib's glutils).
 
 Tooling backlog (pick up when near-misses pile up):
