@@ -182,11 +182,16 @@ headless boot to title) → commit.
       functions, 8 exact; near-misses (block layout / shrink-wrapping): `Align` 99%,
       `DatFileOpen` 97%, `DatFileRead` 85%, `Close` 87%, `Open` 83%, `EndBlkRead` 82%,
       `Read` 81%, `GetFileInfo` 61%. Hook test: 228 functions, title reached.
-- [ ] `nucore/nufile.c` part 2c: `NuDatFileLoadBufferLSN`? (`0x567050`, calls the RNC
-      unpacker `0x56d320`), the extension table init (`0x5665c0` static helper with a
-      register argument, `NuFileExtInit` `0x566610`, ~40 strings), then the unclaimed
-      `0x567bf0–0x5687c6` (nudatfile/nufilepak?) and another pass at the nufile
-      near-misses.
+- [x] `nucore/nufile.c` part 2c: the extension table (`NuFileExtAdd`, register-argument
+      static, and `NuFileExtInit` with its 56 registrations, 98.6%),
+      `NuDatFileLoadBufferLSN` (79%; a dead path on PC), `NuFileBeginBlkRead`,
+      `NuDatOpen`, `NuFileLoad`, `NuFileLoadBuffer` (83%), `NuFileLoadBufferVP`: 9
+      functions, 5 exact. `rnc.c` is `NuPPUnpack` `0x56d320` + `NuPPLoadBuffer` `0x56d6b0`
+      (stubs). Hook test: 233 functions, title reached.
+- [ ] `nucore/nufile.c` part 2d: `NuDatFileLoadBuffer` (`0x567c80`, 700 bytes) and
+      `NuDatOpenEx` (`0x567f40`, 1443 bytes), then a pass over the nufile near-misses.
+- [ ] `nucore/nustring.c` part 3 (`NuStringTableLoadCSV`/`TXT`), now that nufile and
+      nufpar are in.
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
 
 Tooling backlog (pick up when near-misses pile up):

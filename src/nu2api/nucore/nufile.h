@@ -166,6 +166,18 @@ int NuMemFileRead(NUFILE fh, void *data, int size);
 float NuFileReadFloat(NUFILE fh);
 int NuFileReadInt(NUFILE fh);
 short NuFileReadShort(NUFILE fh);
+int NuFileBeginBlkRead(NUFILE fh, int blk);
+int NuDatFileLoadBufferLSN(NUDATHDR *ndh, char *fname, void *mem, int buffsize);
+int NuDatFileLoadBuffer(NUDATHDR *ndh, char *fname, void *mem, int buffsize);
+NUDATHDR *NuDatOpenEx(char *fname, VARIPTR *buff, int *req, short openmode);
+NUDATHDR *NuDatOpen(char *fname, VARIPTR *buff, int *req);
+void *NuFileLoad(char *fname);
+int NuFileLoadBuffer(char *fname, void *mem, int buffsize);
+int NuFileLoadBufferVP(char *fname, VARIPTR *ptr, VARIPTR *end);
+
+/* RNC ("PP") packed files (rnc.c). */
+int NuPPLoadBuffer(NUFILE fh, void *mem, int buffsize);
+void NuPPUnpack(char *paddr, char *waddr);
 NUDATHDR *NuDatSet(NUDATHDR *dh);
 NUDATHDR *NuDatGet(void);
 

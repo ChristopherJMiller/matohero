@@ -1,4 +1,5 @@
 #include "nufile.h"
+#include "numem.h"
 #include "nuthread.h"
 
 #include <stdarg.h>
@@ -34,14 +35,26 @@ static int file_criticalsection;
 // GLOBAL: BIONICLE 0x34b7328
 static FILEINFO file_info[33];
 
+// GLOBAL: BIONICLE 0x34b7320
+static int num_extensions;
+
 // GLOBAL: BIONICLE 0x34b7850
 static FILEEXTINFO extensions[64];
+
+// GLOBAL: BIONICLE 0x61723c
+static int ext_init_needed = 1;
 
 // GLOBAL: BIONICLE 0x34b7c50
 static BLKINFO nufile_blkinfo[1024];
 
 // GLOBAL: BIONICLE 0x34bec84
 int nufile_buffering_enabled;
+
+// GLOBAL: BIONICLE 0x34bec88
+int nufile_try_packed;
+
+// GLOBAL: BIONICLE 0x34bec9c
+int nufileloadbuffer_error;
 
 // GLOBAL: BIONICLE 0x617218
 static int blkcnt = 1;
@@ -420,6 +433,131 @@ NUDATHDR *NuDatGet(void) {
     return curr_dat;
 }
 
+// FUNCTION: BIONICLE 0x5665c0
+static void NuFileExtAdd(char *ext, char type, char platform) {
+    FILEEXTINFO *di;
+    char *c;
+    int len;
+
+    di = &extensions[num_extensions];
+    len = NuStrLen(ext);
+    di->len = len;
+    c = di->extension;
+    while (len != 0) {
+        *c++ = ext[--len];
+    }
+    *c = '\0';
+    di->type = type;
+    di->platform = platform;
+    num_extensions++;
+}
+
+/* Extensions per NUFILETYPE (anim, bsanim, character, scene, texture, cutscene, sfx,
+ * soundstream) and platform; lookups convert to the platform-4 set. */
+// FUNCTION: BIONICLE 0x566610
+void NuFileExtInit(void) {
+    if (ext_init_needed) {
+        memset(extensions, 0, sizeof(extensions));
+        ext_init_needed = 0;
+        num_extensions = 0;
+        // STRING: BIONICLE 0x5e0908
+        NuFileExtAdd(".ca3", 0, 6);
+        // STRING: BIONICLE 0x5e0900
+        NuFileExtAdd(".cbs", 1, 6);
+        // STRING: BIONICLE 0x5e08f4
+        NuFileExtAdd("_360.ghg", 2, 6);
+        // STRING: BIONICLE 0x5e08e8
+        NuFileExtAdd("_360.gsc", 3, 6);
+        // STRING: BIONICLE 0x5e08dc
+        NuFileExtAdd("_360.tex", 4, 6);
+        // STRING: BIONICLE 0x5e08d4
+        NuFileExtAdd(".cc2", 5, 6);
+        // STRING: BIONICLE 0x5e08cc
+        NuFileExtAdd(".wavx", 6, 6);
+        // STRING: BIONICLE 0x5e08c4
+        NuFileExtAdd(".wavm", 7, 6);
+
+        // STRING: BIONICLE 0x5e08bc
+        NuFileExtAdd(".an3", 0, 0);
+        // STRING: BIONICLE 0x5c940c
+        NuFileExtAdd(".bsa", 1, 0);
+        // STRING: BIONICLE 0x5c90d4
+        NuFileExtAdd(".ghg", 2, 0);
+        // STRING: BIONICLE 0x5c90dc
+        NuFileExtAdd(".gsc", 3, 0);
+        // STRING: BIONICLE 0x5cc8e0
+        NuFileExtAdd(".pnt", 4, 0);
+        // STRING: BIONICLE 0x5c9404
+        NuFileExtAdd(".cu2", 5, 0);
+        // STRING: BIONICLE 0x5e08b4
+        NuFileExtAdd(".vag", 6, 0);
+        // STRING: BIONICLE 0x5e08ac
+        NuFileExtAdd(".mib", 7, 0);
+
+        NuFileExtAdd(".ca3", 0, 2);
+        NuFileExtAdd(".cbs", 1, 2);
+        // STRING: BIONICLE 0x5e08a4
+        NuFileExtAdd(".chg", 2, 2);
+        // STRING: BIONICLE 0x5e089c
+        NuFileExtAdd(".csc", 3, 2);
+        // STRING: BIONICLE 0x5e0894
+        NuFileExtAdd(".ctx", 4, 2);
+        NuFileExtAdd(".cc2", 5, 2);
+        // STRING: BIONICLE 0x5e088c
+        NuFileExtAdd(".dsp", 6, 2);
+        // STRING: BIONICLE 0x5e0884
+        NuFileExtAdd(".gcm", 7, 2);
+
+        NuFileExtAdd(".an3", 0, 1);
+        NuFileExtAdd(".bsa", 1, 1);
+        // STRING: BIONICLE 0x5e087c
+        NuFileExtAdd(".hx2", 2, 1);
+        // STRING: BIONICLE 0x5e0874
+        NuFileExtAdd(".nx2", 3, 1);
+        // STRING: BIONICLE 0x5e086c
+        NuFileExtAdd(".dds", 4, 1);
+        NuFileExtAdd(".cu2", 5, 1);
+        NuFileExtAdd(".wavx", 6, 1);
+        NuFileExtAdd(".wavm", 7, 1);
+
+        NuFileExtAdd(".ca3", 0, 5);
+        NuFileExtAdd(".cbs", 1, 5);
+        // STRING: BIONICLE 0x5e0860
+        NuFileExtAdd("_ps3.ghg", 2, 5);
+        // STRING: BIONICLE 0x5e0854
+        NuFileExtAdd("_ps3.gsc", 3, 5);
+        // STRING: BIONICLE 0x5e0848
+        NuFileExtAdd(".ps3.tex", 4, 5);
+        NuFileExtAdd(".cc2", 5, 5);
+        NuFileExtAdd(".vag", 6, 5);
+        NuFileExtAdd(".mib", 7, 5);
+
+        NuFileExtAdd(".an3", 0, 4);
+        NuFileExtAdd(".bsa", 1, 4);
+        // STRING: BIONICLE 0x5e0840
+        NuFileExtAdd(".hgp", 2, 4);
+        // STRING: BIONICLE 0x5e0838
+        NuFileExtAdd(".nup", 3, 4);
+        NuFileExtAdd(".dds", 4, 4);
+        NuFileExtAdd(".cu2", 5, 4);
+        // STRING: BIONICLE 0x5e0830
+        NuFileExtAdd(".wav", 6, 4);
+        NuFileExtAdd(".mib", 7, 4);
+
+        NuFileExtAdd(".an3", 0, 3);
+        NuFileExtAdd(".bsa", 1, 3);
+        // STRING: BIONICLE 0x5e0828
+        NuFileExtAdd(".phg", 2, 3);
+        // STRING: BIONICLE 0x5e0820
+        NuFileExtAdd(".psc", 3, 3);
+        NuFileExtAdd(".pnt", 4, 3);
+        NuFileExtAdd(".cu2", 5, 3);
+        NuFileExtAdd(".vag", 6, 3);
+        // STRING: BIONICLE 0x5e0818
+        NuFileExtAdd(".at3", 7, 3);
+    }
+}
+
 // FUNCTION: BIONICLE 0x566970
 static FILEEXTINFO *NuFileExtFind(char *in, int len) {
     char *endptr;
@@ -684,6 +822,36 @@ int NuDatGetFileInfo(NUDATHDR *ndh, char *fname, int *start, int *len) {
         }
     }
     return -1;
+}
+
+// FUNCTION: BIONICLE 0x567050
+int NuDatFileLoadBufferLSN(NUDATHDR *ndh, char *fname, void *mem, int buffsize) {
+    int ix;
+    int flen;
+    int uplen;
+    int ofs;
+
+    if (nufile_lsn_allowed && ndh->start_lsn && buffsize >= 0x800 && ndh->dfhandle == 0) {
+        ix = NuDatFileFindTree(ndh, fname);
+        if (ix >= 0) {
+            if (ndh->finfo[ix].ppack) {
+                flen = ndh->finfo[ix].flen;
+                uplen = ndh->finfo[ix].uplen;
+                ofs = uplen - flen + 0x100;
+                ofs += -(ofs + (int)mem) & 0x3f;
+                if (((flen + 0x7ff) & ~0x7ff) + ofs > buffsize) {
+                    return -1;
+                }
+                NuPPUnpack((char *)mem + ofs, (char *)mem);
+                return uplen;
+            }
+            if (((ndh->finfo[ix].flen + 0x7ff) & ~0x7ff) > buffsize) {
+                return -1;
+            }
+            return ndh->finfo[ix].flen;
+        }
+    }
+    return 0;
 }
 
 // FUNCTION: BIONICLE 0x567120
@@ -959,4 +1127,112 @@ NUWCHAR NuFileReadWChar(NUFILE fh) {
 
     NuFileRead(fh, &data, 2);
     return data;
+}
+
+// FUNCTION: BIONICLE 0x567bf0
+int NuFileBeginBlkRead(NUFILE fh, int blk) {
+    int i;
+    int pos;
+
+    i = blkcnt++;
+    pos = NuFilePos(fh);
+    if (i > 1 && pos >= nufile_blkinfo[i - 1].pos + nufile_blkinfo[i - 1].hdr.size) {
+        blkcnt--;
+        return 0;
+    }
+    nufile_blkinfo[i].pos = NuFilePos(fh);
+    NuFileRead(fh, &nufile_blkinfo[i].hdr, sizeof(NUIFFHDR));
+    if (nufile_blkinfo[i].hdr.size < 0) {
+        nufile_blkinfo[i].hdr.size = -nufile_blkinfo[i].hdr.size;
+    }
+    return nufile_blkinfo[i].hdr.blk;
+}
+
+// FUNCTION: BIONICLE 0x568500
+NUDATHDR *NuDatOpen(char *fname, VARIPTR *buff, int *req) {
+    return NuDatOpenEx(fname, buff, req, 0);
+}
+
+// STRING: BIONICLE 0x5e080c
+// __FILE__, passed to NuMemAlloc: ".\\nufile.c"
+
+// FUNCTION: BIONICLE 0x568520
+void *NuFileLoad(char *fname) {
+    NUFILE fh;
+    int size;
+    void *mem;
+    int be;
+
+    be = nufile_buffering_enabled;
+    mem = NULL;
+    nufile_buffering_enabled = 0;
+    fh = NuFileOpen(fname, NUFILE_READ);
+    if (fh != 0) {
+        size = NuFileOpenSize(fh);
+        if (size > 0) {
+            mem = NuMemAllocAt(size, 2134);
+            if (mem != NULL) {
+                NuFileRead(fh, mem, size);
+            }
+        }
+        NuFileClose(fh);
+    }
+    nufile_buffering_enabled = be;
+    return mem;
+}
+
+// FUNCTION: BIONICLE 0x568590
+int NuFileLoadBuffer(char *fname, void *mem, int buffsize) {
+    NUFILE fh;
+    int size;
+    int rv;
+
+    rv = 0;
+    nufileloadbuffer_error = 0;
+    if (curr_dat != NULL) {
+        rv = NuDatFileLoadBuffer(curr_dat, fname, mem, buffsize);
+        nufileloadbuffer_error = 100;
+        if (rv != 0) {
+            return rv;
+        }
+    }
+    nufileloadbuffer_error = 1;
+    if (!NuFileExists(fname)) {
+        return rv;
+    }
+    nufileloadbuffer_error = 2;
+    fh = NuFileOpen(fname, NUFILE_READ);
+    if (fh == 0) {
+        return rv;
+    }
+    if (nufile_try_packed) {
+        nufileloadbuffer_error = 4;
+        size = NuPPLoadBuffer(fh, mem, buffsize);
+        NuFileClose(fh);
+        return size;
+    }
+    nufileloadbuffer_error = 5;
+    size = NuFileOpenSize(fh);
+    if (size > buffsize || size == 0) {
+        nufileloadbuffer_error = 8;
+        size = 0;
+    } else {
+        nufileloadbuffer_error = 6;
+        while (NuFileRead(fh, mem, size) < 0) {
+            nufileloadbuffer_error = 7;
+            while (NuFileSeek(fh, 0, 0) < 0) {
+            }
+        }
+    }
+    NuFileClose(fh);
+    return size;
+}
+
+// FUNCTION: BIONICLE 0x5687a0
+int NuFileLoadBufferVP(char *fname, VARIPTR *ptr, VARIPTR *end) {
+    int size;
+
+    size = NuFileLoadBuffer(fname, ptr->voidptr, end->intaddr - ptr->intaddr);
+    ptr->intaddr += size;
+    return size;
 }

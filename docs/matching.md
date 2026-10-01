@@ -123,11 +123,17 @@ exact; `tools/permute.py` automates some of them.
 - **A loop in an inlined helper isn't unrolled; the same loop written inline is.**
   `NuPSFileOpen`'s free-handle search became a 4× unrolled loop until moved into a
   `static __inline` helper (58% → 81%).
+- **`static` functions get register arguments, and ours match.** `NuFileExtAdd` takes its
+  string in `edi` and `AquireFileBuffer` its `FILEINFO *` in `edi`; writing them as plain
+  `static` functions reproduced that without help.
 - `__FILE__`/`__LINE__` call sites: pass the original line explicitly (`NuMemAllocAt`);
   `#line` breaks reccmp's line mapping.
 
 ## reccmp limits
 
+- A `STRING` marker must be followed by a line with the literal; one in front of a macro
+  that expands to `__FILE__` made reccmp drop the whole function. Put those at file
+  scope with a comment instead (`listman.c`, `nufile.c`).
 - Float constants in the original are only recognized via `build/orig-floats.csv`
   (`tools/floatconsts.py`), since the exe has no relocations.
 - A reference to `global - offset` (e.g. `NuTrigTable - 4` from a loop counting from 1)
