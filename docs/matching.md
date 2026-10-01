@@ -65,6 +65,17 @@ exact; `tools/permute.py` automates some of them.
   `curr_num <<= 4; curr_num += hexcodetoint(…);` shifted in `edx` and copied to `ebx`
   for the call; `*= 16` shifts in `ebx` directly, as the original does (nurdpi
   `get_tok`, 96% → 100%). Try the arithmetic spelling when a shift's register is off.
+- **`xor`/`and` pairs are written with `^`.** Button edges compiled as `c = new ^ old;
+  released = c & old; pressed = c & new` came from `(new ^ old) & old` and
+  `(new ^ old) & new`; `new & ~old` gives `not`/`and` (`NuPadProcessReadData`). The two
+  stores came out in the opposite order to the statements.
+- **A block placed far from its condition can be a `goto`.** In `NuPadUpdatePads` the
+  "found a pad" assignments sit after the rest of the loop body, reached by a `je` out of
+  the inner search loop; `break` puts them right after it, a `goto found;` to a label at
+  the end of the outer loop body (after a `continue;`) matches (57% → 100% with the
+  next point).
+- `cmp eax, edi` with the loop counter in `eax` was `i == mapping.port`, not
+  `mapping.port == i`: equality operands keep the source order too.
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;
@@ -159,6 +170,10 @@ exact; `tools/permute.py` automates some of them.
   `#line` breaks reccmp's line mapping.
 
 ## reccmp limits
+
+- **A function signature split over several lines after a marker silently drops the
+  marker**, and the parser loses the next marker in the file too (no warning; the
+  addresses just show as `<OFFSET>` in callers). Keep marked signatures on one line.
 
 - A `STRING` marker must be followed by a line with the literal; one in front of a macro
   that expands to `__FILE__` made reccmp drop the whole function. Put those at file

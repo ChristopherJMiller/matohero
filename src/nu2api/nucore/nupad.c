@@ -9,10 +9,15 @@
  * mapped onto them, and NuPadRead copies a mapped controller into the game's NUPAD.
  * Based on opensagadev/saga src/nu2api/nucore/nupad.cpp (GPL-3.0, a later engine with a
  * different NUPAD); names and locals from the PS2 prototype. PC differences: 16 scanned
- * pads, d-pad ramps in NuPadRead, NuPadGetFirstActivePad reads the mapping, and no
- * NuPadInit/Close/SetMotors/ResetState here. */
+ * pads, NuPadGetFirstActivePad reads the mapping, no NuPadInit/Close/SetMotors/ResetState
+ * here, and NuPadRead is a PC-layer wrapper (0x57a540, like PS2's around NuPs2ReadPad)
+ * around NuPadReadMapped (our name), which adds d-pad ramps. */
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/* Game pads (players). */
+#define NUPAD_MAXGAMEPADS 2
 
 // STRING: BIONICLE 0x5e0928
 // __FILE__, passed to NuMemAlloc: ".\\nupad.c"
@@ -73,6 +78,205 @@ void NuPadSetStatus(int gamepad, int active) {
     g_nupadMapping[gamepad].active = active;
 }
 
+static __inline void DeadZoneXY(int *dx, int *dy, int deadzone) {
+    int x;
+    int y;
+
+    x = *dx;
+    y = *dy;
+    if (x > -deadzone && x < deadzone) {
+        *dx = 0;
+    }
+    if (y > -deadzone && y < deadzone) {
+        *dy = 0;
+    }
+}
+
+// FUNCTION: BIONICLE 0x56bd90
+void NuPadProcessReadData(NUGENERICPAD *pad) {
+    float rate;
+
+    pad->paddata_db = (pad->paddata ^ pad->oldpaddata) & pad->paddata;
+    pad->paddata_dbr = (pad->paddata ^ pad->oldpaddata) & pad->oldpaddata;
+    pad->oldpaddata = pad->paddata;
+    pad->ldx = pad->l_alg_x - 0x80;
+    pad->ldy = 0x80 - pad->l_alg_y;
+    pad->rdx = pad->r_alg_x - 0x80;
+    pad->rdy = 0x80 - pad->r_alg_y;
+    if (pad->deadzone != 0) {
+        DeadZoneXY(&pad->ldx, &pad->ldy, pad->deadzone);
+        DeadZoneXY(&pad->rdx, &pad->rdy, pad->deadzone);
+        pad->l_alg_x = pad->ldx + 0x80;
+        pad->l_alg_y = 0x80 - pad->ldy;
+        pad->r_alg_x = pad->rdx + 0x80;
+        pad->r_alg_y = 0x80 - pad->rdy;
+    }
+
+    pad->l_nx = pad->ldx / 128.0f;
+    pad->l_ny = pad->ldy / 128.0f;
+    if (pad->l_nx > 0.0f) {
+        pad->l_nx = MAX(0.0f, pad->l_nx - pad->l_dx);
+    }
+    if (pad->l_nx < 0.0f) {
+        pad->l_nx = MIN(0.0f, pad->l_nx + pad->l_dx);
+    }
+    if (pad->l_ny > 0.0f) {
+        pad->l_ny = MAX(0.0f, pad->l_ny - pad->l_dy);
+    }
+    if (pad->l_ny < 0.0f) {
+        pad->l_ny = MIN(0.0f, pad->l_ny + pad->l_dy);
+    }
+
+    pad->r_nx = pad->rdx / 128.0f;
+    pad->r_ny = pad->rdy / 128.0f;
+    if (pad->r_nx > 0.0f) {
+        pad->r_nx = MAX(0.0f, pad->r_nx - pad->r_dx);
+    }
+    if (pad->r_nx < 0.0f) {
+        pad->r_nx = MIN(0.0f, pad->r_nx + pad->r_dx);
+    }
+    if (pad->r_ny > 0.0f) {
+        pad->r_ny = MAX(0.0f, pad->r_ny - pad->r_dy);
+    }
+    if (pad->r_ny < 0.0f) {
+        pad->r_ny = MIN(0.0f, pad->r_ny + pad->r_dy);
+    }
+
+    /* No analogue d-pad: ramp the digital directions up over a few frames. */
+    if (!pad->analogue_buttons) {
+        rate = ramp_rate * 0.033333335f;
+        if (pad->paddata & 0x1000) {
+            pad->l_up_ramp = MIN(1.0f, pad->l_up_ramp + rate);
+        } else {
+            pad->l_up_ramp = 0.0f;
+        }
+        if (pad->paddata & 0x4000) {
+            pad->l_down_ramp = MIN(1.0f, pad->l_down_ramp + rate);
+        } else {
+            pad->l_down_ramp = 0.0f;
+        }
+        if (pad->paddata & 0x8000) {
+            pad->l_left_ramp = MIN(1.0f, pad->l_left_ramp + rate);
+        } else {
+            pad->l_left_ramp = 0.0f;
+        }
+        if (pad->paddata & 0x2000) {
+            pad->l_right_ramp = MIN(1.0f, pad->l_right_ramp + rate);
+        } else {
+            pad->l_right_ramp = 0.0f;
+        }
+        pad->l_algpad_l = (unsigned char)(CalcRamp(pad->l_left_ramp) * 255.0f);
+        pad->l_algpad_r = (unsigned char)(CalcRamp(pad->l_right_ramp) * 255.0f);
+        pad->l_algpad_u = (unsigned char)(CalcRamp(pad->l_up_ramp) * 255.0f);
+        pad->l_algpad_d = (unsigned char)(CalcRamp(pad->l_down_ramp) * 255.0f);
+    }
+}
+
+/* Activity on a scanned pad: buttons held or a stick off centre. The original tests
+ * r_alg_x twice (and never r_alg_y). */
+#define PAD_ACTIVE(gp)                                                                   \
+    ((gp)->paddata != 0 || (gp)->l_alg_x != 0x80 || (gp)->l_alg_y != 0x80 ||          \
+     (gp)->r_alg_x != 0x80 || (gp)->r_alg_x != 0x80)
+
+// FUNCTION: BIONICLE 0x56c130
+void NuPadUpdatePads(void) {
+    int i;
+    int j;
+    int numpads;
+
+    numpads = NuPadGetMaxDevicesPS();
+    for (i = 0; i < numpads; i++) {
+        g_nupadScannedPads[i].valid = NuPadReadPS(
+            i, &g_nupadScannedPads[i].l_alg_x, &g_nupadScannedPads[i].l_alg_y,
+            &g_nupadScannedPads[i].r_alg_x, &g_nupadScannedPads[i].r_alg_y,
+            &g_nupadScannedPads[i].l1_alg, &g_nupadScannedPads[i].l2_alg,
+            &g_nupadScannedPads[i].r1_alg, &g_nupadScannedPads[i].r2_alg,
+            &g_nupadScannedPads[i].paddata);
+        if (g_nupadScannedPads[i].valid) {
+            g_nupadScannedPads[i].deadzone = NuPadGetDeadzoneByPortPS(i);
+        }
+        NuPadProcessReadData(&g_nupadScannedPads[i]);
+    }
+
+    /* Unmap scanned pads no active game pad uses. */
+    for (i = 0; i < numpads; i++) {
+        if (!((g_nupadMapping[0].active && i == g_nupadMapping[0].port) ||
+              (g_nupadMapping[1].active && i == g_nupadMapping[1].port))) {
+            g_nupadScannedPads[i].mappedToPad = -1;
+        }
+    }
+
+    /* Before anyone has pressed start, game pad 0 follows whichever pad is used. */
+    if (!g_atLeastOnePadBeenActivated) {
+        g_nupadMapping[0].port = -1;
+        for (j = 0; j < numpads; j++) {
+            if (g_nupadScannedPads[j].valid) {
+                g_nupadMapping[0].port = j;
+                g_nupadScannedPads[j].mappedToPad = 0;
+                if (PAD_ACTIVE(&g_nupadScannedPads[j])) {
+                    g_nupadMapping[0].port = j;
+                    g_nupadScannedPads[j].mappedToPad = 0;
+                    if (g_nupadScannedPads[j].paddata_db & 0x840) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    if (g_atLeastOnePadBeenActivated) {
+        for (i = 0; i < NUPAD_MAXGAMEPADS; i++) {
+            /* An active game pad whose controller went away takes the first free one
+             * that presses start or select. */
+            if (g_nupadMapping[i].active == 1 && !g_nupadScannedPads[g_nupadMapping[i].port].valid) {
+                for (j = 0; j < numpads; j++) {
+                    if (g_nupadScannedPads[j].valid && (g_nupadScannedPads[j].paddata_db & 0x840) &&
+                        (g_nupadScannedPads[j].mappedToPad == -1 ||
+                         !g_nupadMapping[g_nupadScannedPads[j].mappedToPad].active)) {
+                        goto found;
+                    }
+                }
+            }
+
+            /* An inactive one follows any unclaimed pad, preferring one in use. */
+            if (!g_nupadMapping[i].active) {
+                g_nupadMapping[i].port = -1;
+                if (g_nupadMapping[0].active + g_nupadMapping[1].active == 0) {
+                    if (i == 0) {
+                        for (j = 0; j < numpads; j++) {
+                            if (g_nupadScannedPads[j].mappedToPad == -1 ||
+                                g_nupadMapping[g_nupadScannedPads[j].mappedToPad].active != 1) {
+                                g_nupadScannedPads[j].mappedToPad = -1;
+                            }
+                        }
+                    }
+                } else {
+                    for (j = 0; j < numpads; j++) {
+                        if (g_nupadScannedPads[j].mappedToPad == -1 ||
+                            g_nupadMapping[g_nupadScannedPads[j].mappedToPad].active != 1) {
+                            g_nupadScannedPads[j].mappedToPad = -1;
+                        }
+                    }
+                }
+                for (j = 0; j < numpads; j++) {
+                    if (g_nupadScannedPads[j].mappedToPad == -1 && g_nupadScannedPads[j].valid) {
+                        g_nupadMapping[i].port = j;
+                        g_nupadScannedPads[j].mappedToPad = i;
+                        if (PAD_ACTIVE(&g_nupadScannedPads[j]) || (g_nupadScannedPads[j].paddata_db & 0x840)) {
+                            break;
+                        }
+                    }
+                }
+            }
+            continue;
+        found:
+            g_nupadMapping[i].port = j;
+            g_nupadScannedPads[j].mappedToPad = i;
+            g_nupadScannedPads[j].paddata_db = 0;
+        }
+    }
+}
+
 // FUNCTION: BIONICLE 0x56c3a0
 void NuPadMapPortToPS2Port(int gamepad, int port) {
     g_nupadMapping[gamepad].port = port;
@@ -92,7 +296,7 @@ int NuPadGetFirstActivePad(void) {
 }
 
 // FUNCTION: BIONICLE 0x56c3f0
-int NuPadRead(NUPAD *pad) {
+int NuPadReadMapped(NUPAD *pad) {
     int port;
     NUGENERICPAD *gp;
     float rate;

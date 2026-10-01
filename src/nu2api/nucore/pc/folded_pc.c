@@ -3,7 +3,7 @@
 /* The folded empty functions (see folded.h). The file name is ours. */
 
 // STUB: BIONICLE 0x57a600
-int NuMcFolded() {
+int NuPCZeroFolded() {
     return 0;
 }
 

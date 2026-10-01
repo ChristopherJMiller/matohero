@@ -128,6 +128,13 @@ void NuPadSetStatus(int gamepad, int active);
 void NuPadUpdatePads(void);
 void NuPadMapPortToPS2Port(int gamepad, int port);
 int NuPadGetFirstActivePad(void);
-int NuPadRead(NUPAD *pad);
+int NuPadReadMapped(NUPAD *pad);
+void NuPadProcessReadData(NUGENERICPAD *pad);
+
+/* PC platform layer (not decompiled; pc/nupad_pc_stubs.c). */
+int NuPadGetMaxDevicesPS(void);
+int NuPadReadPS(int port, unsigned char *l_alg_x, unsigned char *l_alg_y, unsigned char *r_alg_x,
+                unsigned char *r_alg_y, unsigned char *l1_alg, unsigned char *l2_alg,
+                unsigned char *r1_alg, unsigned char *r2_alg, unsigned int *paddata);
 
 #endif

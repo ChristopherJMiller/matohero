@@ -174,8 +174,14 @@ headless boot to title) → commit.
       function `0x585070` is `NuPCEmptyFolded` (`folded.h`). Hook test: 252 functions,
       title reached and **input works through our `NuPadRead`** (keys now held in
       `rungame`; instant taps were missed).
-- [ ] `nucore/nupad.c` part 2: `NuPadProcessReadData` (`0x56bd90`, 923 bytes, deadzones
-      and normalised sticks) and `NuPadUpdatePads` (`0x56c130`, mapping/scan logic).
+- [x] `nucore/nupad.c` part 2: `NuPadProcessReadData` (`0x56bd90`, deadzones and
+      normalised sticks) and `NuPadUpdatePads` (`0x56c130`, scanning and pad mapping):
+      both exact; nupad complete (8/8). `0x56c3f0` renamed `NuPadReadMapped`: the real
+      `NuPadRead` is the PC layer's wrapper at `0x57a540`. PC-layer stubs `NuPadReadPS`,
+      `NuPadGetMaxDevicesPS` (`pc/nupad_pc_stubs.c`); `NuMcFolded` → `NuPCZeroFolded`.
+      Found that reccmp drops markers on multi-line signatures. Hook test: 254
+      functions, input works end to end through our pad code (title → menu → save
+      prompt).
 - [ ] Rest of `0x56b760–0x56c6c0`: `nufilepak.c` (`0x56b760–0x56bbcf`, saga has it),
       `nulang.c` (`NuLanguageGet`/`Set` `0x56c650`/`0x56c660`, `0x56c670`), `NuFrameBegin`
       (`0x56c6a0`) / `NuFrameEnd` (`0x56c6c0`, need nu3d/PC callees stubbed).

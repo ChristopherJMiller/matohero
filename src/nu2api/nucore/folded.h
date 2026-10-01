@@ -5,14 +5,16 @@
  * body: one stub stands for each group (pc/folded_pc.c), and the original names alias it.
  * The stubs are unprototyped so every caller's arguments still compile. */
 
-/* `return 0`: the memory-card file layer (PS2: nucore/ps2/ps2mc.c). */
-int NuMcFolded();
-#define NuMcWrite NuMcFolded
-#define NuMcRead NuMcFolded
-#define NuMcSeek NuMcFolded
-#define NuMcClose NuMcFolded
-#define NuMcOpen NuMcFolded
-#define NuMcOpenSize NuMcFolded
+/* `return 0` in the PC platform layer (frame-pointer build, see below): the memory-card
+ * file layer (PS2: nucore/ps2/ps2mc.c) and the pad deadzone query. */
+int NuPCZeroFolded();
+#define NuMcWrite NuPCZeroFolded
+#define NuMcRead NuPCZeroFolded
+#define NuMcSeek NuPCZeroFolded
+#define NuMcClose NuPCZeroFolded
+#define NuMcOpen NuPCZeroFolded
+#define NuMcOpenSize NuPCZeroFolded
+#define NuPadGetDeadzoneByPortPS NuPCZeroFolded
 
 /* Empty `void` functions: PS2 hardware hooks with nothing to do on PC. */
 void NuEmptyFolded();

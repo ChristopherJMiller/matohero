@@ -92,9 +92,11 @@ statistics over `.text`:
 - **Optimized release build, frame pointers mostly omitted** (`/O2`-style): only ~950
   functions open with `push ebp; mov ebp, esp`. Many of those are the PC platform layer
   (e.g. the pad glue at `0x57a540–0x57a5f9`), which was evidently a separate project
-  built with frame pointers (`/Oy-`): even its empty functions keep `push ebp; mov ebp,
-  esp; pop ebp`, so they fold into their own copy (`0x585070`) apart from the engine's
-  (`0x5af030`).
+  built without optimization (`/Od`-style: arguments are reloaded with
+  `mov eax, [ebp+8]; push eax`, wrappers aren't tail calls, `int3` padding): even its empty
+  functions keep `push ebp; mov ebp, esp; pop ebp`, so they fold into their own copies
+  (`0x585070` empty, `0x57a600` `return 0`) apart from the engine's (`0x5af030`). Its pad
+  code is C++ (`NuPadReadPS` calls a method on an input object at `0x34d7018`).
 - **`/GS` on**: 286 functions call `__security_check_cookie`. Confirmed by matching
   `NuSPrintfW` (cookie at `0x639088`); in the build flags since nustring.
 - **`/Ob1`**: only functions marked `__inline` are inlined. Confirmed by `NuSPrintfW`;
