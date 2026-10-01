@@ -93,7 +93,7 @@ void NuVecAdd(NUVEC *v, NUVEC *v0, NUVEC *v1) {
 }
 
 // FUNCTION: BIONICLE 0x570550
-void NuVecSub(NUVEC *v, NUVEC *v0, NUVEC *v1) {
+__inline void NuVecSub(NUVEC *v, NUVEC *v0, NUVEC *v1) {
     v->x = v0->x - v1->x;
     v->y = v0->y - v1->y;
     v->z = v0->z - v1->z;
@@ -114,7 +114,7 @@ void NuVecAddScale(NUVEC *v, NUVEC *v0, NUVEC *v1, float k) {
 }
 
 // FUNCTION: BIONICLE 0x5705f0
-void NuVecCross(NUVEC *v, NUVEC *v0, NUVEC *v1) {
+__inline void NuVecCross(NUVEC *v, NUVEC *v0, NUVEC *v1) {
     float y = v0->z * v1->x - v0->x * v1->z;
     float z = v0->x * v1->y - v0->y * v1->x;
 
@@ -167,7 +167,7 @@ void NuVecMin(NUVEC *v0, NUVEC *v1, NUVEC *v2) {
 }
 
 // FUNCTION: BIONICLE 0x570710
-float NuVecMagSqr(NUVEC *v0) {
+__inline float NuVecMagSqr(NUVEC *v0) {
     return v0->x * v0->x + v0->y * v0->y + v0->z * v0->z;
 }
 
@@ -225,7 +225,7 @@ void NuVecLerp(NUVEC *vt, NUVEC *v1, NUVEC *v0, float t) {
 }
 
 // FUNCTION: BIONICLE 0x5708e0
-float NuVecMag(NUVEC *v0) {
+__inline float NuVecMag(NUVEC *v0) {
     return NuFsqrt(NuVecMagSqr(v0));
 }
 

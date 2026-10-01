@@ -28,7 +28,7 @@ void NuRandSeed(unsigned int seed) {
 }
 
 // FUNCTION: BIONICLE 0x56e0f0
-float NuRandFloatSeeded(unsigned int *seed) {
+__inline float NuRandFloatSeeded(unsigned int *seed) {
     union {
         unsigned int i;
         float f;
@@ -45,7 +45,7 @@ float NuRandFloat(void) {
 }
 
 // FUNCTION: BIONICLE 0x56e150
-unsigned int NuRandIntSeeded(unsigned int *seed) {
+__inline unsigned int NuRandIntSeeded(unsigned int *seed) {
     *seed = *seed * 0x19660d + 0x3c6ef35f;
     return *seed;
 }

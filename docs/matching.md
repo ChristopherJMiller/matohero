@@ -55,9 +55,20 @@ exact; `tools/permute.py` automates some of them.
 
 ## Structure
 
+- **Only `__inline` functions are inlined (`/Ob1`).** The original was built with
+  `/O2 /Ob1`, the setting VS .NET 2003's Release configs use (as far as I know), not
+  `/O2`'s implied `/Ob2`. The proof is `NuSPrintfW`: it inlines `NuStrLenW` but
+  calls `NuAsciiToUnicode`, and under `/Ob2` no source order or shape stopped
+  `NuAsciiToUnicode` from being inlined. When the original inlines a helper,
+  mark the helper `__inline` (it still gets an out-of-line copy if something calls it
+  that way): `NuStrLen`, `NuStrLenW`, `NuStrRChr`, `NuToUpper`, `NuToLower`,
+  `NuToUpperW`, `NuRandFloatSeeded`, `NuRandIntSeeded`, `NuVecSub`, `NuVecCross`,
+  `NuVecMagSqr`, `NuVecMag` so far. Whether the compiler then inlines a given call
+  is still its own choice (`NuStrNCmp` calls `NuStrLen`, `NuStrGetExt` inlines it).
 - **Function order in an object.** `/O2` implies `/Gy`, so each function is its own
   COMDAT, emitted in source order, except that a function calling one defined *later* in
-  the file is deferred to the end of the object (so the callee can be inlined). In
+  the file (i.e. not compiled yet) is deferred to the end of the object, whether or not
+  the call ends up inlined. In
   nustring the case-insensitive functions, which call `NuToUpper`/`NuToLower`, come
   last in the exe for that reason. reccmp doesn't care about order, but it explains
   layouts that look shuffled against the PS2 file, and a later-defined callee still
@@ -76,9 +87,8 @@ exact; `tools/permute.py` automates some of them.
   14–38% to 55–70%.
 - A wrapper that only calls another function with the same arguments compiles to a bare
   `jmp` (the PC `…VU0` thunks).
-- Inlining is on (`/Ob2`). A stub in the same file as its caller gets inlined into it and
-  collapses the caller, so keep stubs in a separate file until decompiled
-  (`numath/nutrig_stubs.c`).
+- Stubs (empty bodies for not-yet-decompiled functions) are safe in the same file now:
+  under `/Ob2` they used to get inlined into callers and collapse them.
 - `__FILE__`/`__LINE__` call sites: pass the original line explicitly (`NuMemAllocAt`);
   `#line` breaks reccmp's line mapping.
 

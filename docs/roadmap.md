@@ -139,11 +139,14 @@ headless boot to title) → commit.
       the original flags and the MSVC rule that defers functions calling later-defined
       ones to the end of the object (`docs/matching.md`). Hook test: 126 functions,
       title reached, `NuStrICmp` 2.4M calls.
-- [ ] `nucore/nustring.c` part 2: `NuUnicodeToAscii` / `NuAsciiToUnicode` (stubs in
-      `nustring_stubs.c` now) and the UTF-8 functions `0x568d30–0x568fd0`, the string
-      table (`0x568fd0–0x5699d0`, incl. unnamed `0x568fd0`, `0x568fe0`, `0x568ff0`
-      (1148 bytes, LoadCSV?), `0x569480`, `0x5696e0–0x5699d0`), `GetIdByName`,
-      `GetByName`.
+- [x] `nucore/nustring.c` part 2: the UTF-8/Unicode conversions, string-table accessors,
+      and the path helpers (`NuStrFixExt[Platform]`, `NuStrGetPath/Ext/FilenameNoExt`):
+      18 functions, 17 exact + 1 effective; `NuSPrintfW` now exact too. Found that the
+      original builds with **`/Ob1`** (only `__inline` functions inline), now global, with
+      `__inline` on the helpers that get inlined. Hook test: 143 functions, title reached.
+- [ ] `nucore/nustring.c` part 3: `NuStringTableLoadCSV` (`0x568ff0`, 1148 bytes) and
+      `NuStringTableLoadTXT` (`0x569480`). They use `NUFPAR`/`NuFile`, so do them after
+      `nufpar` and `nufile`.
 - [ ] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga), small
 - [ ] `nucore/nufpar.c` (saga), ~21
 - [ ] `nucore/nufile.c` (saga), ~52

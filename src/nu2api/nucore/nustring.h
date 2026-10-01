@@ -7,6 +7,20 @@ typedef u16 NUWCHAR;
 typedef u8 NUWCHAR8;
 typedef u16 NUWCHAR16;
 
+typedef struct nustring_s {
+    char *id;
+    union {
+        NUWCHAR *text;
+        NUWCHAR8 *text_utf8;
+    };
+} NUSTRING;
+
+typedef struct nustringbank_s {
+    NUSTRING *Strings;
+    int NumStrings;
+    int MaxStrings;
+} NUSTRINGBANK;
+
 int NuStrICmpWC(char *a, char *b, char *WCMatch);
 int NuSPrintfW(NUWCHAR *dst, NUWCHAR *src, ...);
 int NuStrCpyWC(char *dst, char *src, char *WCMatch);
@@ -38,6 +52,21 @@ int NuStrICmpW(NUWCHAR *a, NUWCHAR *b);
 int NuAToIW(NUWCHAR *string);
 NUWCHAR NuToUpperW(NUWCHAR c);
 void NuUnicodeToAscii(char *dest, NUWCHAR16 *src);
+void NuUnicodeToUTF8(NUWCHAR8 *dest, NUWCHAR16 *src);
 void NuAsciiToUnicode(NUWCHAR16 *dest, char *src);
+void NuUTF8ToUnicode(NUWCHAR16 *dest, NUWCHAR8 *src);
+NUWCHAR8 *NuUnicodeCharFromUTF8(NUWCHAR *unicode, NUWCHAR8 *utf8);
+void NuStringTableSetFormat(int format);
+int NuStringTableGetFormat(void);
+void NuStringTableSetBank(int bank);
+void NuStringTableUnload(void);
+NUWCHAR *NuStringTableGetById(int id);
+int NuStringTableGetIdByName(char *stringname);
+NUWCHAR *NuStringTableGetByName(char *stringname);
+void NuStrFixExtPlatform(char *dst, char *src, char *ext, int dst_size, char *platform_string);
+void NuStrFixExt(char *dst, char *src, char *ext, int dst_size);
+void NuStrGetFilenameNoExt(char *filename, char *filepath);
+void NuStrGetPath(char *path, char *filepath);
+void NuStrGetExt(char *ext, char *filepath);
 
 #endif

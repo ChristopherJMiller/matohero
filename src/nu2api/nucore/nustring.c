@@ -169,7 +169,7 @@ char *NuStrChr(char *src, char c) {
 }
 
 // FUNCTION: BIONICLE 0x5688f0
-char *NuStrRChr(char *src, char c) {
+__inline char *NuStrRChr(char *src, char c) {
     char *ptr = src;
 
     while (*ptr != '\0') {
@@ -185,7 +185,7 @@ char *NuStrRChr(char *src, char c) {
 }
 
 // FUNCTION: BIONICLE 0x568920
-int NuStrLen(char *str) {
+__inline int NuStrLen(char *str) {
     int cnt = 0;
 
     while (*str != '\0') {
@@ -435,7 +435,7 @@ int NuStrCpyW(NUWCHAR *dst, NUWCHAR *src) {
 }
 
 // FUNCTION: BIONICLE 0x568ab0
-int NuStrLenW(NUWCHAR *str) {
+__inline int NuStrLenW(NUWCHAR *str) {
     int cnt = 0;
 
     while (*str != 0) {
@@ -445,7 +445,7 @@ int NuStrLenW(NUWCHAR *str) {
     return cnt;
 }
 
-NUWCHAR NuToUpperW(NUWCHAR c) {
+__inline NUWCHAR NuToUpperW(NUWCHAR c) {
     if (c >= 'a' && c <= 'z') {
         c -= 0x20;
     } else if (c >= 0xe0 && c <= 0xff) {
@@ -566,7 +566,7 @@ int NuAToIW(NUWCHAR *string) {
     return v;
 }
 
-unsigned char NuToUpper(unsigned char c) {
+__inline unsigned char NuToUpper(unsigned char c) {
     if (c >= 'a' && c <= 'z') {
         c -= 0x20;
     } else if (c >= 0xe0) {
@@ -576,11 +576,354 @@ unsigned char NuToUpper(unsigned char c) {
 }
 
 // FUNCTION: BIONICLE 0x568d10
-unsigned char NuToLower(unsigned char c) {
+__inline unsigned char NuToLower(unsigned char c) {
     if (c >= 'A' && c <= 'Z') {
         c += 0x20;
     } else if (c >= 0xc0 && c <= 0xdf) {
         c += 0x20;
     }
     return c;
+}
+
+// FUNCTION: BIONICLE 0x568d30
+void NuUnicodeToAscii(char *dest, NUWCHAR16 *src) {
+    int cnt = 0;
+
+    *dest = '\0';
+    if (src == NULL) {
+        return;
+    }
+    while (src[cnt] != 0) {
+        if (src[cnt] & 0xff00) {
+            switch (src[cnt]) {
+            case 0x2018: /* left single quotation mark */
+                dest[cnt] = (char)0x91;
+                break;
+            case 0x2019: /* right single quotation mark */
+                dest[cnt] = (char)0x92;
+                break;
+            case 0x2013: /* en dash */
+                dest[cnt] = (char)0x96;
+                break;
+            case 0x2026: /* ellipsis */
+                dest[cnt] = (char)0x85;
+                break;
+            case 0x2122: /* trade mark */
+                dest[cnt] = (char)0x99;
+                break;
+            default:
+                dest[cnt] = '?';
+                break;
+            }
+        } else {
+            dest[cnt] = (char)src[cnt];
+        }
+        cnt++;
+    }
+    dest[cnt] = '\0';
+}
+
+// FUNCTION: BIONICLE 0x568dd0
+void NuUnicodeToUTF8(NUWCHAR8 *dest, NUWCHAR16 *src) {
+    if (src == NULL || dest == NULL) {
+        return;
+    }
+    *dest = 0;
+    while (*src != 0) {
+        if (*src < 0x80) {
+            *dest++ = (NUWCHAR8)*src;
+        } else if (*src < 0x800) {
+            *dest++ = ((*src >> 6) & 0x1f) | 0xc0;
+            *dest++ = (*src & 0x3f) | 0x80;
+        } else {
+            *dest++ = ((*src >> 12) & 0x0f) | 0xe0;
+            *dest++ = ((*src >> 6) & 0x3f) | 0x80;
+            *dest++ = (*src & 0x3f) | 0x80;
+        }
+        src++;
+    }
+    *dest = 0;
+}
+
+// FUNCTION: BIONICLE 0x568e50
+void NuAsciiToUnicode(NUWCHAR16 *dest, char *src) {
+    int cnt = 0;
+
+    *dest = 0;
+    if (src == NULL) {
+        return;
+    }
+    while (src[cnt] != '\0') {
+        dest[cnt] = (unsigned char)src[cnt];
+        cnt++;
+    }
+    dest[cnt] = 0;
+}
+
+// FUNCTION: BIONICLE 0x568e90
+void NuUTF8ToUnicode(NUWCHAR16 *dest, NUWCHAR8 *src) {
+    if (src == NULL || dest == NULL) {
+        return;
+    }
+    *dest = 0;
+    while (*src != 0) {
+        if (*src < 0x80) {
+            *dest = *src;
+        } else if (*src < 0xe0) {
+            *dest = (*src & 0x1f) << 6;
+            src++;
+            *dest |= *src & 0x3f;
+        } else if (*src < 0xf0) {
+            *dest = *src << 12;
+            src++;
+            *dest |= (*src & 0x3f) << 6;
+            src++;
+            *dest |= *src & 0x3f;
+        } else {
+            *dest = '?';
+        }
+        src++;
+        dest++;
+    }
+    *dest = 0;
+}
+
+// FUNCTION: BIONICLE 0x568f30
+NUWCHAR8 *NuUnicodeCharFromUTF8(NUWCHAR *unicode, NUWCHAR8 *utf8) {
+    NUWCHAR c[3];
+
+    c[0] = *utf8++;
+    if (c[0] < 0x80) {
+        *unicode = c[0];
+    } else if ((c[0] & 0xe0) == 0xc0) {
+        c[1] = *utf8++;
+        *unicode = ((c[0] & 0x1f) << 6) | (c[1] & 0x3f);
+    } else if ((c[0] & 0xf0) == 0xe0) {
+        c[1] = *utf8++;
+        c[2] = *utf8++;
+        *unicode = (c[0] << 12) | ((c[1] & 0x3f) << 6) | (c[2] & 0x3f);
+    }
+    return utf8;
+}
+
+// GLOBAL: BIONICLE 0x617240
+static int nustring_format = 1;
+
+// GLOBAL: BIONICLE 0x34becb8
+static NUSTRINGBANK StringBank[3];
+
+// GLOBAL: BIONICLE 0x34becdc
+static short CurrentStringBank;
+
+// FUNCTION: BIONICLE 0x568fd0
+void NuStringTableSetFormat(int format) {
+    nustring_format = format;
+}
+
+// FUNCTION: BIONICLE 0x568fe0
+int NuStringTableGetFormat(void) {
+    return nustring_format;
+}
+
+// FUNCTION: BIONICLE 0x569690
+void NuStringTableSetBank(int bank) {
+    if (bank >= 0 && bank < 3) {
+        CurrentStringBank = bank;
+    }
+}
+
+// FUNCTION: BIONICLE 0x5696b0
+void NuStringTableUnload(void) {
+    StringBank[CurrentStringBank].Strings = NULL;
+    StringBank[CurrentStringBank].MaxStrings = 0;
+    StringBank[CurrentStringBank].NumStrings = 0;
+}
+
+// FUNCTION: BIONICLE 0x5696e0
+NUWCHAR *NuStringTableGetById(int id) {
+    unsigned int bank = 0;
+
+    if ((unsigned int)id >= 0x1000000 && id != -1) {
+        bank = (unsigned int)id >> 24;
+        id &= 0xffffff;
+    }
+    if (bank >= 3) {
+        return NULL;
+    }
+    if (id < 0) {
+        return NULL;
+    }
+    if (id >= StringBank[bank].NumStrings) {
+        return NULL;
+    }
+    return StringBank[bank].Strings[id].text;
+}
+
+// FUNCTION: BIONICLE 0x569730
+void NuStrFixExtPlatform(char *dst, char *src, char *ext, int dst_size, char *platform_string) {
+    char *p;
+    char *sep;
+    char *sep2;
+
+    if (src == NULL || ext == NULL || dst == NULL) {
+        return;
+    }
+    NuStrCpy(dst, src);
+    p = NuStrRChr(dst, '.');
+    sep = NuStrRChr(dst, '/');
+    sep2 = NuStrRChr(dst, '\\');
+    if (sep2 > sep) {
+        sep = sep2;
+    }
+    if (sep >= p) {
+        // STRING: BIONICLE 0x5cf670
+        NuStrCat(dst, "_");
+        if (platform_string != NULL) {
+            NuStrCat(dst, platform_string);
+        }
+        // STRING: BIONICLE 0x5cf768
+        NuStrCat(dst, ".");
+        NuStrCat(dst, ext);
+    } else {
+        *p = '\0';
+        NuStrCat(p, "_");
+        if (platform_string != NULL) {
+            NuStrCat(p, platform_string);
+        }
+        NuStrCat(p, ".");
+        NuStrCat(p, ext);
+    }
+    if (NuStrLen(dst) == dst_size - 1) {
+    }
+}
+
+// FUNCTION: BIONICLE 0x569800
+void NuStrFixExt(char *dst, char *src, char *ext, int dst_size) {
+    char *p;
+    char *sep;
+    char *sep2;
+
+    if (src == NULL || ext == NULL || dst == NULL) {
+        return;
+    }
+    NuStrCpy(dst, src);
+    p = NuStrRChr(dst, '.');
+    sep = NuStrRChr(dst, '/');
+    sep2 = NuStrRChr(dst, '\\');
+    if (sep2 > sep) {
+        sep = sep2;
+    }
+    if (sep >= p) {
+        NuStrCat(dst, ".");
+        NuStrCat(dst, ext);
+    } else {
+        *++p = ext[0];
+        *++p = ext[1];
+        *++p = ext[2];
+        *++p = '\0';
+    }
+    if (NuStrLen(dst) == dst_size - 1) {
+    }
+}
+
+// FUNCTION: BIONICLE 0x5698a0
+void NuStrGetFilenameNoExt(char *filename, char *filepath) {
+    char *dot;
+    char *sep;
+    char *sep2;
+    int s;
+
+    dot = NuStrRChr(filepath, '.');
+    if (dot == NULL) {
+        dot = filepath + NuStrLen(filepath) - 1;
+    }
+    sep = NuStrRChr(filepath, '/');
+    sep2 = NuStrRChr(filepath, '\\');
+    if (sep2 > sep) {
+        sep = sep2;
+    }
+    if (sep == NULL) {
+        sep = filepath;
+    }
+    sep++;
+    s = dot - sep + 1;
+    NuStrNCpy(filename, sep, s);
+}
+
+// FUNCTION: BIONICLE 0x569950
+void NuStrGetPath(char *path, char *filepath) {
+    char *sep;
+    char *sep2;
+    int s;
+
+    sep = NuStrRChr(filepath, '/');
+    sep2 = NuStrRChr(filepath, '\\');
+    if (sep2 > sep) {
+        sep = sep2;
+    }
+    if (sep == NULL) {
+        *path = '\0';
+    } else {
+        s = sep - filepath + 1;
+        NuStrNCpy(path, filepath, s);
+    }
+}
+
+// FUNCTION: BIONICLE 0x5699d0
+void NuStrGetExt(char *ext, char *filepath) {
+    char *dot;
+    char *end;
+    char *sep;
+    char *sep2;
+    int s;
+
+    dot = NuStrRChr(filepath, '.');
+    sep = NuStrRChr(filepath, '/');
+    sep2 = NuStrRChr(filepath, '\\');
+    if (sep2 > sep) {
+        sep = sep2;
+    }
+    if (dot == NULL || sep > dot) {
+        *ext = '\0';
+    } else {
+        end = filepath + NuStrLen(filepath);
+        s = end - dot;
+        if (s == 0) {
+            *ext = '\0';
+        } else {
+            NuStrNCpy(ext, dot + 1, s);
+        }
+    }
+}
+
+// FUNCTION: BIONICLE 0x569ee0
+int NuStringTableGetIdByName(char *stringname) {
+    int i;
+    int b;
+
+    for (b = 0; b < 3; b++) {
+        for (i = 0; i < StringBank[b].NumStrings; i++) {
+            if (StringBank[b].Strings[i].id != NULL && StringBank[b].Strings[i].text != NULL &&
+                NuStrICmp(StringBank[b].Strings[i].id, stringname) == 0) {
+                return (b << 24) + i;
+            }
+        }
+    }
+    return -1;
+}
+
+// FUNCTION: BIONICLE 0x569f60
+NUWCHAR *NuStringTableGetByName(char *stringname) {
+    int i;
+    int b;
+
+    for (b = 0; b < 3; b++) {
+        for (i = 0; i < StringBank[b].NumStrings; i++) {
+            if (StringBank[b].Strings[i].id != NULL && StringBank[b].Strings[i].text != NULL &&
+                NuStrICmp(StringBank[b].Strings[i].id, stringname) == 0) {
+                return StringBank[b].Strings[i].text;
+            }
+        }
+    }
+    return NULL;
 }
