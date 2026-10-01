@@ -9,6 +9,12 @@ exact; `tools/permute.py` automates some of them.
   source makes no difference, but each product's operand order shows up in the code:
   `m0->_01 * v0->x` and `v0->x * m0->_01` compile differently (nuvec matrix functions,
   sometimes mixed within one expression). The permuter flips products.
+- **…except when MSVC canonicalizes them itself.** For a product of two memory
+  operands off the same pointer (`T->_22 * T->_10`), flipping the source changes
+  nothing; the compiler picks the order. What does change it is expression structure:
+  the inline nested-determinant form of `NuMtxInvRSS` got closer than precomputed
+  cofactor locals (70% → 85%), presumably because canonical order follows where a
+  subexpression first appears.
 - **Parentheses stop reassociation.** `dy * 512.0f / dx` became `dy / dx * -512` with a
   negated table index; `(dy * 512.0f) / dx` matched (`fxyd` in nutrig).
 - **Comparison operand order is visible too.** `pow_x[n] == x` loads `x` first, and
@@ -32,6 +38,11 @@ exact; `tools/permute.py` automates some of them.
 
 ## Structure
 
+- **Check saga's structure against the asm.** saga targets a later engine, which added
+  things BH doesn't have: `NuMtxMul/MulH/MulR` branch on `m == m0 || m == m1`, while BH
+  always builds into a local and copies (`sub esp, 0x40` … `rep movsd`); `NuMtxInvRSS`
+  checks for a zero determinant, BH doesn't. Fixing structure first took these from
+  14–38% to 55–70%.
 - Inlining is on (`/Ob2`). A stub in the same file as its caller gets inlined into it and
   collapses the caller, so keep stubs in a separate file until decompiled
   (`numath/nutrig_stubs.c`).

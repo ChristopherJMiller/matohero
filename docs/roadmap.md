@@ -108,7 +108,13 @@ headless boot to title) → commit.
       (reccmp's `array - 4` limitation). nutrig complete: 14 functions, all but
       `NuPowFast` (`pop ecx` question) identical. Hook test: title reached, tables built
       in-game through the exe's allocator.
-- [ ] `numath/numtx.c` (saga), ~`0x56e250–0x56fc50`, ~30
+- [x] `numath/numtx.c` (saga): 35 functions, 21 exact + 4 effective, generated from
+      saga's text in PC order. Near misses: `RotateX/Z`, `PreRotateX/Y` (87–95%, x87
+      `fxch` placement), `Inv` (93%), `InvRSS` (85%), `Mul/MulH/MulR` (56–63%), `InvH`
+      (46%), `AlignZ` (63%). Hook test: 73 functions in-game, `NuMtxTranslate` 69k calls.
+- [ ] **Permuter v2.** Single-flip hill climbing plateaus on the numtx multiplies. Add
+      pairwise/random-restart search, safe statement reordering, and inline-vs-local
+      subexpression rewrites (what moved `InvRSS`).
 - [ ] `numath/nuquat.c` (saga), ~`0x56fd60–0x570060`, ~4
 - [ ] `numath/nufloat.c`, `numath/nuplane.c` (saga), small
 - [ ] `nucore/nustring.c` (saga), ~`0x5687d0–0x569f60`, ~47
