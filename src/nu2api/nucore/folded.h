@@ -23,6 +23,7 @@ void NuEmptyFolded();
 #define FaceYDirStream NuEmptyFolded
 #define NuDisplayListDebugToFile NuEmptyFolded
 #define DisplayListSwapBuffersPS NuEmptyFolded
+#define DisplayListCreatePS NuEmptyFolded
 #define RndrStateUpdate NuEmptyFolded
 #define RndrStateUpdateFx NuEmptyFolded
 /* Called through a prototype so the floats aren't promoted to double. */

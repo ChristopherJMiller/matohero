@@ -8,6 +8,7 @@
 #include "nuthread.h"
 
 #include <stdio.h>
+#include <string.h>
 
 /* Display lists (PS2: nu3d/nudlist.c). Names, types and locals from the PS2 prototype; the
  * PC keeps the PS2's manager layout but has its own item format and an HTML debug dump.
@@ -21,6 +22,9 @@ NUDISPLAYLISTMANAGER global_dlist_manager;
 
 // GLOBAL: BIONICLE 0x616eb4
 static int items_per_mtl = 8;
+
+// GLOBAL: BIONICLE 0x616eb8
+static int dyn_geom_pos = 6;
 
 // GLOBAL: BIONICLE 0x616eb0
 int nudlist_debug_level = 2;
@@ -93,6 +97,78 @@ static void DisplayListBeforeFrame(NUDISPLAYSCENE *ds, int force_reset) {
     ds->dynamic_used_this_frame = 0;
     ds->scene_used_this_frame = 0;
     ds->sorted_this_frame = 0;
+}
+
+/* Lays a scene's display list out in the buffer: the items, the material tables, the
+ * per-material lists with their render states, the used-material bits for both buffers
+ * and the sort priorities. alloc_mtls also allocates the materials. The PC doesn't use
+ * the clip object, bounds and special counts here. */
+// FUNCTION: BIONICLE 0x5539f0
+void NuDisplayListCreate(NUDISPLAYSCENE *dlist, VARIPTR *buff, VARIPTR buffend, int nitems, int nmtls, int nclip_objects, int nbounds, int nsort_pris, int nspecials, int alloc_mtls) {
+    int nbytes;
+    int i;
+    unsigned int j;
+    NUDISPLAYLIST *dmtl;
+    NUMTL *mtl;
+    NUDISPLAYLISTITEM *firsts;
+    NUDISPLAYLISTITEM *item;
+
+    buff->intaddr = (buff->intaddr + 15) & ~15;
+    dlist->nitems = nitems;
+    dlist->items = (NUDISPLAYLISTITEM *)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + nitems * sizeof(NUDISPLAYLISTITEM);
+    dlist->nmtls = nmtls;
+    buff->intaddr = (buff->intaddr + 15) & ~15;
+    dlist->mtls = (NUMTL **)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + nmtls * sizeof(NUMTL *);
+    dlist->dlist_mtls = (NUDISPLAYLIST **)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + nmtls * sizeof(NUDISPLAYLIST *);
+    memset(dlist->mtls, 0, nmtls * sizeof(NUMTL *));
+    memset(dlist->dlist_mtls, 0, nmtls * sizeof(NUDISPLAYLIST *));
+    if (alloc_mtls) {
+        mtl = (NUMTL *)((buff->intaddr + 15) & ~15);
+        buff->intaddr = ((buff->intaddr + 15) & ~15) + nmtls * sizeof(NUMTL);
+        for (i = 0; i < nmtls; i++) {
+            dlist->mtls[i] = mtl++;
+        }
+    }
+    dmtl = (NUDISPLAYLIST *)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + nmtls * sizeof(NUDISPLAYLIST);
+    memset(dmtl, 0, nmtls * sizeof(NUDISPLAYLIST));
+    firsts = (NUDISPLAYLISTITEM *)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + nmtls * sizeof(NUDISPLAYLISTITEM);
+    memset(firsts, 0, nmtls * sizeof(NUDISPLAYLISTITEM));
+    for (i = 0; i < nmtls; i++) {
+        dlist->dlist_mtls[i] = dmtl;
+        dmtl->state = (NURNDRSTATE *)((buff->intaddr + 3) & ~3);
+        buff->intaddr = ((buff->intaddr + 3) & ~3) + sizeof(NURNDRSTATE);
+        dmtl->first = &firsts[i];
+        RndrStateClear(dmtl->state);
+        dmtl++;
+    }
+    dlist->local_state = NULL;
+    for (j = 0; j < dlist->nmtls; j++) {
+        item = dlist->dlist_mtls[j]->first;
+        item->type = 0x8d;
+        item->next = NULL;
+        item->id = 1;
+    }
+    nbytes = ((nmtls + 7) / 8 / 16 + 1) * 16;
+    dlist->mtl_used[0] = (unsigned char *)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + nbytes;
+    dlist->mtl_used[1] = (unsigned char *)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + nbytes;
+    dlist->nsort_pris = nsort_pris;
+    dlist->sort_pris = (NUSORTPRI *)buff->voidptr;
+    buff->intaddr += nsort_pris * sizeof(NUSORTPRI);
+    memset(dlist->sort_pris, 0, nsort_pris * sizeof(NUSORTPRI));
+    for (i = 0; i < nsort_pris; i++) {
+        dlist->sort_pris[i].display_scene = dlist;
+        dlist->sort_pris[i].nmtls = 0;
+        dlist->sort_pris[i].mtl_first = 0;
+    }
+    DisplayListCreatePS(dlist, buff, buffend);
+    DisplayListBeforeFrame(dlist, 1);
 }
 
 /* Links a sort priority into the global list, which is kept in sort_pri order (inlined
@@ -567,6 +643,59 @@ void NuDisplayListExecute(NUDISPLAYLISTITEM *item, NUDISPLAYLISTITEMFN *fntable)
             break;
         }
     }
+}
+
+/* The dynamic material scene: 64 material lists for geometry added at run time, then the
+ * manager's material bookkeeping, its material buffer and the 2D list. */
+// FUNCTION: BIONICLE 0x555880
+void DisplayListCreateDynMtlList(VARIPTR *buff, VARIPTR buffend) {
+    NUDISPLAYSCENE *dlist;
+    NUDISPLAYLIST *rs;
+    int nmaterials;
+    int i;
+    // GLOBAL: BIONICLE 0x616ec0
+    // STRING: BIONICLE 0x5e02ec
+    static char *name = "Dynamic Material Display Scene";
+    NUDISPLAYLISTITEM *item;
+
+    dlist = &global_dlist_manager.dyn_mtl_dlist;
+    nmaterials = 64;
+    NuDisplayListCreate(dlist, buff, buffend, nmaterials * items_per_mtl, nmaterials, 0, 0, 64, 0, 0);
+    dlist->nsort_pris = 0;
+    dlist->name = name;
+    for (i = 0; i < nmaterials; i++) {
+        dlist->dlist_mtls[i]->mtl_item = &dlist->items[i * items_per_mtl];
+        dlist->dlist_mtls[i]->dyn_geom = &dlist->items[i * items_per_mtl + dyn_geom_pos];
+        dlist->dlist_mtls[i]->dlist = dlist;
+        dlist->dlist_mtls[i]->mtl_id = i;
+    }
+    buff->intaddr = (buff->intaddr + 15) & ~15;
+    global_dlist_manager.nnew_materials = 0;
+    global_dlist_manager.new_materials = (NUMTL **)buff->voidptr;
+    buff->intaddr += 0x100;
+    global_dlist_manager.ndel_materials = 0;
+    global_dlist_manager.del_materials = (NUMTL **)buff->voidptr;
+    buff->intaddr += 0x100;
+    global_dlist_manager.material_used = buff->u8;
+    buff->intaddr += 0x40;
+    global_dlist_manager.mtl_buffers_used = buff->u8;
+    buff->intaddr += 0x40;
+    memset(global_dlist_manager.material_used, 0, 0x40);
+    memset(global_dlist_manager.mtl_buffers_used, 0, 0x40);
+    global_dlist_manager.mtlbuff.intaddr = (buff->intaddr + 15) & ~15;
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + 0x2000;
+    global_dlist_manager.mtlbuffend = *buff;
+    rs = &global_dlist_manager.dlist_2d;
+    item = rs->first;
+    item->next = NULL;
+    item->type = 0x8d;
+    item->id = 1;
+    rs->mtl_last = rs->first;
+    rs->state = (NURNDRSTATE *)((buff->intaddr + 3) & ~3);
+    buff->intaddr = ((buff->intaddr + 3) & ~3) + sizeof(NURNDRSTATE);
+    RndrStateClear(rs->state);
+    rs->mtl_last = rs->first;
+    dlist->scene_supports_instancing = 0;
 }
 
 /* Collects this frame's sort priorities into a new render scene with the 2D list, and

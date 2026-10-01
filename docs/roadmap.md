@@ -572,12 +572,17 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `RndrStateUpdate`/`RndrStateUpdateFx` are folded empty functions on PC;
       `DisplayListUpdateRenderState` (`0x544cb0`) and `RndrStateResetGlobalState`
       (`0x544bf0`) stubbed. Both run every frame in the hook test.
-- [ ] `nudlist.c` part 6: `DisplayListCreateDynMtlList` (`0x555880`, 816 bytes),
-      `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes); the item builders `0x5539f0`
-      (`NuDisplayListCreate`?) and `0x553d90` (finds each sort priority's first material
-      by `renderplane << 17 + sort_pri`); `NuDisplayListUpdateSpecial` (`0x554610`),
-      `NuDisplayListRndrSpecial` (`0x554be0`); `DisplayListCreateSkinTransformPS`
-      (`0x55b860`).
+- [x] `nudlist.c` part 6, creation: `NuDisplayListCreate` (`0x5539f0`; the PC version
+      only reads nitems, nmtls, nsort_pris and alloc_mtls; `dmtl->first = &firsts[i]`
+      took it from 88% to 100%) and `DisplayListCreateDynMtlList` (`0x555880`, the 64
+      dynamic material lists and the manager's material buffers; `items_per_mtl` 8,
+      `dyn_geom_pos` 6) exact. `DisplayListCreatePS` is a folded empty function on PC.
+      The game initialises through both in the hook test.
+- [ ] `nudlist.c` part 7: `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes, stubbed)
+      with `0x553d90` (finds each sort priority's first material by
+      `renderplane << 17 + sort_pri`; called twice from it on `dyn_mtl_dlist`);
+      `NuDisplayListUpdateSpecial` (`0x554610`), `NuDisplayListRndrSpecial` (`0x554be0`);
+      `DisplayListCreateSkinTransformPS` (`0x55b860`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

@@ -49,6 +49,8 @@ extern int do_capture;
 extern NUFILE capture_fh;
 extern VARIPTR *display_list_buffer;
 
+void NuDisplayListCreate(NUDISPLAYSCENE *dlist, VARIPTR *buff, VARIPTR buffend, int nitems, int nmtls,
+                         int nclip_objects, int nbounds, int nsort_pris, int nspecials, int alloc_mtls);
 void NuDisplaySceneAdd(NUDISPLAYSCENE *ds);
 void NuDisplayListSwapBuffersBeginFrame(void);
 void NuDisplayListExecute(NUDISPLAYLISTITEM *item, NUDISPLAYLISTITEMFN *fntable);
