@@ -10,10 +10,13 @@
 typedef struct numtl_s NUMTL;
 typedef struct nugscn_s NUGSCN;
 typedef struct nudisplayscene_s NUDISPLAYSCENE;
-/* Global render state: the PS2 size, nothing placed yet. */
-typedef struct nuglobalrndrstate_s {
-    int unknown[0x1a0 / 4];
-} NUGLOBALRNDRSTATE;
+typedef struct nuglobalrndrstate_s NUGLOBALRNDRSTATE;
+
+typedef struct nucolour3_s {
+    float r;
+    float g;
+    float b;
+} NUCOLOUR3;
 
 /* The render state a material list was last drawn with (PS2 layout). */
 typedef struct nurndrstate_s {
@@ -36,6 +39,50 @@ typedef struct nurndrstate_s {
     short vertexgroups_id;
     short reflection_id;
 } NURNDRSTATE;
+
+/* The render state shared by the display lists: the PS2 layout without the padding that
+ * aligns view to 16 bytes there (0x1a0 bytes on PS2, 0x198 here). Each part's state
+ * pointer caches what was built from it; the setters clear it and bump the part's id in
+ * state and state.global_id. */
+struct nuglobalrndrstate_s {
+    NURNDRSTATE state;
+    void *light_state;
+    NUCOLOUR3 ambient_intensity;
+    NUVEC light_direction[3];
+    NUCOLOUR3 light_intensity[3];
+    float global_specular;
+    NUMTX specular_mtx;
+    NUVEC specular_intensity;
+    void *lights_state_diffuse;
+    void *lights_state_specular;
+    void *lights_state_fx;
+    unsigned int const_alpha_enabled;
+    float const_alpha;
+    NUMTL *const_alpha_mtl;
+    unsigned int const_tint_enabled;
+    NUCOLOUR3 const_tint;
+    void *camera_state;
+    NUMTX view; /* 0x108 (PS2: 0x110) */
+    float proj_00;
+    float proj_11;
+    float proj_22;
+    float proj_23;
+    float proj_32;
+    void *fog_state;
+    int fog_enabled;
+    float fog_near;
+    float fog_far;
+    unsigned int fog_rgba;
+    float fog_density;
+    void *konst_state;
+    float vpx;
+    float vpy;
+    float vpw;
+    float vph;
+    int reflection;
+    void *reflection_state;
+    int pad[2];
+};
 
 /* A display list command (PC layout: the PS2 has a size first and type/id at 2/3). type
  * picks the handler (0x80 + index), id what NuDisplayListExecute does with it. */

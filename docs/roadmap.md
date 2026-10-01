@@ -624,11 +624,28 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       (`0x53da80`), `RndrStateSetConstAlphaTint` (`0x544e80`) and the PC-only
       forced-material variant lookup (`0x5425e0`, `NuMtlGetForcedVariant`, name ours).
       Hook test: save prompt reached, `NuSpecialDrawAt` 98k calls into the exe's copy.
+- [x] `pc/nurndrstat.c` part 1 (new file, name ours; PS2 `nu3d/ps2/nurndrstat.c` plus
+      the light setters of `nustream.c`): `RndrStateClear`, `NuRndrSetAmbientLight`,
+      `NuRndrSetDirectionalLights`, `NuRndrStateUpdateCameraState`, `NuRndrFogMode`, the
+      PC-only fog setter `NuRndrFogSet` (`0x544a10`, name ours),
+      `RndrStateResetGlobalState`, `RndrStateResetSharedGlobalState`, the getter
+      `RndrStateGetSharedGlobalState` (`0x544ca0`, name ours) and
+      `RndrStateSetConstAlphaTint`: 10/10 exact (`0x5447c0`–`0x544e80`). `render_state`
+      moves here, and `NUGLOBALRNDRSTATE` gets its PC layout: the PS2 one without the 8
+      bytes that align `view`, which shifts everything after `camera_state` (`0x104`)
+      down by 8. `RndrStateClear` and `RndrStateResetGlobalState` are `__inline` (inlined
+      into the resets, still called from `nudlist.c`). New stub: the PC camera helper
+      `0x533560` (`NuRndrUpdateCameraPlane`, name ours). Hook test: the light setters
+      run 13k times each, the getter 574k.
+- [ ] `pc/nurndrstat.c` part 2: `DisplayListUpdateRenderState` (`0x544cb0`, 449 bytes,
+      stubbed) with its helpers `0x544a60` (334 bytes) and `0x544bb0` (61), and
+      `0x544ec0` (196, called from `pc/nurndr.c`) and `0x544f90` (118, called from
+      `NuRndrSetSpecularLight`, `0x53b090`).
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%), and
-      the stubbed callees above (`WindShear`, `RndrStateSetConstAlphaTint` and
-      `NuMtlGetForcedVariant` are small).
+      the small stubbed callees `WindShear` (`0x54fe40`) and `NuMtlGetForcedVariant`
+      (`0x5425e0`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

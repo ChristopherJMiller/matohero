@@ -7,12 +7,6 @@
 
 typedef struct rndrstream_s RNDRSTREAM;
 
-typedef struct nucolour3_s {
-    float r;
-    float g;
-    float b;
-} NUCOLOUR3;
-
 /* PS2 layout; the PC's masks on NUMTL+0x40 use the same bits. */
 typedef struct numtlattrib_s {
     unsigned int alpha : 4;

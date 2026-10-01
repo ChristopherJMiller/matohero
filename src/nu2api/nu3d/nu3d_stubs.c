@@ -96,8 +96,10 @@ int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, in
     return 0;
 }
 
-// STUB: BIONICLE 0x544e80
-void RndrStateSetConstAlphaTint(unsigned int const_alpha_enabled, unsigned int const_tint_enabled, float const_alpha, NUCOLOUR3 *const_tint, NUMTL *mtl) {
+/* A PC camera-dependent helper NuRndrStateUpdateCameraState calls: stores the camera
+ * position and its distance along the view direction (name ours). */
+// STUB: BIONICLE 0x533560
+void NuRndrUpdateCameraPlane(void) {
 }
 
 // STUB: BIONICLE 0x5425e0
@@ -115,11 +117,6 @@ void d3dSetViewport(NUPCVIEWPORT *vp) {
 
 // STUB: BIONICLE 0x53b090
 int NuRndrSetSpecularLight(NUVEC *dir, NUCOLOUR4 *intensity) {
-    return 0;
-}
-
-// STUB: BIONICLE 0x544960
-int NuRndrStateUpdateCameraState(void) {
     return 0;
 }
 
@@ -190,18 +187,6 @@ void *NuGScnBufferAllocAligned(int size, int alignment) {
 // GLOBAL: BIONICLE 0x348c884
 int numtl_renderplane;
 
-// STUB: BIONICLE 0x5447c0
-void RndrStateClear(NURNDRSTATE *state) {
-}
-
-// STUB: BIONICLE 0x544c50
-void RndrStateResetSharedGlobalState(void) {
-}
-
-/* The shared render state (PS2 name). */
-// GLOBAL: BIONICLE 0x35e92c0
-NUGLOBALRNDRSTATE render_state;
-
 
 // STUB: BIONICLE 0x550250
 void _NuTimeBarSlotBegin(int tbh, int slotix, char *txt) {
@@ -216,6 +201,3 @@ int _NuTimeBarSlotEnd(int tbh, int slotix) {
 void DisplayListUpdateRenderState(NUDISPLAYLIST *dlist, NUGLOBALRNDRSTATE *local_state) {
 }
 
-// STUB: BIONICLE 0x544bf0
-void RndrStateResetGlobalState(NUGLOBALRNDRSTATE *state) {
-}

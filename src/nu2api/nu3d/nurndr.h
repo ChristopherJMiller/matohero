@@ -66,9 +66,22 @@ typedef struct nuvtx_tltc1_s {
 /* PS2: nu3d/ps2/nurndr.c, not decompiled yet. */
 int NuRndrLineStrip2d(NUVTX_TLTC1 *vtx, NUMTL *mtl, int cnt);
 
-/* PS2: nu3d/ps2/nustream.c and nurndrstat.c, not decompiled yet. */
+/* PS2: nu3d/ps2/nustream.c, not decompiled yet. */
 int NuRndrSetSpecularLight(NUVEC *dir, NUCOLOUR4 *intensity);
+
+/* pc/nurndrstat.c (PS2: nu3d/ps2/nurndrstat.c and nustream.c's light setters). */
+extern NUGLOBALRNDRSTATE render_state;
+void RndrStateClear(NURNDRSTATE *state);
+int NuRndrSetAmbientLight(NUVEC *c0);
+int NuRndrSetDirectionalLights(NUVEC *d0, NUCOLOUR3 *c0, NUVEC *d1, NUCOLOUR3 *c1, NUVEC *d2, NUCOLOUR3 *c2);
 int NuRndrStateUpdateCameraState(void);
+void NuRndrFogMode(int enable);
+void NuRndrFogSet(float fognear, float fogfar, unsigned int colour, float density);
+void RndrStateResetGlobalState(NUGLOBALRNDRSTATE *state);
+void RndrStateResetSharedGlobalState(void);
+NUGLOBALRNDRSTATE *RndrStateGetSharedGlobalState(void);
+void RndrStateSetConstAlphaTint(unsigned int const_alpha_enabled, unsigned int const_tint_enabled, float const_alpha, NUCOLOUR3 *const_tint, NUMTL *mtl);
+void NuRndrUpdateCameraPlane(void);
 
 /* nudlist.c */
 void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec);
@@ -91,6 +104,5 @@ typedef struct nudynamiclight_s {
 extern NUDYNAMICLIGHT *NuRndr_shadowLight;
 extern int nurndr_force_lod;
 void WindShear(NUMTX *windmtx, NUMTX *instmtx, int wind_scale, int wind_speed);
-void RndrStateSetConstAlphaTint(unsigned int const_alpha_enabled, unsigned int const_tint_enabled, float const_alpha, NUCOLOUR3 *const_tint, NUMTL *mtl);
 
 #endif

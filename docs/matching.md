@@ -371,6 +371,13 @@ exact; `tools/permute.py` automates some of them.
   (id) forced = table[id]; else forced = nurndr_forced_mtl; } else forced =
   nurndr_forced_mtl;` got them (65% → 79%; `tools/permute.py --try` scored six forms in
   one run).
+- **Short setters: try every statement order.** For stores to unrelated globals, MSVC
+  keeps the source order but hoists loads and merges increments, so the asm order is
+  only a hint. `RndrStateSetConstAlphaTint`'s six statements: the permuter's adjacent
+  swaps reached 92%, and a `--try` file with all 720 orders found the exact one in
+  2.5 minutes. It was the PS2 order (fields, then clear the cached state pointer, then
+  `global_id++`, then the part's id++). That pattern then made the other setters of
+  the file exact at once.
 - **Load an argument into its variable first when the original loads it early.**
   `NuDisplayListCreateMtlDlist(mtl->dlist_mtl->mtl_item, …)` loaded `mtl_item` just before
   the push. The original loads it ahead of the buffer-offset arithmetic, which came from
