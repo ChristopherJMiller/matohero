@@ -10,3 +10,7 @@ int NuMcFolded() {
 // STUB: BIONICLE 0x5af030
 void NuEmptyFolded() {
 }
+
+// STUB: BIONICLE 0x585070
+void NuPCEmptyFolded() {
+}

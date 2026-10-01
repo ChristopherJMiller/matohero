@@ -167,10 +167,18 @@ headless boot to title) → commit.
       reccmp's `global - offset` limit (the table is indexed `[id - 1]`). The empty-function
       fold at `0x5af030` is `NuEmptyFolded` in `folded.h`/`pc/folded_pc.c` with the
       memory-card one. Hook test: 246 functions, title reached.
-- [ ] Rest of `0x56c130–0x56c6c0`: `NuFrameBegin` (`0x56c6a0`) / `NuFrameEnd`
-      (`0x56c6c0`, need nu3d/PC callees stubbed), and the unplaced `0x56c130`,
-      `0x56c3a0`/`0x56c3d0` (a 0x7c-byte record table at `0x34c57e4`), `0x56c3f0` between
-      nulist and nulang.
+- [x] `nucore/nupad.c` part 1 (saga, BH-specific `NUPAD`): `NuPadOpen`, `CalcRamp`,
+      `NuPadSetStatus`, `NuPadMapPortToPS2Port`, `NuPadGetFirstActivePad` (PC version:
+      player 0's port if valid), `NuPadRead` (with the PC's d-pad ramps): 6/6 exact.
+      Globals placed (16 scanned pads on PC). The PC platform layer's frame-pointer empty
+      function `0x585070` is `NuPCEmptyFolded` (`folded.h`). Hook test: 252 functions,
+      title reached and **input works through our `NuPadRead`** (keys now held in
+      `rungame`; instant taps were missed).
+- [ ] `nucore/nupad.c` part 2: `NuPadProcessReadData` (`0x56bd90`, 923 bytes, deadzones
+      and normalised sticks) and `NuPadUpdatePads` (`0x56c130`, mapping/scan logic).
+- [ ] Rest of `0x56b760–0x56c6c0`: `nufilepak.c` (`0x56b760–0x56bbcf`, saga has it),
+      `nulang.c` (`NuLanguageGet`/`Set` `0x56c650`/`0x56c660`, `0x56c670`), `NuFrameBegin`
+      (`0x56c6a0`) / `NuFrameEnd` (`0x56c6c0`, need nu3d/PC callees stubbed).
 - [x] `nucore/nufpar.c` (saga): all 24 PC functions exact (BH has one command stack,
       saga two). Stubs for the nufile callees, `NuFileExists` (`pc/nufile_pc.c`) and the
       expression evaluators `NuRDPI`/`NuRDPF`. Hook test: 183 functions, title reached,

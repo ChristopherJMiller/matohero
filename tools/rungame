@@ -64,7 +64,11 @@ run() {
         for t in $(seq 1 '"$headless"'); do
             sleep 1
             for k in $KEYS; do
-                [[ "${k%%:*}" == "$t" ]] && xdotool key "${k#*:}"
+                # Held briefly: the game samples key state once a frame, so an instant
+                # press+release can fall between two frames and be missed.
+                if [[ "${k%%:*}" == "$t" ]]; then
+                    xdotool keydown "${k#*:}"; sleep 0.3; xdotool keyup "${k#*:}"
+                fi
             done
             if (( t % 5 == 0 )); then
                 xwd -root -silent | magick xwd:- "$2/run/shots/t$(printf %03d "$t").png"

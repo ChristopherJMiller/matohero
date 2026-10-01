@@ -31,6 +31,9 @@ exact; `tools/permute.py` automates some of them.
   `1.0f / NuVecMag(&v1)` gives `fdivr [1.0]` (`NuInfiniteLineToPointDistSqrEx`).
 - **`fxch; fdiv st, st(1); fxch; fstp st(0)` at the end is a store before the return.**
   `v /= sign; return v;` gives it; `return v / sign;` gives `fdivp` (`NuAToF`).
+- **…including inside `MIN`/`MAX`.** `MIN(x + r, 1.0f)` compares the sum against memory
+  (`fcom [1.0]`); the original's `fld [1.0]; fcomp st(1)` was `MIN(1.0f, x + r)`
+  (`NuPadRead`'s d-pad ramps, 90% → 100%).
 - **Comparison operand order is visible too.** `pow_x[n] == x` loads `x` first, and
   `x == pow_x[n]` loads `pow_x[n]` first (`NuPow`). The permuter flips these.
 - **Early returns keep their own epilogue.** `if (a) return 0; if (b) return 0;`

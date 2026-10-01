@@ -19,4 +19,10 @@ void NuEmptyFolded();
 #define NuPSFileInitDevices NuEmptyFolded
 #define NuVideoSetSwapModePS NuEmptyFolded
 
+/* Empty `void` functions of the PC platform layer, which was built with frame pointers
+ * (`push ebp; mov ebp, esp; pop ebp; ret`), so they fold separately. */
+void NuPCEmptyFolded();
+#define NuPadOpenPS NuPCEmptyFolded
+#define NuPadGetDeadzonePS NuPCEmptyFolded
+
 #endif

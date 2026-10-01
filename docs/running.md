@@ -7,6 +7,7 @@ copy in `run/` (gitignored).
 tools/rungame setup        # copy orig/game -> run/game and finish the install
 tools/rungame              # play it (needs a display)
 tools/rungame --headless=90 --keys "20:Escape 40:Return"   # Xvfb, screenshots in run/shots/
+                                     # (keys are held 0.3 s; the game samples once a frame)
 ```
 
 ## What setup does
@@ -45,6 +46,11 @@ tools/hook.py --install          # build build/hook/xinput1_1.dll and copy it in
 tools/rungame --headless=85      # run/game/bhhook.log: "bhhook: redirected N functions"
 rm run/game/xinput1_1.dll        # back to the unmodified game
 ```
+
+Input check: the title screen appears at ~80 s, so
+`tools/rungame --headless=115 --keys "90:Return 92:Return 100:Return"` should end past
+"Press any button" (in the main menu or a new game's save prompt). With the pad code
+hooked (`NuPadRead`), this exercises our input path.
 
 The game imports `xinput1_1.dll`, so the hook DLL takes that name (`rungame` adds the
 `xinput1_1=n,b` override when it's present). Its `XInputGetState`/`GetCapabilities`/…

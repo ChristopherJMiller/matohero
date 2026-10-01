@@ -90,7 +90,11 @@ From Ghidra's auto-analysis (5,507 functions, ~1.5 MB of function bodies) and by
 statistics over `.text`:
 
 - **Optimized release build, frame pointers mostly omitted** (`/O2`-style): only ~950
-  functions open with `push ebp; mov ebp, esp`.
+  functions open with `push ebp; mov ebp, esp`. Many of those are the PC platform layer
+  (e.g. the pad glue at `0x57a540–0x57a5f9`), which was evidently a separate project
+  built with frame pointers (`/Oy-`): even its empty functions keep `push ebp; mov ebp,
+  esp; pop ebp`, so they fold into their own copy (`0x585070`) apart from the engine's
+  (`0x5af030`).
 - **`/GS` on**: 286 functions call `__security_check_cookie`. Confirmed by matching
   `NuSPrintfW` (cookie at `0x639088`); in the build flags since nustring.
 - **`/Ob1`**: only functions marked `__inline` are inlined. Confirmed by `NuSPrintfW`;
