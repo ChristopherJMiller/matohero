@@ -596,10 +596,27 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       material list's link item), and `NUMTL.dlist_mtl` (`0x3c`). Hook test: save prompt
       reached; LinkDynamicMtls is called from the hooked EndFrame, so the trace doesn't
       count it.
-- [ ] `nudlist.c` part 9: `NuDisplayListUpdateSpecial` (`0x554610`, 875 bytes, x87 box
-      transform with inlined vector helpers) and `NuDisplayListRndrSpecial` (`0x554be0`,
-      1372 bytes; PS2 locals: `sob`, `buff`, `outcode`, `clip_obj`, `ds`, `scene_mtl`,
-      `windmtx`, `centre`, `dist`), both stubbed in `nu3d_stubs.c`.
+- [x] `nudlist.c` part 9: `NuDisplayListUpdateSpecial` (`0x554610`, 875 bytes, was
+      stubbed) at 79%. It refits a special object's box in its scene's bounds to its draw
+      matrix: the centre goes through the matrix and the half-extents through its
+      absolute rotation. Version-1 bounds store the centre (w = root of the extents' sum)
+      and extents, version 0 the corners. Left over: the stack frame
+      (docs/matching.md, open questions); not hooked until it matches.
+      `NUDISPLAYSCENE.bounds` is now the PS2 `NUBOUNDS`, and
+      `DisplayListUpdateSpecialTransformPS` folds into `NuEmptyFolded`.
+- [ ] `nudlist.c` part 10: `NuDisplayListRndrSpecial` (`0x554be0`, 1372 bytes, stubbed in
+      `nu3d_stubs.c`; PS2 locals: `sob`, `buff`, `outcode`, `clip_obj`, `ds`, `scene_mtl`,
+      `dlist`, `windmtx`, `geom_tx`, `centre`, `dist`, `geom`). Calls, in PS2 order:
+      `WindShear` (`0x54fe40`), `NuCameraClipTestExtents` (`0x53da80`, skipped while a
+      forced outcode at `0x616bb0` isn't -1), `NuVecAdd`/`NuVecScale`/`NuVecMtxTransform`/
+      `NuCameraDistSqr` (clip-range LOD pick through `special_obj->clip_range`, against
+      `0x5f5f64`), the forced-material lookup (`0x5425e0`, `nurndr_forced_mtl`/`_table`),
+      `NuDisplayListLinkItems`, the render-state helpers (`0x544e80` =
+      `RndrStateSetConstAlphaTint`?, `DisplayListUpdateRenderState` `0x544cb0`), and per
+      geometry the `…TransformPS` creators (rigid `0x55b830`, skin `0x55b860`, face-on →
+      `NuZeroFolded`). Unknown globals to name from the PS2 code: `0x3492e30` (early
+      out), `0x348f748`/`0x348f750`, `0x616ba0` (1.0f)/`0x616ba4`, `0x337a3b4`/`0x337a3b8`,
+      `0x35e92c0`.
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

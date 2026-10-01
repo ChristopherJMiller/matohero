@@ -26,6 +26,7 @@ void NuEmptyFolded();
 #define DisplayListCreatePS NuEmptyFolded
 #define RndrStateUpdate NuEmptyFolded
 #define RndrStateUpdateFx NuEmptyFolded
+#define DisplayListUpdateSpecialTransformPS NuEmptyFolded
 /* Called through a prototype so the floats aren't promoted to double. */
 #define NuRndrLine3dDbg ((void (*)(float, float, float, float, float, float, unsigned int))NuEmptyFolded)
 

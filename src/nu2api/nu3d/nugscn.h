@@ -187,6 +187,14 @@ typedef struct nuspecialobject_s {
     void *RigidBody;
 } NUSPECIALOBJECT;
 
+/* Bounding spheres and boxes of a scene's instances (PS2 layout). */
+typedef struct nubounds_s {
+    int nspheres;
+    int nbounds;
+    NUVEC4 *spheres;
+    NUVEC4 *boxes;
+} NUBOUNDS;
+
 /* Display list of a scene (PS2 layout). */
 struct nudisplayscene_s {
     char *name;
@@ -202,7 +210,7 @@ struct nudisplayscene_s {
     float *clip_range;
     float *farclip;
     unsigned char *clip_used[2];
-    char bounds[16];
+    NUBOUNDS bounds; /* boxes: a min/max (or centre/extents) pair per special */
     char *visibility_flags;
     unsigned int nmtls;
     NUMTL **mtls;
@@ -287,14 +295,6 @@ typedef struct nuportalinfo_s {
     int max_depth;
     int version;
 } NUPORTALINFO;
-
-/* Bounding spheres and boxes of a scene's instances (PS2 layout). */
-typedef struct nubounds_s {
-    int nspheres;
-    int nbounds;
-    NUVEC4 *spheres;
-    NUVEC4 *boxes;
-} NUBOUNDS;
 
 /* A scene's visibility state (PS2 layout; the tree types are opaque here). */
 typedef struct nuvisibility_s {

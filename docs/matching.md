@@ -109,6 +109,16 @@ exact; `tools/permute.py` automates some of them.
   function ID calls it `__ftol`). It's named for reccmp in `src/library.h`.
 - `sin`/`log`/`exp` compile to inline x87 (`fsin`, `fyl2x`, `f2xm1`…) under `/Oi`,
   which `/O2` implies.
+- **`fstp qword [esp]; call; fild` in our code is a missing prototype.** With
+  `nufloat.h` not included, `NuFabs(x)` became an implicit `int NuFabs()`: the float went
+  out as a `double` and the result came back as an `int` (`NuDisplayListUpdateSpecial`,
+  30% until the include was added).
+- **A vector op is one statement per component and step.** `NuDisplayListUpdateSpecial`
+  computes the half-extents and centre of a box. The original does all three
+  subtractions (or additions) first, then the three scales, keeping some components on
+  the x87 stack. That came from `e.x = max.x - min.x; …; e.x *= 0.5f; …`, i.e. the PS2's
+  VU0 sub/scale pair written out (56% → 79%). `(max.x - min.x) * 0.5f` per component
+  interleaved them.
 
 ## Integers and control flow
 
@@ -404,6 +414,14 @@ exact; `tools/permute.py` automates some of them.
   `sp[sort_pris]`, `dlm->dyn_mtl_dlist.sort_pris`, moving the `sp` declaration, a
   `(dlist, sp)` helper or the global written directly (the last two were much worse).
   The sum operand-order rule above (the leaf referenced first goes first) may apply.
+
+- **`NuDisplayListUpdateSpecial` (79%): the stack frame.** The original's frame is 16
+  bytes bigger, with the matrices in the other order (`mtx_a` below `FabsTransform`). Of
+  the nine `NuFabs` results, only `_00 _01 _02 _10 _20` land in `FabsTransform`; `_11
+  _12 _21 _22` go to a separate 16-byte block (as if there were two more `_VUVEC`
+  locals), and the y and z rows sum in another order. Nothing changed the layout:
+  declaration order, `NUMTX` for `FabsTransform`, `NuFabs` inline in the sums (the later
+  engine's version, 47%), a mix of both (45%), and the permuter.
 
 - **`NuUTF8ToUnicode` (33%)**: identical code with `ecx`/`edx` swapped for the source
   pointer and the byte temporary. The permuter's moves and hand variants (loop forms,

@@ -1,9 +1,12 @@
 #include "nudlist.h"
 
 #include "folded.h"
+#include "nufloat.h"
 #include "nuhtml.h"
 #include "numem.h"
 #include "numtl.h"
+#include "nuspecial.h"
+#include "nuvu0.h"
 #include "nustring.h"
 #include "nuthread.h"
 
@@ -502,6 +505,73 @@ void NuDisplaySceneAdd(NUDISPLAYSCENE *ds) {
     ds->mtl_anims = NULL;
     NuDisplaySceneAddPS(ds);
     NuThreadCriticalSectionEnd(global_dlist_manager.loading_critical_section);
+}
+
+/* Refits a special object's box in its scene's bounds to the object's current draw
+ * matrix: the box's centre goes through the matrix and its half-extents through the
+ * matrix's absolute rotation. Version 1 bounds keep centre and extents (the centre's w
+ * gets the root of the extents' sum), version 0 the corners. 79%: the stack frame differs
+ * (docs/matching.md, open questions). */
+// FUNCTION: BIONICLE 0x554610
+void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec) {
+    _VUMTX mtx_a;
+    NUSPECIALOBJECT *spec;
+    NUDISPLAYSCENE *ds;
+    _VUVEC centre;
+    _VUVEC extents;
+    _VUMTX FabsTransform;
+    float result;
+    _VUVEC wmin;
+    _VUVEC wmax;
+    float x;
+    float y;
+
+    ds = hspec->scene->display_list;
+    spec = hspec->special_obj;
+    mtx_a.m = *NuSpecialGetDrawMtx(hspec);
+    extents.v.x = spec->max.x - spec->min.x;
+    extents.v.y = spec->max.y - spec->min.y;
+    extents.v.z = spec->max.z - spec->min.z;
+    extents.v.x *= 0.5f;
+    extents.v.y *= 0.5f;
+    extents.v.z *= 0.5f;
+    centre.v.x = spec->min.x + spec->max.x;
+    centre.v.y = spec->min.y + spec->max.y;
+    centre.v.z = spec->min.z + spec->max.z;
+    centre.v.x *= 0.5f;
+    centre.v.y *= 0.5f;
+    centre.v.z *= 0.5f;
+    FabsTransform.m._00 = NuFabs(mtx_a.m._00);
+    FabsTransform.m._01 = NuFabs(mtx_a.m._01);
+    FabsTransform.m._02 = NuFabs(mtx_a.m._02);
+    FabsTransform.m._10 = NuFabs(mtx_a.m._10);
+    FabsTransform.m._11 = NuFabs(mtx_a.m._11);
+    FabsTransform.m._12 = NuFabs(mtx_a.m._12);
+    FabsTransform.m._20 = NuFabs(mtx_a.m._20);
+    FabsTransform.m._21 = NuFabs(mtx_a.m._21);
+    FabsTransform.m._22 = NuFabs(mtx_a.m._22);
+    x = FabsTransform.m._00 * extents.v.x + FabsTransform.m._10 * extents.v.y + FabsTransform.m._20 * extents.v.z;
+    y = FabsTransform.m._01 * extents.v.x + FabsTransform.m._11 * extents.v.y + FabsTransform.m._21 * extents.v.z;
+    extents.v.z = FabsTransform.m._02 * extents.v.x + FabsTransform.m._12 * extents.v.y + FabsTransform.m._22 * extents.v.z;
+    extents.v.x = x;
+    extents.v.y = y;
+    NuVecMtxTransform(&centre.v, &centre.v, &mtx_a.m);
+    result = NuFsqrt(extents.v.x + extents.v.y + extents.v.z);
+    centre.f[3] = result;
+    if (ds->bounds_version) {
+        ds->bounds.boxes[spec->instance_ix * 2] = centre.v4;
+        ds->bounds.boxes[spec->instance_ix * 2 + 1] = extents.v4;
+    } else {
+        wmax.v.x = centre.v.x + extents.v.x;
+        wmax.v.y = centre.v.y + extents.v.y;
+        wmax.v.z = centre.v.z + extents.v.z;
+        wmin.v.x = centre.v.x - extents.v.x;
+        wmin.v.y = centre.v.y - extents.v.y;
+        wmin.v.z = centre.v.z - extents.v.z;
+        ds->bounds.boxes[spec->instance_ix * 2] = wmin.v4;
+        ds->bounds.boxes[spec->instance_ix * 2 + 1] = wmax.v4;
+    }
+    DisplayListUpdateSpecialTransformPS(hspec, &mtx_a);
 }
 
 /* Sets the items of clip objects whose visibility changed since the other buffer: two

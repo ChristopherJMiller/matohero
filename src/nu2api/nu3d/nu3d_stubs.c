@@ -81,10 +81,6 @@ void NuHGobjEval(NUHGOBJ *hgobj, int njanims, NUJOINTANIM *janim, NUMTX *mtx_arr
 void d3dSetTransform(int state, NUMTX *m) {
 }
 
-// STUB: BIONICLE 0x554610
-void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec) {
-}
-
 // STUB: BIONICLE 0x554be0
 int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, void *blend_values) {
     return 0;
