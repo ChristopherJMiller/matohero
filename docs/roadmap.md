@@ -120,7 +120,17 @@ headless boot to title) → commit.
 - [x] `numath/nuquat.c`: 4/4 (3 exact, 1 effective). `NuMtxToQuat` (Shoemake) and
       `NuQuatSlerp` (older than saga's) written from the asm. Found the original
       `NuFdiv` (tests both operands for zero), which also lifted `NuMtxAlignZ` 63% → 94.5%.
-- [ ] `numath/nufloat.c`, `numath/nuplane.c` (saga), small
+- [x] `numath/nufloat.c`, `numath/nuplane.c` (saga): 8 functions, 7 exact + 1 effective
+      (`NuPlnLine3`, denominator term order). `NuFabs` is a sign-bit mask through memory,
+      not `fabs` (lifted `NuMtxAlignZ` to 96%, `NuMtxInvH` to 53%). Only three nuplane
+      functions sit here in the PC exe. Permuter gained `--try` (score hand-written
+      bodies) and `cl` batches now go through a response file (Wine crashed on long
+      command lines, which had silently failed big batches). Hook test: 85 functions,
+      title reached, `NuFloor` 284k calls.
+- [ ] PC-only numath around nufloat: `NuFsqrt` (`0x571290`, stub), VU0-replacement
+      thunks `0x5712b0–0x5712f0`, `0x571360`, and functions `0x571300`, `0x571370`
+      (`NuMtxPreScaleUVU0`), `0x5713d0`, `0x5714f0`, `0x571520`, `0x5715b0` (vec4
+      scale/transform). Name from PS2 `numtxvu0`/`nuvecvu0`; file name unknown.
 - [ ] `nucore/nustring.c` (saga), ~`0x5687d0–0x569f60`, ~47
 - [ ] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga), small
 - [ ] `nucore/nufpar.c` (saga), ~21
@@ -130,7 +140,12 @@ headless boot to title) → commit.
 Tooling backlog (pick up when near-misses pile up):
 
 - [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
-      `InvRSS`), `x * -y` ↔ `-(x * y)`, temporaries for repeated loads.
+      `InvRSS` and `NuPlnLine3`), `x * -y` ↔ `-(x * y)`, temporaries for repeated
+      loads. `--try` covers hand-written variants meanwhile.
+- [ ] **Re-run permuter v2 on the numtx near-misses.** Before the response-file fix,
+      Wine crashed on some long `cl` command lines and those batches scored as
+      "doesn't compile", so the earlier ~300-variant runs may have searched less than
+      reported.
 
 After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`.
 

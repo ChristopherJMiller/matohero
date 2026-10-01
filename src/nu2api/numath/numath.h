@@ -18,4 +18,11 @@ typedef struct numtx_s {
     float _30, _31, _32, _33;
 } NUMTX;
 
+typedef struct nuplane_s {
+    float a;
+    float b;
+    float c;
+    float d;
+} NUPLANE;
+
 #endif

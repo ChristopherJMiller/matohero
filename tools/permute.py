@@ -3,6 +3,9 @@
 
   tools/permute.py NuVecRotateX            report the best variant found
   tools/permute.py NuVecRotateX --apply    also write it into the source file
+  tools/permute.py NuVecRotateX --try f    score hand-written bodies from file f instead
+                                           (bodies between the braces, separated by
+                                           lines of ----)
 
 The function is found by name next to its `// FUNCTION: BIONICLE 0x...` marker. Variants are
 written to a scratch directory under build/ (so neither the build nor reccmp sees them) and compiled in batches by
@@ -249,6 +252,7 @@ def main():
     ap.add_argument("--budget", type=int, default=300, help="max variants to compile")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--time", type=int, default=900, help="wall-clock limit in seconds")
+    ap.add_argument("--try", dest="try_file", type=Path, help="score the bodies in this file")
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
@@ -291,6 +295,18 @@ def main():
 
     def evaluate(candidate):
         return evaluate_many([candidate])[0]
+
+    if args.try_file:
+        bodies = [b.strip("\n") for b in re.split(r"(?m)^----$", args.try_file.read_text())]
+        bodies = ["\n" + b + "\n" for b in bodies if b.strip()]
+        try:
+            scores = evaluate_many([body] + bodies)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        print(f"{args.function} @ {addr:#x}: current source {scores[0]:.4f}")
+        for i, (b, sc) in enumerate(zip(bodies, scores[1:])):
+            print(f"  variant {i}: {sc:.4f}" + ("  (doesn't compile)" if sc < 0 else ""))
+        return 0
 
     model = Model(body)
     try:

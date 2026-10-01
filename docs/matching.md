@@ -17,6 +17,12 @@ exact; `tools/permute.py` automates some of them.
   subexpression first appears.
 - **Parentheses stop reassociation.** `dy * 512.0f / dx` became `dy / dx * -512` with a
   negated table index; `(dy * 512.0f) / dx` matched (`fxyd` in nutrig).
+- **A local vs. the same expression inline changes term order**, even when the asm
+  evaluates it at the same point. `NuPlnLine3` with `dot = …; dist = … / dot;` was 76%;
+  inlining the dot product into the division made it an effective match (96%).
+- **A call result kept on the x87 stack and popped later (`fstp st(0)`) was a local.**
+  `fld 1.0; fdiv st, st(1)` … `fstp st(0)` is `d1 = NuVecMag(&v1); … 1.0f / d1`;
+  `1.0f / NuVecMag(&v1)` gives `fdivr [1.0]` (`NuInfiniteLineToPointDistSqrEx`).
 - **Comparison operand order is visible too.** `pow_x[n] == x` loads `x` first, and
   `x == pow_x[n]` loads `pow_x[n]` first (`NuPow`). The permuter flips these.
 - **Branch order follows the `if`.** `test ah, 1; jne` comes from
@@ -31,6 +37,10 @@ exact; `tools/permute.py` automates some of them.
 
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
+- `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;
+  `*(int *)&f < 0` gives `jge` (`NuFsign`).
+- MSVC reuses a dead parameter's stack slot for temporaries (`NuEquiv` stores `f1 - f2`
+  over `f1`), so a write to `[esp+4]` isn't necessarily an assignment to the parameter.
 - Branchless selects come from `?:`, and the asm's `setl`/`setge` shows which way it
   was written: `v >= 128 ? 128 : 1` vs `v < 128 ? 1 : 128` (`NuPower2`).
 - `if/else` assignments of floats compile to integer moves; `?:` doesn't
@@ -41,7 +51,9 @@ exact; `tools/permute.py` automates some of them.
 - **Inline helpers have exact semantics.** BH's `NuFdiv(a, b)` returns 0 if *either*
   operand is 0 (two compares in `NuQuatSlerp`). With a constant numerator the extra
   test folds away, so `NuVecMtxTransformH` matched with the wrong definition. Getting
-  it right lifted `NuMtxAlignZ` from 63% to 94.5%.
+  it right lifted `NuMtxAlignZ` from 63% to 94.5%. Likewise `NuFabs` clears the sign
+  bit through memory (`mov eax, [x]; and eax, 0x7fffffff; mov [x], eax; fld [x]`), not
+  `fabs` (`NuEquiv`, `NuMtxAlignZ`).
 - **Check saga's structure against the asm.** saga targets a later engine, which added
   things BH doesn't have: `NuMtxMul/MulH/MulR` branch on `m == m0 || m == m1`, while BH
   always builds into a local and copies (`sub esp, 0x40` … `rep movsd`); `NuMtxInvRSS`

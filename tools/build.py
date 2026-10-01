@@ -108,7 +108,11 @@ def compile_many(srcs, outdir, extra_includes=(), project=None):
             else winpath(s) for s in srcs]
     includes = [f"/I{winpath(d)}" for d in extra_includes]
     includes += [f"/I{winpath(SRC / p)}" for p in [lib] + [p for p in PROJECTS if p != lib] if (SRC / p).exists()]
-    cmd = [str(MSVC), "cl", *flags, *includes, f"/Fo{winpath(outdir)}\\", *rels]
+    # Arguments go in a response file: Wine crashes at startup (exit -11, no output) on
+    # long command lines.
+    rsp = outdir / "cl.rsp"
+    rsp.write_text("\n".join([*flags, *includes, f"/Fo{winpath(outdir)}\\"] + [f'"{r}"' for r in rels]) + "\n")
+    cmd = [str(MSVC), "cl", f"@{winpath(rsp)}"]
     return subprocess.run(cmd, cwd=SRC / lib, capture_output=True, text=True).stdout
 
 
