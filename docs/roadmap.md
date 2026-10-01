@@ -637,10 +637,20 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       into the resets, still called from `nudlist.c`). New stub: the PC camera helper
       `0x533560` (`NuRndrUpdateCameraPlane`, name ours). Hook test: the light setters
       run 13k times each, the getter 574k.
-- [ ] `pc/nurndrstat.c` part 2: `DisplayListUpdateRenderState` (`0x544cb0`, 449 bytes,
-      stubbed) with its helpers `0x544a60` (334 bytes) and `0x544bb0` (61), and
-      `0x544ec0` (196, called from `pc/nurndr.c`) and `0x544f90` (118, called from
-      `NuRndrSetSpecularLight`, `0x53b090`).
+- [x] `pc/nurndrstat.c` part 2, 5/5 exact; the file is now complete:
+      - `DisplayListUpdateRenderState` (`0x544cb0`, was stubbed): links an item for each
+        part whose id changed.
+      - `RndrStateBuildLightState` (`0x544a60`): writes a 0xac-byte light block
+        (`RNDRLIGHTSTATE`, layout ours); its 3-light loop is unrolled by the compiler.
+      - `RndrStateBuildKonstState` (`0x544bb0`).
+      - The PC-only specular matrix pair `NuRndrGetSpecularMtx` (`0x544ec0`) and
+        `NuRndrSetSpecularMtx` (`0x544f90`) (names ours). They store the matrix with
+        its rotation transposed and cache a copy scaled by the material's specular
+        power.
+      - The camera and fog builders are inlined. The camera one needs
+        `__forceinline`; the fog one builds nothing on PC.
+      - New `NUMTL` fields: `power` (`0x60`) and `context`/`fxid` (`0x9c`/`0x9d`).
+      - Hook test: save prompt reached, `NuRndrGetSpecularMtx` 389k calls.
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%), and

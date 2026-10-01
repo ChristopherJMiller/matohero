@@ -197,7 +197,4 @@ int _NuTimeBarSlotEnd(int tbh, int slotix) {
     return 0;
 }
 
-// STUB: BIONICLE 0x544cb0
-void DisplayListUpdateRenderState(NUDISPLAYLIST *dlist, NUGLOBALRNDRSTATE *local_state) {
-}
 

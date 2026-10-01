@@ -55,12 +55,14 @@ struct numtl_s {
     NUMTLATTRIB attrib;
     unsigned char unknown_48[0x54 - 0x48];
     NUCOLOUR3 diffuse;
-    unsigned char unknown_60[0x74 - 0x60];
+    float power; /* specular power (PS2: after the fx fields) */
+    unsigned char unknown_64[0x74 - 0x64];
     float alpha;
     short tid; /* int on PS2 */
     short sort_pri;
     int unknown_7c[(0x9c - 0x7c) / 4];
-    short unknown_9c;
+    char context;
+    unsigned char fxid; /* the shader effect: 0x81 and 0x85 are specular */
     unsigned char special_id; /* index into nurndr_forced_mtl_table */
     unsigned char unknown_9f;
     int unknown_a0[(0x1b8 - 0xa0) / 4];

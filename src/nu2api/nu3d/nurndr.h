@@ -82,6 +82,8 @@ void RndrStateResetSharedGlobalState(void);
 NUGLOBALRNDRSTATE *RndrStateGetSharedGlobalState(void);
 void RndrStateSetConstAlphaTint(unsigned int const_alpha_enabled, unsigned int const_tint_enabled, float const_alpha, NUCOLOUR3 *const_tint, NUMTL *mtl);
 void NuRndrUpdateCameraPlane(void);
+void NuRndrGetSpecularMtx(NUMTX *out, NUMTL *mtl);
+void NuRndrSetSpecularMtx(NUMTX *m);
 
 /* nudlist.c */
 void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec);

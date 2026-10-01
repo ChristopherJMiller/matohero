@@ -371,6 +371,17 @@ exact; `tools/permute.py` automates some of them.
   (id) forced = table[id]; else forced = nurndr_forced_mtl; } else forced =
   nurndr_forced_mtl;` got them (65% → 79%; `tools/permute.py --try` scored six forms in
   one run).
+- **A store that stays above a copy through a pointer: the target isn't a static.**
+  `NuRndrSetSpecularMtx` sets `specular_power = 1.0f` and then copies `*m` into a
+  static matrix. With `specular_power` static, MSVC knew `*m` couldn't alias it and sank
+  the store to the end of the function, whatever the source order. As a plain global,
+  the store stays before the `rep movsd`, as in the original (effective → exact).
+- **A single-caller helper called with `push` isn't static.** MSVC gives a `static`
+  helper register arguments (`mov edx, esi; call`). `RndrStateBuildLightState`'s caller
+  pushes its argument, and so do the PS2's non-static functions of the same name;
+  dropping `static` matched both builders and their caller at once.
+- **`s.x = s.y = s.z = v` stores z, y, x.** `NuRndrGetSpecularMtx` fills its scale
+  vector backwards. The chained assignment does that; three statements store x, y, z.
 - **Short setters: try every statement order.** For stores to unrelated globals, MSVC
   keeps the source order but hoists loads and merges increments, so the asm order is
   only a hint. `RndrStateSetConstAlphaTint`'s six statements: the permuter's adjacent
