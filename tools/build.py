@@ -23,9 +23,10 @@ BUILD = ROOT / "build"
 MSVC = ROOT / "tools" / "msvc"
 
 # Settings recovered so far (see docs/binary-notes.md): optimized, frame pointers
-# omitted, static multithreaded CRT. /Z7 keeps debug info in each .obj, so parallel
-# compiles never contend for a shared PDB.
-COMMON_FLAGS = ["/nologo", "/c", "/O2", "/MT", "/W3", "/Z7"]
+# omitted, static multithreaded CRT, buffer security checks (/GS: cookies in functions
+# with local char arrays, e.g. NuSPrintfW). /Z7 keeps debug info in each .obj, so
+# parallel compiles never contend for a shared PDB.
+COMMON_FLAGS = ["/nologo", "/c", "/O2", "/MT", "/W3", "/Z7", "/GS"]
 CXX_FLAGS = ["/EHsc"]
 
 # Original PC projects: each was compiled from its own directory, which is what the

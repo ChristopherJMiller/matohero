@@ -91,7 +91,8 @@ statistics over `.text`:
 
 - **Optimized release build, frame pointers mostly omitted** (`/O2`-style): only ~950
   functions open with `push ebp; mov ebp, esp`.
-- **`/GS` on**: 286 functions call `__security_check_cookie`.
+- **`/GS` on**: 286 functions call `__security_check_cookie`. Confirmed by matching
+  `NuSPrintfW` (cookie at `0x639088`); in the build flags since nustring.
 - **C++ exceptions** (`/EHsc`-style): ~130 functions set up an EH frame
   (`push -1; push handler; mov eax, fs:[0]`), plus compiler-generated `Unwind@` funclets
   at the end of `.text`.

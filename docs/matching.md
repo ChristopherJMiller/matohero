@@ -26,6 +26,8 @@ exact; `tools/permute.py` automates some of them.
 - **A call result kept on the x87 stack and popped later (`fstp st(0)`) was a local.**
   `fld 1.0; fdiv st, st(1)` … `fstp st(0)` is `d1 = NuVecMag(&v1); … 1.0f / d1`;
   `1.0f / NuVecMag(&v1)` gives `fdivr [1.0]` (`NuInfiniteLineToPointDistSqrEx`).
+- **`fxch; fdiv st, st(1); fxch; fstp st(0)` at the end is a store before the return.**
+  `v /= sign; return v;` gives it; `return v / sign;` gives `fdivp` (`NuAToF`).
 - **Comparison operand order is visible too.** `pow_x[n] == x` loads `x` first, and
   `x == pow_x[n]` loads `pow_x[n]` first (`NuPow`). The permuter flips these.
 - **Branch order follows the `if`.** `test ah, 1; jne` comes from
@@ -38,6 +40,8 @@ exact; `tools/permute.py` automates some of them.
 
 ## Integers and control flow
 
+- `dec edi; test edi, edi; jle` is `if (--n <= 0)`; `n < 1` gives `cmp edi, 1; jl`
+  (`NuStrNCpy`).
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;
@@ -50,6 +54,14 @@ exact; `tools/permute.py` automates some of them.
   (`NuVecMax`/`Min`).
 
 ## Structure
+
+- **Function order in an object.** `/O2` implies `/Gy`, so each function is its own
+  COMDAT, emitted in source order, except that a function calling one defined *later* in
+  the file is deferred to the end of the object (so the callee can be inlined). In
+  nustring the case-insensitive functions, which call `NuToUpper`/`NuToLower`, come
+  last in the exe for that reason. reccmp doesn't care about order, but it explains
+  layouts that look shuffled against the PS2 file, and a later-defined callee still
+  inlines. A `static` function also gets a custom register calling convention.
 
 - **Inline helpers have exact semantics.** BH's `NuFdiv(a, b)` returns 0 if *either*
   operand is 0 (two compares in `NuQuatSlerp`). With a constant numerator the extra

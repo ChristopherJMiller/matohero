@@ -6,3 +6,12 @@
 
 // LIBRARY: BIONICLE 0x5b6500
 // _CIpow
+
+// LIBRARY: BIONICLE 0x5b4c97
+// __security_check_cookie
+
+// LIBRARY: BIONICLE 0x5b4daf
+// vsprintf
+
+// GLOBAL: BIONICLE 0x639088
+extern unsigned int __security_cookie;
