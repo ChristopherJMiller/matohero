@@ -132,7 +132,9 @@ exact; `tools/permute.py` automates some of them.
   `nufile_stubs.c`).
 - **Identical functions are folded (`/OPT:ICF`).** The PC's memory-card layer is a set of
   `return 0` functions, all folded into one copy at `0x57a600`; one stub stands for all of
-  them (`pc/numc_pc.c`). An unreferenced `static` function is dropped entirely, so its
+  them. Likewise every empty `void` PS2 hardware hook (`NuPSFileInitDevices`,
+  `NuVideoSetSwapModePS`, …) is one function at `0x5af030` with 247 callers.
+  `nucore/folded.h` maps the original names onto unprototyped stubs (`pc/folded_pc.c`). An unreferenced `static` function is dropped entirely, so its
   marker can only go in once something calls it (`AquireFileBuffer`).
 - **`add reg, 0x10; jne` loops over a static array are `for (p = array; p != NULL; p++)`.**
   The pointer never becomes NULL, so the loop only ends via a match; the compiler keeps
@@ -147,6 +149,9 @@ exact; `tools/permute.py` automates some of them.
 - **`static` functions get register arguments, and ours match.** `NuFileExtAdd` takes its
   string in `edi` and `AquireFileBuffer` its `FILEINFO *` in `edi`; writing them as plain
   `static` functions reproduced that without help.
+- **A global re-read after its own store is `volatile`.** `NuThreadCreateCriticalSection`
+  compares the counter in memory, loads it, increments, stores, and loads it again for each
+  use; a plain `static int` keeps it in `eax` (35% → identical).
 - `__FILE__`/`__LINE__` call sites: pass the original line explicitly (`NuMemAllocAt`);
   `#line` breaks reccmp's line mapping.
 
@@ -159,8 +164,10 @@ exact; `tools/permute.py` automates some of them.
   (`tools/floatconsts.py`), since the exe has no relocations.
 - A reference to `global - offset` (e.g. `NuTrigTable - 4` from a loop counting from 1)
   isn't mapped. The code is identical, but it shows as ~92% (`NuTrigInit`) or ~97%
-  (`NuPow`, which writes its ring buffers through `pow_x - 4` etc.) and ~95%
-  (`NuFileOpenSize`'s `file_info[fh - 1]`). Candidate for an upstream reccmp improvement.
+  (`NuPow`, which writes its ring buffers through `pow_x - 4` etc.), ~95%
+  (`NuFileOpenSize`'s `file_info[fh - 1]`) and ~90% (the PC critical sections,
+  `criticalsections[id - 1]`). Candidate for an upstream reccmp improvement. Until then
+  these don't count as matched and aren't hooked.
 
 ## Open questions
 

@@ -15,6 +15,7 @@ float NuTimeSeconds(NUTIME *t);
 
 /* Platform layer (pc/nutime_pc.c). */
 void NuTimeInitPS(void);
+unsigned int NuTimeGetTime(void);
 void NuTimeGetTicksPS(unsigned int *low, unsigned int *high);
 void NuTimeGetTicksPerSecondPS(unsigned int *low, unsigned int *high);
 

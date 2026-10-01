@@ -33,3 +33,6 @@ extern unsigned int __security_cookie;
 
 // LIBRARY: BIONICLE 0x5b6f0b
 // fseek
+
+// LIBRARY: BIONICLE 0x5b6f60
+// _alldiv

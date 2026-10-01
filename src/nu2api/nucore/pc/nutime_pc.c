@@ -12,6 +12,14 @@ static LARGE_INTEGER pc_frequency;
 // GLOBAL: BIONICLE 0x34c5fc8
 static LARGE_INTEGER pc_base;
 
+// FUNCTION: BIONICLE 0x56c820
+unsigned int NuTimeGetTime(void) {
+    NUTIME t;
+
+    NuTimeGet(&t);
+    return (unsigned int)(t.low / 1000i64);
+}
+
 // FUNCTION: BIONICLE 0x56c850
 void NuTimeGetTicksPS(unsigned int *low, unsigned int *high) {
     DWORD_PTR process_mask = 1;

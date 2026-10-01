@@ -160,11 +160,17 @@ headless boot to title) → commit.
       4% was `curr_num *= 16` for saga's `<<= 4` (`docs/matching.md`); `tools/permute.py`
       now also takes a marker address, for statics whose names repeat across files.
       Hook test: 244 functions, title reached, `NuFParGetIntRDP` 725 calls.
-- [ ] Rest of `0x56c3a0–0x56cf3e`: `NuFrameBegin`/`NuFrameEnd` (need nu3d/PC callees
-      stubbed), `0x56c820` (ms timer, `NuTimeGetTime`?), `0x56c980` (sets
-      `nuapi.video_swap_mode` and `native_FPS`), `0x56cec0`/`0x56cf00`/`0x56cf20`
-      (critical-section table at `0x34c5fb8`), `0x56c3a0`/`0x56c3d0` (tables at
-      `0x34c57e4`, maybe nulang).
+- [x] Small nucore leftovers: `NuTimeGetTime` (`0x56c820`, `pc/nutime_pc.c`; ms from the
+      tick counter via `_alldiv`), `NuVideoSetSwapMode` (`0x56c980`, new `nuvideo.c`,
+      saga), and the PC critical sections (`0x56cec0`/`0x56cf00`/`0x56cf20`,
+      `pc/nuthread.c`): 2 exact, the 3 critical sections identical but held at 90–93% by
+      reccmp's `global - offset` limit (the table is indexed `[id - 1]`). The empty-function
+      fold at `0x5af030` is `NuEmptyFolded` in `folded.h`/`pc/folded_pc.c` with the
+      memory-card one. Hook test: 246 functions, title reached.
+- [ ] Rest of `0x56c130–0x56c6c0`: `NuFrameBegin` (`0x56c6a0`) / `NuFrameEnd`
+      (`0x56c6c0`, need nu3d/PC callees stubbed), and the unplaced `0x56c130`,
+      `0x56c3a0`/`0x56c3d0` (a 0x7c-byte record table at `0x34c57e4`), `0x56c3f0` between
+      nulist and nulang.
 - [x] `nucore/nufpar.c` (saga): all 24 PC functions exact (BH has one command stack,
       saga two). Stubs for the nufile callees, `NuFileExists` (`pc/nufile_pc.c`) and the
       expression evaluators `NuRDPI`/`NuRDPF`. Hook test: 183 functions, title reached,
@@ -218,6 +224,11 @@ Tooling backlog (pick up when near-misses pile up):
       don't reproduce it. Next idea: bisect nufile.c itself (drop functions until the
       deferral disappears).
 
+- [ ] **Count `global - offset` matches.** reccmp leaves raw addresses like `0x34c5fb8`
+      (`array - 0x18`) unmapped, so identical functions sit at 90–97% and are neither
+      counted nor hooked (`NuTrigInit`, `NuPow`, `NuFileOpenSize`, the three critical
+      sections). Either teach reccmp to map an address just below a known array, or add
+      a checked "identical except unmapped address" status to `progress.py`/`hook.py`.
 - [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
       `InvRSS` and `NuPlnLine3`), `x * -y` ↔ `-(x * y)`, temporaries for repeated
       loads. `--try` covers hand-written variants meanwhile.

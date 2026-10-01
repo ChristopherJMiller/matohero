@@ -1,6 +1,8 @@
 #ifndef NUFILE_H
 #define NUFILE_H
 
+#include "folded.h"
+
 #include "nustring.h"
 
 typedef int NUFILE;
@@ -197,18 +199,5 @@ int NuPSFileClose(int fd);
 int NuPSFileRead(int fd, void *buf, int nbyte);
 int NuPSFileWrite(int fd, void *buf, int nbyte);
 int NuPSFileLSeek(int fd, int offset, int where);
-
-/* Memory-card file layer: on PC every entry point is an empty `return 0`, and the linker
- * folded them into one function (pc/numc_pc.c), so the names all alias it. */
-int NuMcFolded();
-#define NuMcWrite NuMcFolded
-#define NuMcRead NuMcFolded
-#define NuMcSeek NuMcFolded
-#define NuMcClose NuMcFolded
-#define NuMcOpen NuMcFolded
-#define NuMcOpenSize NuMcFolded
-
-/* PC device setup (pc/nufile_pc.c); an empty function on PC, folded by the linker. */
-void NuPSFileInitDevices(int deviceid, int rebootiop, int eject);
 
 #endif

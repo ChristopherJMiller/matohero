@@ -15,10 +15,6 @@ NUFILE_DEVICE host_device = {
     DEV_FormatName, DEVHOST_Interrogate,
 };
 
-// STUB: BIONICLE 0x5af030
-void NuPSFileInitDevices(int deviceid, int rebootiop, int eject) {
-}
-
 // GLOBAL: BIONICLE 0x34c5710
 static FILE *fhandles[64];
 
