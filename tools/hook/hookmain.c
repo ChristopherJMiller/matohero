@@ -12,6 +12,11 @@ typedef struct bhhook_s {
 
 extern BHHOOK bh_hooks[];
 
+/* Trace builds (tools/hook.py --trace) route each hook through a counting trampoline. */
+extern unsigned int bh_trace_n;
+extern unsigned int bh_counts[];
+extern const char *bh_names[];
+
 static void patch(unsigned int at, void *to) {
     unsigned char *p = (unsigned char *)at;
     DWORD old;
@@ -38,6 +43,34 @@ static void log_line(const char *text) {
     }
 }
 
+/* The process usually ends without DLL_PROCESS_DETACH (headless runs kill wineserver),
+ * so the counts are rewritten periodically instead of at exit. */
+static DWORD WINAPI trace_thread(LPVOID unused) {
+    char path[MAX_PATH];
+    char line[160];
+    char *slash;
+    unsigned int i;
+    HANDLE f;
+    DWORD written;
+
+    GetModuleFileNameA(NULL, path, sizeof(path));
+    slash = strrchr(path, '\\');
+    lstrcpyA(slash ? slash + 1 : path, "bhhook-trace.txt");
+    for (;;) {
+        Sleep(5000);
+        f = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
+        if (f == INVALID_HANDLE_VALUE) {
+            continue;
+        }
+        for (i = 0; i < bh_trace_n; i++) {
+            wsprintfA(line, "%10u %08x %s\r\n", bh_counts[i], bh_hooks[i].orig, bh_names[i]);
+            WriteFile(f, line, lstrlenA(line), &written, NULL);
+        }
+        CloseHandle(f);
+    }
+    return 0;
+}
+
 BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_ATTACH) {
         BHHOOK *h;
@@ -50,8 +83,12 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID reserved) {
             n++;
         }
         FlushInstructionCache(GetCurrentProcess(), NULL, 0);
-        wsprintfA(msg, "bhhook: redirected %d functions\r\n", n);
+        wsprintfA(msg, "bhhook: redirected %d functions%s\r\n", n,
+                  bh_trace_n ? " (tracing calls to bhhook-trace.txt)" : "");
         log_line(msg);
+        if (bh_trace_n) {
+            CloseHandle(CreateThread(NULL, 0, trace_thread, NULL, 0, NULL));
+        }
     }
     return TRUE;
 }

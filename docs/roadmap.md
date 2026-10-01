@@ -64,8 +64,8 @@ portable platform layer for Linux.
 - [x] **Hook DLL.** `tools/hook.py --install` builds `xinput1_1.dll` (matched objects +
       generated glue binding everything else to original addresses); the game loads it
       and runs our code. Smoke test passes: 10 functions redirected, title screen reached.
-- [ ] **Hook trace mode.** Optional per-hook call counters dumped to `bhhook.log` at
-      exit, to prove which decompiled functions actually ran during a smoke test.
+- [x] **Hook trace mode.** `tools/hook.py --trace`: per-hook call counters in
+      `run/game/bhhook-trace.txt`. Boot to title: `NuLstGetNext` ran 35,780 times.
 - [ ] **Re-layout `src/`** to mirror the original tree from the PS2 map
       (`nu2api/gamelib/listman.c`, …), keeping PC-only files (`pc\…`) in place.
 

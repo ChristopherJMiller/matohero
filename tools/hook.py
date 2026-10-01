@@ -21,6 +21,8 @@ relocating.
 
   tools/hook.py              build build/hook/xinput1_1.dll
   tools/hook.py --install    also copy it into run/game (see tools/rungame)
+  tools/hook.py --trace      count calls to each hooked function; the DLL rewrites
+                             bhhook-trace.txt next to the exe every 5 s
 """
 import argparse
 import csv
@@ -86,6 +88,7 @@ def global_name(code_line):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--install", action="store_true", help="copy the DLL into run/game")
+    ap.add_argument("--trace", action="store_true", help="count calls per hooked function")
     args = ap.parse_args()
 
     subprocess.run([str(ROOT / "tools" / "build.py")], check=True)
@@ -99,6 +102,7 @@ def main():
 
     # Original address of every function the matching build knows (incl. stubs).
     orig_of = {}      # mangled -> original address
+    display = {}      # mangled -> name as reccmp reports it
     matched = {}      # mangled -> bool (exact/effective)
     obj_funcs = {}    # object -> [mangled]
     for e in entries:
@@ -107,6 +111,7 @@ def main():
             continue
         name, _, obj = by_recomp[recomp]
         orig_of[name] = int(e["address"], 16)
+        display[name] = e["name"]
         matched[name] = not e.get("stub") and (e["matching"] == 1.0 or bool(e.get("effective")))
         if not e.get("stub"):
             obj_funcs.setdefault(obj, []).append(name)
@@ -163,7 +168,7 @@ def main():
         if m:
             unresolved.add(m.group(1))
     unresolved.add("_bh_hooks")
-    unknown = sorted(u for u in unresolved if u not in orig_of and u != "_bh_hooks")
+    unknown = sorted(u for u in unresolved if u not in orig_of and not u.startswith("_bh_"))  # glue defines _bh_*
     if unknown:
         sys.exit("no original address for: " + ", ".join(unknown))
 
@@ -175,12 +180,25 @@ def main():
     lines += ["", "_DATA SEGMENT"]
     for s in func_syms:
         lines += [f"slot{i} DD 0{orig_of[s]:X}h" for i in [func_syms.index(s)]]
+    hooks.sort()
     lines += ["PUBLIC _bh_hooks", "_bh_hooks LABEL DWORD"]
-    for addr, name in sorted(hooks):
-        lines.append(f"    DD 0{addr:X}h, OFFSET {name}")
-    lines += ["    DD 0, 0", "_DATA ENDS", "", "_TEXT SEGMENT"]
+    for i, (addr, name) in enumerate(hooks):
+        lines.append(f"    DD 0{addr:X}h, OFFSET {f'trace{i}' if args.trace else name}")
+    lines += ["    DD 0, 0"]
+    n_trace = len(hooks) if args.trace else 0
+    lines += ["PUBLIC _bh_trace_n", f"_bh_trace_n DD {n_trace}",
+              "PUBLIC _bh_counts", f"_bh_counts DD {max(n_trace, 1)} DUP (0)",
+              "PUBLIC _bh_names", "_bh_names LABEL DWORD"]
+    lines += [f"    DD OFFSET tname{i}" for i in range(n_trace)]
+    for i in range(n_trace):
+        text = display.get(hooks[i][1], hooks[i][1]).replace('"', "'")
+        lines.append(f'tname{i} DB "{text}", 0')
+    lines += ["_DATA ENDS", "", "_TEXT SEGMENT"]
     for i, s in enumerate(func_syms):
         lines += [f"PUBLIC {s}", f"{s} PROC", f"    jmp DWORD PTR slot{i}", f"{s} ENDP"]
+    for i in range(n_trace):  # lock inc touches only flags, which no call relies on
+        lines += [f"trace{i} PROC", f"    lock inc DWORD PTR _bh_counts+{4 * i}",
+                  f"    jmp {hooks[i][1]}", f"trace{i} ENDP"]
     for _, name in hooks:
         lines.append(f"EXTERN {name}:PROC")
     lines += ["_TEXT ENDS", "END", ""]
@@ -193,7 +211,7 @@ def main():
         sys.exit(second.stdout)
 
     dll = OUT / "xinput1_1.dll"
-    print(f"built {dll.relative_to(ROOT)}: {len(hooks)} hooked functions from {len(include)} objects; "
+    print(f"built {dll.relative_to(ROOT)}{' (trace)' if args.trace else ''}: {len(hooks)} hooked functions from {len(include)} objects; "
           f"{len(data_syms)} globals and {len(func_syms)} functions bound to the exe")
     for obj in skipped:
         print(f"  not hooked (has non-matching functions): {obj}")

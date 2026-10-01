@@ -63,5 +63,25 @@ of each hooked function in the exe, pointing at the recompiled copy.
   The DLL is `/FIXED` at `0x10000000`, so none of this needs relocating.
 - Functions shorter than 5 bytes aren't patched.
 
-First result (2026-09-30): the 10 `listman.c` functions redirected, game reaches the
-title screen as before.
+### Trace mode
+
+`tools/hook.py --trace --install` routes each hook through a trampoline
+(`lock inc [counter]; jmp function`), and a DLL thread rewrites `run/game/bhhook-trace.txt`
+every 5 s. Calls between functions inside the DLL bypass the trampolines, so only calls
+coming from the exe are counted.
+
+First result (2026-09-30), booting to the title screen with all 10 `listman.c`
+functions redirected:
+
+```
+         1 005654c0 NuLstCreate
+         3 00565550 NuLstCreateBuff
+         0 00565600 NuLstAllocHead      (reached via NuLstAlloc inside the DLL)
+         1 00565680 NuLstAllocTail
+        20 00565700 NuLstAllocFree
+        20 00565760 NuLstAttachTail
+         1 005657b0 NuLstFree
+         0 00565840 NuLstGetByIdx
+     35780 00565860 NuLstGetNext
+       259 00565890 NuLstAlloc
+```
