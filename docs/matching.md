@@ -150,18 +150,22 @@ exact; `tools/permute.py` automates some of them.
   14–38% to 55–70%.
 - A wrapper that only calls another function with the same arguments compiles to a bare
   `jmp` (the PC `…VU0` thunks).
-- **Inlining depends on what else is in the file.** Adding `NuDatFileLoadBuffer` (which
-  calls `NuDatFileSeek` directly) made the out-of-line `NuDatFileSeek` start inlining
-  `NuFileSeek` (100% → 49%) and stopped `NuDatOpenEx` from inlining the
-  `NuFileSeek`→`NuMemFileSeek`→`NuDatFileSeek` chain (98% → 62%), wherever it was placed.
-  `tools/msvctest.py` (emission order and remaining calls per function) shows why: with
-  it, `NuDatFileSeek` and `NuDatFileRead` move to the end of the object (deferred), and a
-  deferred `NuDatFileSeek` inlines `NuFileSeek` while its callers stop inlining it. What
-  triggers the deferral isn't known; toy files don't reproduce it. Established so far:
-  the front end sees the whole file (an early function can inline a later one), and
-  deferral is transitive (a caller of a deferred function is deferred too).
-  `NuDatFileLoadBuffer` lives in `nufile_pending.c` meanwhile. When a new function makes
-  a matched one regress, compare emission order with `msvctest.py`.
+- **Inlining depends on what else is in the file: recursive `__inline` cycles.**
+  `NuDatFileSeek` → `NuFileSeek` → `NuMemFileSeek` → `NuDatFileSeek` is a cycle of
+  `__inline` functions, and MSVC has to stop inlining somewhere. An `__inline`
+  function's out-of-line copy is emitted when something first calls it out of line, and
+  where it lands decides where the cycle is cut. The original cuts at `NuDatFileSeek`'s
+  own call to `NuFileSeek` (its copy is emitted in place and calls `NuFileSeek`). A first
+  version of `NuDatFileLoadBuffer` that called `NuDatFileSeek` directly moved that copy to
+  the end of the object, after `NuFileSeek`; it then inlined the whole chain, and every
+  other caller's inlining changed (`NuDatFileSeek` 100% → 49%, `NuDatOpenEx` 98% → 62%).
+  The original `NuDatFileLoadBuffer` seeks through `NuFileSeek` (its asm calls the
+  inlined chain's `NuDatFileSeek`, not `NuDatFileSeek` directly from the source); written
+  that way it sits in `nufile.c` without disturbing anything. Found by delta-debugging
+  `nufile.c` down to the five functions that still showed the effect (compile, list
+  emission order and remaining calls as `tools/msvctest.py` does, drop function blocks
+  while the effect persists). When a new function makes matched neighbours regress, look
+  for an `__inline` cycle and for which entry point the new code calls.
 - **Keep stubs in a separate file anyway.** Under `/Ob1` they aren't inlined, but a
   caller compiled after a callee in the same file uses the callee's actual register
   usage: `NuDatFileSeek` (deferred behind the `NuFileSeek` stub) kept a pointer in `ecx`
@@ -193,6 +197,11 @@ exact; `tools/permute.py` automates some of them.
   `#line` breaks reccmp's line mapping.
 
 ## reccmp limits
+
+- **reccmp scans every source file under `src/`, hidden ones included** (the build skips
+  dot-files). A scratch copy of `nufile.c` left there as `.min_nufile.c` duplicated
+  markers, and reccmp dropped the real ones ("Dropped duplicate address"). Keep scratch
+  files out of `src/`.
 
 - **A function signature split over several lines after a marker silently drops the
   marker**, and the parser loses the next marker in the file too (no warning; the

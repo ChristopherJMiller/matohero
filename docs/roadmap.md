@@ -233,7 +233,8 @@ headless boot to title) → commit.
       functions, title reached.
 - [ ] nufile near-miss pass (`GetFileInfo` 61%, `Read` 81%, `EndBlkRead` 82%, `Open`
       83%, `LoadBuffer` 83%, `Close` 87%, `DatFileRead` 85%, `FileSeek` 85%, `ExtFind`
-      95%, `PSFileOpen` 81%) after the compile-order experiment below.
+      95%, `PSFileOpen` 81%, `DatFileLoadBuffer` 35%). Unblocked: the compile-order
+      question is answered (see the tooling backlog).
 - [x] `nucore/nustring.c` part 3: `NuStringTableLoadCSV` (`0x568ff0`, 1148 bytes) and
       `NuStringTableLoadTXT` (`0x569480`): both exact. `LoadCSV` inlines a copy of
       `NuAsciiToUnicode` that `NuSPrintfW` calls, so it uses a `static __inline` copy
@@ -272,12 +273,11 @@ headless boot to title) → commit.
 
 Tooling backlog (pick up when near-misses pile up):
 
-- [~] **Model MSVC 7.1's compile order and inlining.** `tools/msvctest.py` compiles a
-      file and lists emission order and remaining calls. Known: whole-file front end,
-      transitive deferral. Unknown: what defers `NuDatFileSeek`/`NuDatFileRead` once
-      `NuDatFileLoadBuffer` (in `nufile_pending.c` meanwhile) is in nufile.c; toy files
-      don't reproduce it. Next idea: bisect nufile.c itself (drop functions until the
-      deferral disappears).
+- [x] **Model MSVC 7.1's compile order and inlining.** Solved for nufile: the
+      "deferral" was the out-of-line copy of an `__inline` function in a recursive inline
+      cycle being emitted at its first out-of-line call, which moves where MSVC cuts the
+      cycle (`docs/matching.md`). `NuDatFileLoadBuffer` (35%, from 27%) now lives in
+      `nufile.c` calling `NuFileSeek` as the original does; `nufile_pending.c` is gone.
 
 - [ ] **Count `global - offset` matches.** reccmp leaves raw addresses like `0x34c5fb8`
       (`array - 0x18`) unmapped, so identical functions sit at 90–97% and are neither
