@@ -11,6 +11,13 @@ typedef struct nuvec_s {
     float z;
 } NUVEC;
 
+typedef struct nuvec4_s {
+    float x;
+    float y;
+    float z;
+    float w;
+} NUVEC4;
+
 typedef struct numtx_s {
     float _00, _01, _02, _03;
     float _10, _11, _12, _13;

@@ -97,5 +97,11 @@ assert strings such as `.\charsys\charbase.cpp` and `.\listman.c` line up with
   `pc\` instead (`.\pc\nurndr.c`, `.\d3dCalls.cpp`).
 - The PS2 build keeps functions the PC linker drops as unreferenced (`NuLstAllocBefore`,
   `NuLstGetPrev`, … exist here but not on PC).
+- VU0 routines (`numath/ps2/numtxvu0.o`, `nuvecvu0.o`) become plain C on PC: most are
+  tail calls to the generic function (`NuMtxMulVU0` → `NuMtxMulH`,
+  `NuVec4ScaleXYZVU0` → `NuVec4Scale`), and some `…VU0` names are macros for the generic
+  function (`NuVecMtxTransformVU0` call sites call `NuVecMtxTransform`). PC moved
+  `NuVecMtxTransform` out of `nuvec.c` into that PC file. Callers that PS2 inlined
+  (VU0 asm) show up on PC as calls, so cross-referencing callers needs both names.
 - Compiled with GCC 2.95 (ee-gcc), so codegen tells us nothing about MSVC. Names,
   signatures, file grouping and order transfer.

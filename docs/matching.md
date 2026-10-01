@@ -15,6 +15,9 @@ exact; `tools/permute.py` automates some of them.
   the inline nested-determinant form of `NuMtxInvRSS` got closer than precomputed
   cofactor locals (70% → 85%), presumably because canonical order follows where a
   subexpression first appears.
+- **…but grouping shows.** A four-term sum compiles the same for any term order, but
+  parentheses change the evaluation order: `NuVec4MtxTransformH`'s `w, z, y, x` order
+  came from `a + b + (c + d)` (83% → 100%). Several groupings give the same code.
 - **Parentheses stop reassociation.** `dy * 512.0f / dx` became `dy / dx * -512` with a
   negated table index; `(dy * 512.0f) / dx` matched (`fxyd` in nutrig).
 - **A local vs. the same expression inline changes term order**, even when the asm
@@ -59,6 +62,8 @@ exact; `tools/permute.py` automates some of them.
   always builds into a local and copies (`sub esp, 0x40` … `rep movsd`); `NuMtxInvRSS`
   checks for a zero determinant, BH doesn't. Fixing structure first took these from
   14–38% to 55–70%.
+- A wrapper that only calls another function with the same arguments compiles to a bare
+  `jmp` (the PC `…VU0` thunks).
 - Inlining is on (`/Ob2`). A stub in the same file as its caller gets inlined into it and
   collapses the caller, so keep stubs in a separate file until decompiled
   (`numath/nutrig_stubs.c`).

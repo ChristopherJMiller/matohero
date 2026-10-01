@@ -127,10 +127,13 @@ headless boot to title) → commit.
       bodies) and `cl` batches now go through a response file (Wine crashed on long
       command lines, which had silently failed big batches). Hook test: 85 functions,
       title reached, `NuFloor` 284k calls.
-- [ ] PC-only numath around nufloat: `NuFsqrt` (`0x571290`, stub), VU0-replacement
-      thunks `0x5712b0–0x5712f0`, `0x571360`, and functions `0x571300`, `0x571370`
-      (`NuMtxPreScaleUVU0`), `0x5713d0`, `0x5714f0`, `0x571520`, `0x5715b0` (vec4
-      scale/transform). Name from PS2 `numtxvu0`/`nuvecvu0`; file name unknown.
+- [x] PC-only numath around nufloat: `numath/pc/nuvu0_pc.c` (`NuFsqrt`, six `…VU0`
+      tail-call thunks, `NuVec4MtxRotateVU0`, `NuMtxPreScaleUVU0`, `NuVecMtxTransform`)
+      and `numath/nuvec4.c` (`NuVec4Scale`, `NuVec4MtxTransform`, `NuVec4MtxTransformH`):
+      13/13 exact. Named by matching PC callers to PS2 callers. **numath is complete:**
+      every function in `0x56e0e0–0x5717a0` is placed (98 matched functions overall); the
+      near-misses are listed above. Hook test: 98 functions, title reached, `NuFsqrt`
+      67k calls.
 - [ ] `nucore/nustring.c` (saga), ~`0x5687d0–0x569f60`, ~47
 - [ ] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga), small
 - [ ] `nucore/nufpar.c` (saga), ~21
