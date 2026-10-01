@@ -151,3 +151,17 @@ int NuTexCreate(NUTEX *tex) {
 int NuTexRead(char *fname, VARIPTR *buff, VARIPTR buffend) {
     return 0;
 }
+
+// STUB: BIONICLE 0x540f80
+void NuMtlSetRenderPlane(NUMTL *mtl, int newplane) {
+}
+
+// STUB: BIONICLE 0x54baf0
+int NuTexWidth(int tid) {
+    return 0;
+}
+
+// STUB: BIONICLE 0x54bb10
+int NuTexHeight(int tid) {
+    return 0;
+}

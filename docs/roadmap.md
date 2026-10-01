@@ -510,15 +510,21 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       standalone build. New stubs: `NuMtlCreate`, `NuMtlSetShaderDescPS`, `NuMtlUpdate`,
       `NuTexCreate`, `NuTexRead`. Hook test: the game's fonts load through
       `NuQFntLoadPtr` (2 calls) and `NuQFntInit`.
-- [ ] `nuqfnt.c` part 4: `0x537650` (915 bytes, builds a `VUFNT` from an old-style
-      `NUFNT`; saga's `NuQFntCreate`; `NuTexWidth`/`Height` `0x54baf0`/`0x54bb10` and
-      `0x540f80`) and the glyph renderer `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes). The
-      renderer writes straight into the PC immediate-mode renderer's vertex buffer
-      (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at
-      `0x348f860`, calls `0x550d00`/`0x5509f0`/`0x550950`/`0x550ac0`/`0x542780`/`0x536d10`)
-      with those helpers inlined, so it is best done with that renderer (PS2 `nurndr2d.c`
-      territory).
+- [x] `nuqfnt.c` part 4: `NuQFntCreate` (`0x537650`, name from saga) exact. It builds a
+      `VUFNT` from an old-style `NUFNT` (PS2 layout, now in `nuqfnt.h`) in the buffer: a
+      header block, glyph rectangles in texels, the character map (its store is a `?:`),
+      and a copy of the 0x214-byte `NUMTL`, so `numtl.h`'s `NUMTL` is padded to that size.
+      The third argument packs the sort priority above the render plane. New stubs:
+      `NuMtlSetRenderPlane` (`0x540f80`), `NuTexWidth`, `NuTexHeight`. `nuqfnt.c` is
+      complete on PC except the glyph renderer (below).
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nudlist` (14).
+- [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
+      stubbed). The glyph renderer writes straight into that renderer's vertex buffers
+      (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at
+      `0x348f860`) with its helpers partly inlined; it calls
+      `0x550d00`/`0x5509f0`/`0x550950`/`0x550ac0`/`0x542780` and `0x536d10` (a vertex add
+      in `nuqfnt.c`'s range, probably an `__inline` helper emitted for its out-of-line
+      calls). PS2 `nurndr2d.c` territory.
 
 Notes for later units:
 

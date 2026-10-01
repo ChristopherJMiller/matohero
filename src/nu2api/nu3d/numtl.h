@@ -57,6 +57,7 @@ struct numtl_s {
     float alpha;
     short tid; /* int on PS2 */
     short sort_pri;
+    int unknown_7c[(0x214 - 0x7c) / 4]; /* 0x214 bytes: NuQFntCreate copies whole ones */
 };
 
 /* The PC's shader description (0x158 bytes; differs from saga's). Only the fields the
@@ -80,6 +81,7 @@ typedef struct nushadermtldesc_s {
 NUMTL *NuMtlCreate(int cnt);
 void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc);
 void NuMtlUpdate(NUMTL *mtl);
+void NuMtlSetRenderPlane(NUMTL *mtl, int newplane);
 void NuMtlDestroy(NUMTL *mtl);
 
 #endif

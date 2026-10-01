@@ -495,6 +495,110 @@ void NuQFntSetColour(NUQFNT *fv, unsigned int abgr) {
 
 /* Positions the next print, converting from the current coordinate system (name from
  * saga; the PS2 inlines it). The render stream isn't used on PC. */
+/* Builds a quick font from an old-style NUFNT in the buffer: the VUFNT with its psdata,
+ * a VUFNTHDR-like block (gap, height, 1/texture size, space width, then the scales),
+ * the glyph rectangles in texels, the character map and a copy of the material. flags
+ * pick the material's uvmode, alpha, zmode and filter; renderplane carries the sort
+ * priority in its top half. Name from saga. */
+// FUNCTION: BIONICLE 0x537650
+VUFNT *NuQFntCreate(NUFNT *fnt, int flags, int renderplane, VARIPTR *ptr, VARIPTR buffend) {
+    VUFNT *vf;
+    float width;
+    float height;
+    int sortpri;
+    int i;
+    int ix;
+
+    sortpri = renderplane >> 16;
+    renderplane &= 0xffff;
+    width = NuTexWidth(fnt->mtl->tid);
+    height = NuTexHeight(fnt->mtl->tid);
+    vf = (VUFNT *)((ptr->intaddr + 15) & ~15);
+    ptr->intaddr = ((ptr->intaddr + 15) & ~15) + sizeof(VUFNT) + sizeof(VUFNT_PC);
+    memset(vf, 0, sizeof(VUFNT) + sizeof(VUFNT_PC));
+    vf->psdata = vf + 1;
+    vf->numchars = fnt->nchars;
+    vf->fnt = fnt;
+    vf->height = fnt->hi;
+    vf->baseline = fnt->bi;
+    vf->icgap = fnt->icgap;
+    vf->spacewidth = width * fnt->chars[0].x2 - width * fnt->chars[0].x1;
+    vf->header = *ptr;
+    *ptr->f32 = vf->icgap;
+    ptr->f32++;
+    *ptr->f32 = vf->height;
+    ptr->f32++;
+    *ptr->f32 = 1.0f / width;
+    ptr->f32++;
+    *ptr->f32 = 1.0f / height;
+    ptr->f32++;
+    *ptr->f32 = 0.0f;
+    ptr->f32++;
+    *ptr->f32 = 0.0f;
+    ptr->f32++;
+    *ptr->f32 = vf->spacewidth;
+    ptr->f32++;
+    *ptr->f32 = 0.0f;
+    ptr->f32++;
+    vf->scale_x = ptr->f32;
+    *ptr->f32 = 1.0f;
+    ptr->f32++;
+    vf->scale_y = ptr->f32;
+    *ptr->f32 = 0.5f;
+    ptr->f32++;
+    vf->chars = (VUCHAR *)ptr->voidptr;
+    for (i = 0; i < (fnt->nchars < 256 ? fnt->nchars : 256); i++) {
+        *ptr->f32 = width * fnt->chars[i].x1;
+        ptr->f32++;
+        *ptr->f32 = height * fnt->chars[i].y1;
+        ptr->f32++;
+        *ptr->f32 = width * fnt->chars[i].x2 - width * fnt->chars[i].x1;
+        ptr->f32++;
+    }
+    vf->index_table.a = ptr->u8;
+    for (i = 0; i < 256; i++) {
+        ix = fnt->chrix[i];
+        if (ix == 0xff) {
+            ix = 0;
+        }
+        *ptr->u8 = (i == ' ') ? fnt->nchars : ix;
+        ptr->u8++;
+    }
+    vf->mtl = (NUMTL *)((ptr->intaddr + 15) & ~15);
+    ptr->intaddr = ((ptr->intaddr + 15) & ~15) + sizeof(NUMTL);
+    *vf->mtl = *fnt->mtl;
+    NuMtlSetRenderPlane(vf->mtl, renderplane);
+    if (flags & 8) {
+        vf->mtl->attrib.uvmode = 0;
+    } else {
+        vf->mtl->attrib.uvmode = 1;
+    }
+    vf->mtl->attrib.lighting = 2;
+    if (flags & 2) {
+        vf->mtl->attrib.alpha = 0;
+    } else {
+        vf->mtl->attrib.alpha = 1;
+    }
+    if (flags & 0x40) {
+        vf->mtl->attrib.zmode = 0;
+    } else if (flags & 0x20) {
+        vf->mtl->attrib.zmode = 1;
+    } else {
+        vf->mtl->attrib.zmode = 3;
+    }
+    if (flags & 4) {
+        vf->mtl->attrib.filter = 1;
+    } else if (flags & 0x10) {
+        vf->mtl->attrib.filter = 2;
+    } else {
+        vf->mtl->attrib.filter = 0;
+    }
+    vf->mtl->sort_pri = sortpri;
+    NuMtlUpdate(vf->mtl);
+    ((VUFNT_PC *)vf->psdata)->x = ((VUFNT_PC *)vf->psdata)->y = ((VUFNT_PC *)vf->psdata)->z = 0.0f;
+    return vf;
+}
+
 // FUNCTION: BIONICLE 0x5379f0
 void NuQFntMoveRS(RNDRSTREAM *rs, NUQFNT *fv, float x, float y, float z) {
     if (NuQFntCSMode != NUQFNT_CSMODE_ABSOLUTE) {

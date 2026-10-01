@@ -7,7 +7,6 @@
 /* Quick fonts: textured bitmap fonts with Unicode lookup tables. NUQFNT is opaque to
  * callers (void in the PS2 debug info); the functions cast it to VUFNT. */
 typedef void NUQFNT;
-typedef struct nufnt_s NUFNT;
 
 typedef enum {
     NUQFNT_CSMODE_UNINITIALISED = 0,
@@ -25,6 +24,32 @@ typedef struct vuchar_s {
     float v;
     float w;
 } VUCHAR;
+
+/* Old-style bitmap font (PS2 layout). */
+typedef struct nufntchar_s {
+    float x1;
+    float y1;
+    float x2;
+    float y2;
+    unsigned char w;
+    unsigned char h;
+} NUFNTCHAR;
+
+typedef struct nufnt_s {
+    struct nufnt_s *next;
+    struct nufnt_s *last;
+    float h;
+    short hi;
+    char version;
+    char nualloced;
+    float b;
+    short bi;
+    short icgap;
+    NUMTL *mtl;
+    int nchars;
+    unsigned char chrix[256];
+    NUFNTCHAR chars[1];
+} NUFNT;
 
 typedef struct vucharidx_s {
     NUWCHAR unicode;
@@ -104,6 +129,7 @@ void NuQFntSet(NUQFNT *fv);
 void NuQFntSetScale(NUQFNT *fv, float xs, float ys);
 void NuQFntSetColour(NUQFNT *fv, unsigned int abgr);
 void NuQFntDestroy(NUQFNT *fv);
+VUFNT *NuQFntCreate(NUFNT *fnt, int flags, int renderplane, VARIPTR *ptr, VARIPTR buffend);
 int NuQFntReadPS(VUFNT *fv, int tid, int flags, int renderplane, VARIPTR *ptr, VARIPTR buffend);
 NUQFNT *NuQFntRead(char *fname, VARIPTR *ptr, VARIPTR buffend);
 NUQFNT *NuQFntLoadPtr(char *name, char *texname, int unknown3, int unknown4, VARIPTR *ptr, VARIPTR *end);

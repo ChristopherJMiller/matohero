@@ -11,5 +11,7 @@ typedef struct nutex_s NUTEX;
 int NuTexCreate(NUTEX *tex);
 int NuTexRead(char *fname, VARIPTR *buff, VARIPTR buffend);
 void NuTexDestroy(int tid);
+int NuTexWidth(int tid);
+int NuTexHeight(int tid);
 
 #endif
