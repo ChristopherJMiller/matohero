@@ -23,6 +23,16 @@ exact; `tools/permute.py` automates some of them.
   `now.QuadPart += MAX - base` (`NuTimeGetTicksPS`).
 - **Parentheses stop reassociation.** `dy * 512.0f / dx` became `dy / dx * -512` with a
   negated table index; `(dy * 512.0f) / dx` matched (`fxyd` in nutrig).
+- **…and constant folding.** `fov * 0.5f * 10430.378f` (or `fov / 2.0f * …`) compiles to
+  one `fmul` by 5215.19; the original's two `fmul`s came from
+  `(fov * 0.5f) * 10430.378f` (`NuCameraSetVPortClipMtx`).
+- **Repeated constant stores are grouped.** A float constant stored more than once goes
+  into a register, and all its stores are emitted together where its group starts;
+  single stores stay `mov [mem], imm32` in source order. Which register a constant gets
+  shows where its first use was: in `NuCameraCreate`, zero in `ecx` (loaded before
+  `1.0f` in `eax`) and zero stores interleaved with the immediates meant a zero store
+  came before the `scale` stores in the source. Variants were compiled as hundreds of
+  functions in one file (one `cl` run) and ranked by their store sequences.
 - **A local vs. the same expression inline changes term order**, even when the asm
   evaluates it at the same point. `NuPlnLine3` with `dot = …; dist = … / dot;` was 76%;
   inlining the dot product into the division made it an effective match (96%).

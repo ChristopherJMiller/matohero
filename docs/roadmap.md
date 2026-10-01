@@ -333,9 +333,21 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NuDisplayListUpdateSpecial`, `NuDisplayListRndrSpecial` stubbed. Hook test: 313
       functions, `NuSpecialDrawAt` 104k calls, input works. (`0x53e350`, before
       `NuSpecialFind`, builds a perspective matrix: nurndr, not nuspecial.)
-- [ ] Next nu3d file: candidates with saga sources are `nuspline` (3 PC functions),
-      `nugscn_gen`, `nucamera_gen` (23), `nuportal_gen` (12), `nuqfnt` (30), `nudlist`
-      (14).
+- [x] `nu3d/nucamera_gen.c` part 1: `Create`, `Destroy`, `SetVPortClipMtx`,
+      `SetScissorClipMtx`, `Get`, the getters, `GetClipMtx`, `RayCast`,
+      `TransformScreen(Clip)`, `ClipTestSphere`, `DistSqr`, `Unlock`, `Relock`, plus
+      `NuVpGetCurrentViewport` (`nu3d/nuvport_gen.c`): 20/20 exact. `NuCameraGetMtx` is
+      folded into `NuCameraGetCam` (a macro now); `NuCameraSet` moved to the renderer on
+      PC (`0x53d640`, stubbed). Camera data follows the PS2 order (`vmtx` `0x6166d0` …
+      `clip_planes` `0x616950`); zero-initialised data went to `.bss` (`prev_lock`
+      `0x96ce18`, `num_cameras_allocated` `0x96ce24`). New `numath/nuvu0.h` declares the
+      VU0 replacements. Hook test: 333 functions, `GetViewMtx` 500k calls, input works.
+- [ ] `nu3d/nucamera_gen.c` part 2: `BuildClipPlanes` (`0x538740`, 1449 bytes),
+      `0x538cf0` (2451 bytes, called from `0x597f50`: `ClipTestExtentsGeneric`?),
+      `0x5399b0` (726 bytes, from `0x4e5cd0`), `SetEx` (`0x539c90`). After it, the rest
+      of `nuvport_gen` (`0x53a140`–`0x53a520`) and the PC `NuCameraSet` (`0x53d640`).
+- [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
+      `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
 
 Notes for later units:
 

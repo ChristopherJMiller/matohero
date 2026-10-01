@@ -1,3 +1,4 @@
+#include "nucamera.h"
 #include "nurndr.h"
 
 /* nu3d functions and globals the decompiled code uses, not decompiled yet. */
@@ -48,4 +49,8 @@ void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec) {
 // STUB: BIONICLE 0x554be0
 int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, void *blend_values) {
     return 0;
+}
+
+// STUB: BIONICLE 0x53d640
+void NuCameraSet(NUCAMERA *camera) {
 }

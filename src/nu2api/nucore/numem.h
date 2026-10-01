@@ -49,5 +49,6 @@ void NuMemSet128(void *dest, unsigned char value, int count);
 /* NuMemAlloc as it was called from a given line of the original source file. Our files
  * don't keep the original line numbering, and #line would break reccmp's line mapping. */
 #define NuMemAllocAt(size, line) NuMemAllocFn((size), __FILE__, (line))
+#define NuMemFreeAt(addr, line) NuMemFreeFn((addr), __FILE__, (line))
 
 #endif

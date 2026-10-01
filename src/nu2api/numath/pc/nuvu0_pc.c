@@ -1,6 +1,7 @@
 #include "nufloat.h"
 #include "numtx.h"
 #include "nuvec4.h"
+#include "nuvu0.h"
 
 /* PC replacements for the PS2's VU0 routines (numath/ps2/numtxvu0.c, nuvecvu0.c):
  * mostly tail calls to the plain versions, plus NuFsqrt and NuVecMtxTransform, which
