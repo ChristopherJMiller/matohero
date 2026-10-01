@@ -4,7 +4,8 @@
 #include <string.h>
 
 /* Memory allocation: from a caller's buffer (external), a discardable buffer, the
- * engine heap or malloc, with a debug header and tail mark around each heap block.
+ * engine heap or malloc, with a debug header and tail mark around each heap block, plus
+ * the PC's C versions of the PS2 assembly helpers (NuMemMove, our name, and NuMemSet128).
  * Names and locals from the PS2 prototype; the PC build has no NuMemAlloc (non-Fn),
  * NuMemReAllocFn or validation/dump functions. */
 
@@ -155,6 +156,34 @@ void NuMemFreeFn(void *addr, char *file, int line) {
     }
 }
 
-// STUB: BIONICLE 0x565bf0
+// FUNCTION: BIONICLE 0x565bf0
 void NuMemMove(void *dest, void *src, int size) {
+    char *d;
+    char *s;
+
+    d = (char *)dest;
+    s = (char *)src;
+    if (d < s) {
+        while (size != 0) {
+            *d = *s;
+            d++;
+            s++;
+            size--;
+        }
+    } else {
+        d += size;
+        s += size;
+        while (size != 0) {
+            d--;
+            s--;
+            *d = *s;
+            size--;
+        }
+    }
+}
+
+/* PS2: nucore/ps2/asmmem.s, which also had NuMemCopy128. Fills count 16-byte units. */
+// FUNCTION: BIONICLE 0x565c40
+void NuMemSet128(void *dest, unsigned char value, int count) {
+    memset(dest, value, count * 16);
 }

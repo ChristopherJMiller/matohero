@@ -94,6 +94,11 @@ exact; `tools/permute.py` automates some of them.
   bitfield set as load/`or`/store means a `volatile` pointee.** The background loader's
   `volatile BGPROCINFO *bg_active` took `bgThreadMain` and `NuFrameEndBgLoadPS` from
   74–84% to exact.
+- **`*d++ = *s++` vs separate statements.** `NuMemMove`'s copy loops matched as
+  `*d = *s; d++; s++;` (and `d--; s--; *d = *s;` backwards); the combined forms put the
+  pointers in other registers (48% → 100%).
+- A byte parameter loaded with `movzx` was `unsigned char`; plain `char`/`int` gave
+  `mov al, [esp+8]` (`NuMemSet128`'s fill value).
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;

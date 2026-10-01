@@ -41,6 +41,7 @@ void NuMemFreeFn(void *addr, char *file, int line);
 
 /* Byte-wise memmove (the name is ours). */
 void NuMemMove(void *dest, void *src, int size);
+void NuMemSet128(void *dest, unsigned char value, int count);
 
 #define NuMemAlloc(size) NuMemAllocFn((size), __FILE__, __LINE__)
 #define NuMemFree(addr) NuMemFreeFn((addr), __FILE__, __LINE__)

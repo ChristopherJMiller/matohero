@@ -261,10 +261,14 @@ headless boot to title) → commit.
       request pointer is `volatile BGPROCINFO *` (double field loads). Added
       `tools/regress.py`, which also flags drops below 100% (the old check only compared
       exact sets). Hook test: 280 functions, our loader thread runs, input works.
-- [ ] Leftovers around numem: `0x565c40` (fills `count * 16` bytes), `0x565930` (index
-      lookup in 0x50-byte records; maybe gamelib's glutils); `0x56b490` (initializes a
-      critical section at `0x34c56f8` just before `fhandles`; its flag at `0x34c5790` lies
-      inside `fhandles[64]`, though `NuPSFileOpen` scans 64 entries).
+- [x] The PC's C versions of PS2's `asmmem.s`, in `numem.c`: `NuMemMove` (`0x565bf0`,
+      byte-wise memmove, our name; callers pass byte counts, so not `NuMemCopy128`) and
+      `NuMemSet128` (`0x565c40`): 2/2 exact. Hook test: 282 functions, `NuMemMove` 31k
+      calls, input works.
+- [ ] Leftovers: `0x565930` (index lookup in 0x50-byte records, called from gamelib's PC
+      nuobject; maybe glutils), `0x56b490` (initializes a critical section at
+      `0x34c56f8` just before `fhandles`; its flag at `0x34c5790` lies inside
+      `fhandles[64]`, though `NuPSFileOpen` scans 64 entries).
 
 Tooling backlog (pick up when near-misses pile up):
 
