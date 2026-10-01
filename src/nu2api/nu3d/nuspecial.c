@@ -1,14 +1,196 @@
 #include "nuspecial.h"
 
 #include "nurndr.h"
+#include "nustring.h"
 
 /* Specials: named objects in a scene, either instances flagged special or standalone
  * special objects, reached through NUHSPECIAL handles. Names and locals from the PS2
  * prototype; logic checked against opensagadev/saga src/nu2api/nu3d/nuspecial.cpp
- * (GPL-3.0, a later engine). Part 1: accessors. */
+ * (GPL-3.0, a later engine). The PC scene can carry a display list with its own
+ * special objects; the finders handle that case in static helpers (inlined on PS2; names
+ * ours). */
 
 // GLOBAL: BIONICLE 0x337a3bc
 int nuspecial_draw_state;
+
+// FUNCTION: BIONICLE 0x53e3d0
+static int FindSpecialObj(NUGSCN *scene, NUHSPECIAL *special, char *name) {
+    NUSPECIALOBJECT *sob;
+    int n;
+
+    if (scene == NULL) {
+        return 0;
+    }
+    sob = scene->display_list->specials;
+    for (n = 0; n < scene->display_list->nspecials; sob++, n++) {
+        if (NuStrICmp(name, sob->name) == 0) {
+            special->scene = scene;
+            special->special = NULL;
+            special->special_obj = sob;
+            return 1;
+        }
+    }
+    special->scene = NULL;
+    special->special = NULL;
+    special->special_obj = NULL;
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x53e450
+int NuSpecialFind(NUGSCN *scene, NUHSPECIAL *special, char *name, int ErrMsg) {
+    NUSPECIAL *sp;
+    int n;
+
+    if (scene != NULL && name != NULL) {
+        if (scene->display_list != NULL) {
+            return FindSpecialObj(scene, special, name);
+        }
+        sp = scene->specials;
+        for (n = 0; n < scene->numspecial; sp++, n++) {
+            if (NuStrICmp(name, sp->name) == 0) {
+                special->scene = scene;
+                special->special = sp;
+                special->special_obj = NULL;
+                return 1;
+            }
+        }
+        special->scene = NULL;
+        special->special = NULL;
+        special->special_obj = NULL;
+        return 0;
+    }
+    special->scene = NULL;
+    special->special = NULL;
+    special->special_obj = NULL;
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x53e4f0
+static int FindMultiWCObj(NUGSCN *scene, NUHSPECIAL *special, char (*WCName)[20], char *name, int maxcnt) {
+    NUSPECIALOBJECT *sob;
+    int n;
+    int cnt;
+
+    cnt = 0;
+    sob = scene->display_list->specials;
+    for (n = 0; n < scene->display_list->nspecials; sob++, n++) {
+        if (WCName != NULL) {
+            if (NuStrICmpWC(name, sob->name, *WCName) != 0) {
+                continue;
+            }
+        } else if (NuStrICmpWC(name, sob->name, NULL) != 0) {
+            continue;
+        }
+        if (special != NULL) {
+            special->scene = scene;
+            special->special_obj = sob;
+            special->special = NULL;
+            special++;
+        }
+        if (WCName != NULL) {
+            WCName++;
+        }
+        cnt++;
+        if (cnt >= maxcnt) {
+            return cnt;
+        }
+    }
+    return cnt;
+}
+
+// FUNCTION: BIONICLE 0x53e590
+int NuSpecialFindMultiWC(NUGSCN *scene, NUHSPECIAL *special, char (*WCName)[20], char *name, int maxcnt, int ErrMsg) {
+    NUSPECIAL *sp;
+    NUSPECIALOBJECT *sob;
+    int n;
+    int cnt;
+
+    cnt = 0;
+    sob = NULL;
+    if (scene != NULL) {
+        if (scene->display_list != NULL) {
+            return FindMultiWCObj(scene, special, WCName, name, maxcnt);
+        }
+        sp = scene->specials;
+        for (n = 0; n < scene->numspecial; sp++, sob++, n++) {
+            if (WCName != NULL) {
+                if (NuStrICmpWC(name, sp->name, *WCName) != 0) {
+                    continue;
+                }
+            } else if (NuStrICmpWC(name, sp->name, NULL) != 0) {
+                continue;
+            }
+            if (special != NULL) {
+                special->scene = scene;
+                special->special = sp;
+                special->special_obj = scene->display_list != NULL ? sob : NULL;
+                special++;
+            }
+            if (WCName != NULL) {
+                WCName++;
+            }
+            cnt++;
+            if (cnt >= maxcnt) {
+                return cnt;
+            }
+        }
+        return cnt;
+    }
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x53e680
+static int FindMultiObj(NUGSCN *scene, NUHSPECIAL *special, char *name, int maxcnt) {
+    NUSPECIALOBJECT *sob;
+    int n;
+    int cnt;
+
+    cnt = 0;
+    sob = scene->display_list->specials;
+    for (n = 0; n < scene->display_list->nspecials; sob++, n++) {
+        if (NuStrIStr(sob->name, name) != NULL) {
+            special->scene = scene;
+            special->special_obj = sob;
+            special->special = NULL;
+            special++;
+            if (++cnt >= maxcnt) {
+                break;
+            }
+        }
+    }
+    return cnt;
+}
+
+// FUNCTION: BIONICLE 0x53e700
+int NuSpecialFindMulti(NUGSCN *scene, NUHSPECIAL *special, char *name, int maxcnt, int ErrMsg) {
+    NUSPECIAL *sp;
+    NUSPECIALOBJECT *sob;
+    int n;
+    int cnt;
+
+    cnt = 0;
+    sob = NULL;
+    if (scene != NULL) {
+        if (scene->display_list != NULL) {
+            return FindMultiObj(scene, special, name, maxcnt);
+        }
+        sp = scene->specials;
+        for (n = 0; n < scene->numspecial; sp++, sob++, n++) {
+            if (NuStrIStr(sp->name, name) != NULL) {
+                special->scene = scene;
+                special->special = sp;
+                special->special_obj = scene->display_list != NULL ? sob : NULL;
+                special++;
+                cnt++;
+                if (cnt >= maxcnt) {
+                    return cnt;
+                }
+            }
+        }
+        return cnt;
+    }
+    return 0;
+}
 
 // FUNCTION: BIONICLE 0x53e7c0
 NUVEC *NuSpecialGetPos(NUHSPECIAL *sph) {

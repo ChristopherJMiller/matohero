@@ -103,6 +103,15 @@ exact; `tools/permute.py` automates some of them.
   chained form put the second test in its own block that falls back on the zeroed
   register for `NULL` (`NuSpecialGetPos` 67% → 100%); separate `if`s merged the two
   returns and added a `xor eax, eax`.
+- **Pointer increments before the counter.** `for (...; sp++, n++)` matched where
+  `n++, sp++` left only an `inc` in the wrong place (the nuspecial finders).
+- **A test that picks an argument may be two calls.** `NuStrICmpWC(name, x, wc ? *wc :
+  NULL)` compiled to one call with a select; the original has two call sites, from
+  `if (wc) { if (Cmp(name, x, *wc)) continue; } else if (Cmp(name, x, NULL)) continue;`
+  (`FindMultiWCObj` 43% → 100%).
+- **Repeating a cleanup tail per path matters.** `NuSpecialFind`'s "not found" stores
+  appear twice in the original, once for the early exit and once after the loop; one
+  shared tail after `if (scene && name) {...}` merged them (64% → 100%).
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;

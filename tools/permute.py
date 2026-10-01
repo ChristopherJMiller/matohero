@@ -57,9 +57,9 @@ def find_function(name):
     """Returns (source, address, name, text, body start, body end) for a function name or
     marker address."""
     if re.fullmatch(r"0x[0-9a-fA-F]+", name):
-        pat = rf"// FUNCTION: BIONICLE ({re.escape(name)})\n([^\n]*?\b(\w+)\s*\([^)]*\)\s*\{{)"
+        pat = rf"// FUNCTION: BIONICLE ({re.escape(name)})\n([^\n]*?\b(\w+)\s*\(.*\)\s*\{{)"
     else:
-        pat = rf"// FUNCTION: BIONICLE (0x[0-9a-fA-F]+)\n([^\n]*\b({re.escape(name)})\s*\([^)]*\)\s*\{{)"
+        pat = rf"// FUNCTION: BIONICLE (0x[0-9a-fA-F]+)\n([^\n]*\b({re.escape(name)})\s*\(.*\)\s*\{{)"
     for src in sorted(build.SRC.rglob("*")):
         if src.suffix.lower() not in (".c", ".cpp"):
             continue

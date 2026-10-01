@@ -315,10 +315,18 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       (PS2 layouts: `NUHSPECIAL`, `NUSPECIAL`, `NUSPECIALOBJECT`, `NUINSTANCE`,
       `NUINSTANIM`); `nurndr_gen` globals stubbed in `nu3d_stubs.c`. Hook test: 299
       functions, `NuSpecialGetDrawMtx` 63k calls, input works.
-- [ ] `nu3d/nuspecial.c` part 2: `NuSpecialFind` (`0x53e450`), `DrawAt`,
-      `SetVisibility`, `NumMtls`, `GetMtl`, `GetBounds`, `GetRadius`, `SetDrawMtx`, and
-      the unnamed `0x53e4f0`, `0x53e590`, `0x53e680`, `0x53e700`, `0x53ea40`, `0x53eab0`,
-      `0x53eb20`, `0x53ee60` (needs `NUGSCN` laid out).
+- [x] `nu3d/nuspecial.c` part 2, the finders: `NuSpecialFind`, `FindMulti`,
+      `FindMultiWC` and their display-list helpers (statics, names ours): 4 exact
+      (`Find` and 3 helpers), `FindMulti` 81% and `FindMultiWC` 77% (the original gives
+      the loop counter `n` a register and keeps `cnt`/`sob` on the stack; ours swaps
+      them; declaration order, init order and loop shapes don't change it). The PC
+      `NUGSCN` has a display list at `0x1b4` (PS2: `0x1ac`) with its own special objects;
+      `nugscn.h` places the fields used. `permute.py` now parses signatures with nested
+      parentheses (`char (*WCName)[20]`). Hook test: 303 functions, `NuSpecialFind` 641
+      calls, input works.
+- [ ] `nu3d/nuspecial.c` part 3: `DrawAt` (`0x53e880`), `SetVisibility` (`0x53e960`),
+      `NumMtls`, `GetMtl`, `GetBounds`, `GetRadius`, `SetDrawMtx`, the unnamed
+      `0x53ea40`, `0x53eab0`, `0x53eb20`, `0x53ee60`, and `0x53e350` (before `Find`).
 
 Notes for later units:
 

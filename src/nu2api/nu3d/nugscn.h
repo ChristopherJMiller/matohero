@@ -79,6 +79,31 @@ typedef struct nuspecialobject_s {
     void *RigidBody;
 } NUSPECIALOBJECT;
 
+/* Display list of a scene (PS2 layout; only what's used so far). */
+typedef struct nudisplayscene_s {
+    char *name;
+    char unknown_04[0x68];
+    int nspecials;
+    NUSPECIALOBJECT *specials;
+} NUDISPLAYSCENE;
+
+/* A loaded scene. The PC layout differs from the PS2's (display_list is at 0x1b4 on PC,
+ * 0x1ac on PS2); only the fields used so far are placed. */
+struct nugscn_s {
+    int *tids;
+    int numtid;
+    NUMTL **mtls;
+    int nummtl;
+    int numgobj;
+    void **gobjs;
+    int numinstance;
+    NUINSTANCE *instances;
+    int numspecial;
+    NUSPECIAL *specials;
+    char unknown_028[0x1b4 - 0x28];
+    NUDISPLAYSCENE *display_list;
+};
+
 /* Handle to a special: one of special/special_obj is set. */
 typedef struct nuhspecial_s {
     NUGSCN *scene;

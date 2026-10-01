@@ -5,6 +5,9 @@
 
 extern int nuspecial_draw_state;
 
+int NuSpecialFind(NUGSCN *scene, NUHSPECIAL *special, char *name, int ErrMsg);
+int NuSpecialFindMultiWC(NUGSCN *scene, NUHSPECIAL *special, char (*WCName)[20], char *name, int maxcnt, int ErrMsg);
+int NuSpecialFindMulti(NUGSCN *scene, NUHSPECIAL *special, char *name, int maxcnt, int ErrMsg);
 NUVEC *NuSpecialGetPos(NUHSPECIAL *sph);
 NUVEC *NuSpecialGetDrawPos(NUHSPECIAL *sph);
 NUMTX *NuSpecialGetMtx(NUHSPECIAL *sph);
