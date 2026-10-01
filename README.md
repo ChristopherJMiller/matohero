@@ -29,6 +29,23 @@ This produces:
 
 The script verifies the reference binary by SHA-1.
 
+### Compiler
+
+The game was built with MSVC 7.1 SP1 (`cl` 13.10.6030). Download `VisualStudio2003.zip`
+and `VisualStudio2003-sp1.zip` from
+[archive.org/details/visual-studio-2003-unpacked](https://archive.org/details/visual-studio-2003-unpacked),
+then:
+
+```sh
+tools/setup_msvc.py path/to/VisualStudio2003.zip path/to/VisualStudio2003-sp1.zip
+tools/msvc cl /nologo /c foo.c     # any MSVC tool, run under Wine
+```
+
+This assembles a portable toolchain in `toolchain/msvc71` (gitignored): the RTM
+compiler, CRT and Platform SDK, with SP1's replacement files overlaid from the
+patch's embedded cabinet, so no installer runs. `tools/msvc` uses a private Wine prefix
+in `toolchain/wineprefix`.
+
 ## Ghidra
 
 ```sh

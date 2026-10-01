@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Run an MSVC 7.1 tool from toolchain/msvc71 under Wine.
+#   tools/msvc cl /c /O2 foo.c
+#   tools/msvc link /DEBUG foo.obj
+# Uses a private Wine prefix in toolchain/wineprefix so it never touches ~/.wine.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tc="$root/toolchain/msvc71"
+if [[ ! -x "$tc/bin/cl.exe" && ! -f "$tc/bin/cl.exe" ]]; then
+    echo "toolchain/msvc71 missing; run tools/setup_msvc.py first" >&2
+    exit 1
+fi
+
+tool="$1"
+shift
+
+winpath() { echo "Z:${1//\//\\}"; }
+
+export WINEPREFIX="$root/toolchain/wineprefix"
+export WINEDEBUG="${WINEDEBUG:--all}"
+export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mscoree,mshtml=}"
+export INCLUDE="$(winpath "$tc/include");$(winpath "$tc/PlatformSDK/Include")"
+export LIB="$(winpath "$tc/lib");$(winpath "$tc/PlatformSDK/Lib")"
+export WINEPATH="$(winpath "$tc/bin")"
+
+exec wine "$tc/bin/$tool.exe" "$@"

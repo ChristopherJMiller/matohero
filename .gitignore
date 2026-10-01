@@ -18,3 +18,6 @@ __pycache__/
 # Ghidra project (regenerate with tools/; contains game code)
 ghidra/
 .venv/
+
+# MSVC toolchain (Microsoft binaries; rebuild with tools/setup_msvc.py)
+toolchain/
