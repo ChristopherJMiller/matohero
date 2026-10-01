@@ -104,6 +104,13 @@ exact; `tools/permute.py` automates some of them.
   14–38% to 55–70%.
 - A wrapper that only calls another function with the same arguments compiles to a bare
   `jmp` (the PC `…VU0` thunks).
+- **Inlining depends on what else is in the file.** Adding `NuDatFileLoadBuffer` (which
+  calls `NuDatFileSeek` directly) made the out-of-line `NuDatFileSeek` start inlining
+  `NuFileSeek` (100% → 49%) and stopped `NuDatOpenEx` from inlining the
+  `NuFileSeek`→`NuMemFileSeek`→`NuDatFileSeek` chain (98% → 62%). Moving it earlier in the
+  file didn't help. Compile order (deferral) and these decisions interact in ways not yet
+  modelled; see the roadmap's tooling backlog. When a new function makes a matched one
+  regress, check it in isolation before blaming the new code.
 - **Keep stubs in a separate file anyway.** Under `/Ob1` they aren't inlined, but a
   caller compiled after a callee in the same file uses the callee's actual register
   usage: `NuDatFileSeek` (deferred behind the `NuFileSeek` stub) kept a pointer in `ecx`

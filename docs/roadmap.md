@@ -188,13 +188,25 @@ headless boot to title) → commit.
       `NuDatOpen`, `NuFileLoad`, `NuFileLoadBuffer` (83%), `NuFileLoadBufferVP`: 9
       functions, 5 exact. `rnc.c` is `NuPPUnpack` `0x56d320` + `NuPPLoadBuffer` `0x56d6b0`
       (stubs). Hook test: 233 functions, title reached.
-- [ ] `nucore/nufile.c` part 2d: `NuDatFileLoadBuffer` (`0x567c80`, 700 bytes) and
-      `NuDatOpenEx` (`0x567f40`, 1443 bytes), then a pass over the nufile near-misses.
+- [x] `nucore/nufile.c` part 2d: `NuDatOpenEx` (98.4%). `NuDatFileLoadBuffer` is
+      written (`docs/notes/NuDatFileLoadBuffer.c.txt`) but kept as a stub: in nufile.c it
+      changes the compiler's inlining of `NuDatFileSeek` (see `docs/matching.md`). Hook
+      test: 233 functions, title reached.
+- [ ] nufile near-miss pass (`GetFileInfo` 61%, `Read` 81%, `EndBlkRead` 82%, `Open`
+      83%, `LoadBuffer` 83%, `Close` 87%, `DatFileRead` 85%, `FileSeek` 85%, `ExtFind`
+      95%, `PSFileOpen` 81%) after the compile-order experiment below.
 - [ ] `nucore/nustring.c` part 3 (`NuStringTableLoadCSV`/`TXT`), now that nufile and
       nufpar are in.
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
 
 Tooling backlog (pick up when near-misses pile up):
+
+- [ ] **Model MSVC 7.1's compile order and inlining.** Small test files (like the ones
+      that showed deferral and `/Ob1`) varying definition order, direct vs. nested calls
+      and tail calls, to predict when a function is deferred and when an `__inline`
+      callee gets inlined. nufile's `NuDatFileLoadBuffer`/`NuDatFileSeek` interaction is
+      the motivating case; reconstructing original source order from PC emission order
+      would follow from it.
 
 - [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
       `InvRSS` and `NuPlnLine3`), `x * -y` ↔ `-(x * y)`, temporaries for repeated

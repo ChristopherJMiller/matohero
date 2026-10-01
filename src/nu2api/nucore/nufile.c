@@ -56,6 +56,9 @@ int nufile_try_packed;
 // GLOBAL: BIONICLE 0x34bec9c
 int nufileloadbuffer_error;
 
+// GLOBAL: BIONICLE 0x34becb0
+int datsys_offset;
+
 // GLOBAL: BIONICLE 0x617218
 static int blkcnt = 1;
 
@@ -1146,6 +1149,89 @@ int NuFileBeginBlkRead(NUFILE fh, int blk) {
         nufile_blkinfo[i].hdr.size = -nufile_blkinfo[i].hdr.size;
     }
     return nufile_blkinfo[i].hdr.blk;
+}
+
+// FUNCTION: BIONICLE 0x567f40
+NUDATHDR *NuDatOpenEx(char *fname, VARIPTR *buff, int *req, short openmode) {
+    NUDATHDR *ndh;
+    NUFILE fh;
+    int prehdr[2];
+    VARIPTR hdr;
+    int n;
+    int size;
+    int be;
+    char lfile[256];
+    int namesize;
+
+    be = nufile_buffering_enabled;
+    fh = NuFileOpen(fname, openmode);
+    if (fh != 0) {
+        if (datsys_offset) {
+            NuFileSeek(fh, datsys_offset, 0);
+        }
+        while (NuFileRead(fh, prehdr, 8) < 0) {
+            while (NuFileSeek(fh, datsys_offset, 0) < 0) {
+            }
+        }
+        prehdr[0] += datsys_offset;
+        while (NuFileSeek(fh, prehdr[0], 0) < 0) {
+        }
+        default_device->FormatName(default_device, lfile, fname, 256);
+        namesize = (NuStrLen(lfile) + 0x10) & ~0xf;
+        size = prehdr[1] + namesize + sizeof(NUDATHDR);
+        if (buff != NULL) {
+            ndh = (NUDATHDR *)buff->voidptr;
+            buff->intaddr = (unsigned int)ndh + size;
+            if (req != NULL) {
+                *req = size;
+            }
+            ndh->intalloc = 0;
+        } else {
+            ndh = (NUDATHDR *)NuMemAllocAt(size, 3889);
+            ndh->intalloc = 1;
+        }
+        ndh->name = (char *)(ndh + 1);
+        hdr.intaddr = (unsigned int)(ndh + 1) + namesize;
+        NuStrCpy(ndh->name, lfile);
+        while (NuFileRead(fh, hdr.voidptr, prehdr[1]) < 0) {
+            while (NuFileSeek(fh, prehdr[0], 0) < 0) {
+            }
+        }
+        ndh->ver = hdr.s32[0];
+        ndh->nfiles = hdr.s32[1];
+        hdr.s32 += 2;
+        ndh->finfo = (NUDATFINFO *)hdr.voidptr;
+        hdr.intaddr += ndh->nfiles * sizeof(NUDATFINFO);
+        ndh->treecnt = *hdr.s32++;
+        ndh->filetree = (NUDFNODE *)hdr.voidptr;
+        hdr.intaddr += ndh->treecnt * sizeof(NUDFNODE);
+        ndh->leafnamesize = *hdr.s32++;
+        ndh->leafnames = hdr.s8;
+        for (n = 0; n < ndh->treecnt; n++) {
+            ndh->filetree[n].txt += (int)hdr.s8;
+        }
+        ndh->filetree[0].txt = NULL;
+        ndh->dfhandle = 0;
+        ndh->fh = fh;
+        ndh->openmode = openmode;
+        ndh->pos = 0;
+        if (datsys_offset) {
+            for (n = 0; n < ndh->nfiles; n++) {
+                ndh->finfo[n].foffset += datsys_offset;
+            }
+        }
+        if (nufile_lsn_allowed && default_device->id == 2) {
+            strcpy(lfile, "\\");
+            strcat(lfile, default_device->curdir);
+            strcat(lfile, fname);
+            strcat(lfile, ";1");
+        }
+        ndh->start_lsn = 0;
+        nufile_buffering_enabled = be;
+        return ndh;
+    }
+    nufile_buffering_enabled = be;
+    return NULL;
 }
 
 // FUNCTION: BIONICLE 0x568500
