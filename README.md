@@ -88,11 +88,16 @@ Gotchas:
 ## Ghidra
 
 ```sh
-"$GHIDRA_INSTALL_DIR/support/analyzeHeadless" ghidra BionicleHeroes \
-    -import orig/Bionicle.exe -overwrite
+tools/ghidra import                 # create ghidra/BionicleHeroes and auto-analyze (~90 s)
+tools/ghidra export                 # function list + source hints -> ghidra/export/
+tools/ps2names.py && tools/ghidra names   # name functions from the PS2 prototype
+tools/reccmp ghidra-import --target BIONICLE --local-project-name BionicleHeroes \
+    --local-project-dir "$PWD/ghidra" --file /Bionicle.exe   # names/signatures of matched code
+tools/ghidra decompile 0x565840     # print decompiled C
 ```
 
-The resulting project in `ghidra/` is gitignored.
+The project in `ghidra/` is gitignored; every step above can be rerun. PS2 names carry
+a plate comment with the PS2 signature, source object and how the pairing was found.
 
 ## Docs
 

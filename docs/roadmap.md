@@ -49,7 +49,12 @@ portable platform layer for Linux.
       refs) and use them as anchors; add caller-side propagation; assign unpaired PC
       functions to objects by region (MSVC keeps objects contiguous) to get file
       boundaries even where names are unknown.
-- [ ] **Names into Ghidra** (reccmp-ghidra-import or our own script from the mapping).
+- [x] **Names into Ghidra.** `tools/ghidra names` applies the PS2 mapping (namespaces,
+      plate comments); `tools/reccmp ghidra-import` applies matched functions' names and
+      signatures (struct members come through empty, and unions aren't supported).
+- [ ] **PS2 types into Ghidra.** Turn `orig/ps2proto/stdump/types.h` into a Ghidra data
+      type archive (or apply it through a script) so decompiler output gets real struct
+      members.
 - [ ] **Library code out of the score**: mark statically linked CRT/third-party code
       (`// LIBRARY:` or report ignores) so accuracy reflects game code.
 - [ ] **Progress page**: `tools/progress.py` → `docs/progress.md` (functions and bytes

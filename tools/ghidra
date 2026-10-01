@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Headless Ghidra shortcuts for the project (ghidra/BionicleHeroes, gitignored).
+#   tools/ghidra import                  create the project and auto-analyze orig/Bionicle.exe
+#   tools/ghidra export                  write ghidra/export/{functions,source_hints}.csv
+#   tools/ghidra names                   apply orig/ps2proto/pc_names.csv (tools/ps2names.py)
+#   tools/ghidra decompile 0x565840 ...  print decompiled C
+#   tools/ghidra run Script.java [args]  run any script from tools/ghidra_scripts (read-write)
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+headless="$GHIDRA_INSTALL_DIR/support/analyzeHeadless"
+common=(ghidra BionicleHeroes -process Bionicle.exe -noanalysis -scriptPath tools/ghidra_scripts)
+
+quiet() {
+    # Keep script output (including multi-line messages), drop Ghidra's own log lines.
+    "$@" 2>&1 | awk '
+        /^INFO  [A-Za-z0-9_]+\.java>/ { sub(/^INFO  [A-Za-z0-9_]+\.java> ?/, ""); on = 1 }
+        /^(INFO|WARN|DEBUG) / { on = 0 }
+        /^ERROR/ { print; next }
+        on { sub(/ \(GhidraScript\) *$/, ""); print }'
+}
+
+cmd="${1:-}"
+shift || true
+case "$cmd" in
+    import)
+        mkdir -p ghidra
+        "$headless" ghidra BionicleHeroes -import orig/Bionicle.exe -overwrite 2>&1 | grep -E "REPORT|ERROR"
+        ;;
+    export) quiet "$headless" "${common[@]}" -readOnly -postScript ExportOverview.java ghidra/export ;;
+    names) quiet "$headless" "${common[@]}" -postScript ApplyPs2Names.java "$@" ;;
+    decompile) quiet "$headless" "${common[@]}" -readOnly -postScript Decompile.java "$@" ;;
+    run)
+        script="$1"
+        shift
+        quiet "$headless" "${common[@]}" -postScript "$script" "$@"
+        ;;
+    *)
+        sed -n '2,8p' "$0"
+        exit 1
+        ;;
+esac
