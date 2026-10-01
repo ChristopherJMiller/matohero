@@ -389,7 +389,13 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `curlightfade`/`curlightfadefar`), `NuSpecialDrawAtAlpha` (sets a global alpha,
       `0x617118`, name ours, around `NuSpecialDrawAt`) and `NuCameraSetProjectionMtx`
       (`0x53e350`, put in `pc/nucamera.c` after PS2 `ps2/nucamera.c`): 3/3 exact.
-- [ ] `pc/nurndr.c` part 3. Names from callers and PS2 signatures:
+- [ ] `pc/nurndr.c` part 3 (deferred: the rest leans on unnamed PC-layer helpers and
+      globals, e.g. `NuRndrClear` needs `0x558180`, `0x57c8a0`, `0x3513e34`, `0x34b6cdc`;
+      revisit once the PC layer around `0x57b000`–`0x586000` is named; the wrappers name
+      themselves through their error strings: `d3dClear` `0x580b50`, `d3dSetRenderTarget`
+      `0x581270`, `d3dBeginScene` `0x580b10`, `d3dEndScene` `0x580e70`). Also:
+      `NuRndrShadowDirCol` is apparently `__inline` (its body with `0x202020`, 4.0, 6.0
+      is inlined into `0x53b4c0`). Names from callers and PS2 signatures:
       `NuRndrBeginScene(hRT)` `0x53acd0` (stores `hRT - 1`, calls PC-layer `0x57ba50`;
       `0x53aca0` is a variant), `NuRndrClear` `0x53ad10` (called by `MainRender3d` and the
       loading screens), `NuRndrCreateBlendShapeDeformerWeightsArray` `0x53af10` and
@@ -401,8 +407,19 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NuHGobjRndrMtxDwa` helpers `0x53bf10`/`0x53c1e0`, burst-object functions
       `0x53b040`/`0x53c6b0`/`0x53ccb0` (callers `0x563a40`/`0x564aa0`), `NuRndrGobj`?
       `0x53da80` (2252 bytes, many callers) with `0x53d6c0`/`0x53d8b0`.
-- [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
-      `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
+- [x] `nu3d/nuspline.c`: `NuSplineFind`, `NuSplineFindAllSub`, `NuSplineFindAllBeg`,
+      3/3 exact (`sp++, n++` order, as in saga). PC `NUGSCN` has `numsplines`/`splines` at
+      `0x28`/`0x2c` (PS2 has `splinedata` before them). Hook test: 359 functions,
+      `NuSplineFind` 180 calls in the menus.
+- [ ] `nu3d/nuportal_gen.c` (`0x53ef50`–`0x540430`, ~17 functions): the PC version differs
+      from both the PS2 one (types in stdump: `NUPORTAL`, `NUROOM`, `NUFRUSTRUM`,
+      `NUPORTALINFO`) and saga's `nuportal.cpp` (frustum stack `fstack`, which PC has:
+      `NuPortalInit` `0x53ef70` aligns a buffer at `0x337a4bf`); its statics take
+      register arguments (`0x53efa0` edx, `0x53f600` eax/ecx, `0x53ffe0` eax/ecx).
+      `0x53ef60` swaps a global (`NuPortalSetOverride`?), `clipTestSphere` is named at
+      `0x53f860`.
+- [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nuqfnt` (30), `nudlist`
+      (14).
 
 Notes for later units:
 

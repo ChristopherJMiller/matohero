@@ -159,6 +159,14 @@ typedef struct nudisplayscene_s {
     void *mtl_anims;
 } NUDISPLAYSCENE;
 
+/* A named path of points. */
+typedef struct nugspline_s {
+    short len;
+    short ptsize;
+    char *name;
+    char *pts;
+} NUGSPLINE;
+
 /* A loaded scene. The PC layout differs from the PS2's (display_list is at 0x1b4 on PC,
  * 0x1ac on PS2); only the fields used so far are placed. */
 struct nugscn_s {
@@ -172,7 +180,9 @@ struct nugscn_s {
     NUINSTANCE *instances;
     int numspecial;
     NUSPECIAL *specials;
-    char unknown_028[0x1b4 - 0x28];
+    int numsplines; /* PS2 has splinedata before these */
+    NUGSPLINE *splines;
+    char unknown_030[0x1b4 - 0x30];
     NUDISPLAYSCENE *display_list;
 };
 
