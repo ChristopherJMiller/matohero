@@ -72,6 +72,16 @@ Globals use `// GLOBAL:`, string literals `// STRING:`, and placeholders for
 not-yet-decompiled callees `// STUB:`. See the
 [reccmp annotation docs](https://github.com/isledecomp/reccmp/blob/master/docs/annotations.md).
 
+Gotchas:
+
+- Put notes *above* the marker. A comment between `// FUNCTION:` and the definition makes
+  reccmp silently skip the function.
+- Don't use `#line` to reproduce an original `__LINE__`: it shifts every later line and
+  reccmp pairs functions with the wrong addresses. Pass the number explicitly (see
+  `NuMemAllocAt`).
+- Code that touches an undefined global or function compares as a mismatch. Define the
+  global with `// GLOBAL:` or add a `// STUB:` so reccmp can map the address.
+
 ## Ghidra
 
 ```sh
