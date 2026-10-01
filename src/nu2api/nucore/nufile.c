@@ -1,4 +1,5 @@
 #include "nufile.h"
+#include "nuthread.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -26,6 +27,15 @@ int NuFile_SwapEndianOnWrite;
 
 // GLOBAL: BIONICLE 0x34bac50
 static FILEBUFF file_buff[4];
+
+// GLOBAL: BIONICLE 0x34b7324
+static int file_criticalsection;
+
+// GLOBAL: BIONICLE 0x34b7328
+static FILEINFO file_info[33];
+
+// GLOBAL: BIONICLE 0x34b7850
+static FILEEXTINFO extensions[64];
 
 // GLOBAL: BIONICLE 0x3607b94
 int numdevices;
@@ -347,6 +357,45 @@ int NuDatFileSeek(NUFILE fh, int offset, int origin) {
     return df->pos;
 }
 
+// FUNCTION: BIONICLE 0x5664c0
+int NuDatFileFindTree(NUDATHDR *ndh, char *fname) {
+    char *slash;
+    int pix;
+    char name[256];
+    char *n;
+
+    if (*fname == '@') {
+        fname += 4;
+    }
+    NuStrCpy(name, fname);
+    NuFileUpCase(NULL, name);
+    pix = ndh->filetree[0].childix;
+    n = name;
+    slash = NuStrStr(n, "\\");
+    if (slash != NULL) {
+        *slash = '\0';
+    }
+    do {
+        if (NuStrICmp(ndh->filetree[pix].txt, n) == 0) {
+            if (slash == NULL) {
+                if (ndh->filetree[pix].childix > 0) {
+                    return -1;
+                }
+                return -ndh->filetree[pix].childix;
+            }
+            pix = ndh->filetree[pix].childix;
+            n = slash + 1;
+            slash = NuStrStr(n, "\\");
+            if (slash != NULL) {
+                *slash = '\0';
+            }
+        } else {
+            pix = ndh->filetree[pix].sibix;
+        }
+    } while (pix != 0);
+    return -1;
+}
+
 // FUNCTION: BIONICLE 0x5665a0
 NUDATHDR *NuDatSet(NUDATHDR *dh) {
     NUDATHDR *old = curr_dat;
@@ -358,4 +407,217 @@ NUDATHDR *NuDatSet(NUDATHDR *dh) {
 // FUNCTION: BIONICLE 0x5665b0
 NUDATHDR *NuDatGet(void) {
     return curr_dat;
+}
+
+// FUNCTION: BIONICLE 0x566970
+static FILEEXTINFO *NuFileExtFind(char *in, int len) {
+    char *endptr;
+    FILEEXTINFO *si;
+    int flen;
+    char *fext;
+    char *ext;
+
+    if (len == 0) {
+        len = NuStrLen(in);
+    }
+    endptr = in + len;
+    for (si = extensions; si != NULL; si++) {
+        fext = si->extension;
+        flen = len;
+        ext = endptr;
+        while (*fext != '\0') {
+            ext--;
+            if (flen == 0 || *fext != (char)NuToLower(*ext)) {
+                break;
+            }
+            fext++;
+            flen--;
+        }
+        if (*fext == '\0') {
+            return si;
+        }
+    }
+    return NULL;
+}
+
+// FUNCTION: BIONICLE 0x5669f0
+int NuFileExtConvert(char *out, char *in, int outsize) {
+    char *c;
+    char *d;
+    FILEEXTINFO *di;
+    FILEEXTINFO *si;
+    int len;
+    int type;
+
+    len = NuStrCpy(out, in);
+    si = NuFileExtFind(in, len);
+    if (si != NULL) {
+        type = si->type;
+        if (si->platform == 4) {
+            return 1;
+        }
+        for (di = extensions; di != NULL; di++) {
+            if (di->platform == 4 && di->type == type) {
+                d = out + len + (di->len - si->len);
+                *d = '\0';
+                for (c = di->extension; *c != '\0'; c++) {
+                    *--d = *c;
+                }
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x566a70
+int NuFileExtGetExt(char *out, int outsize, int type) {
+    FILEEXTINFO *di;
+    int n;
+    char *c;
+
+    for (di = extensions; di != NULL; di++) {
+        if (di->platform == 4 && di->type == type) {
+            if (outsize < di->len) {
+                return 0;
+            }
+            c = di->extension + di->len;
+            for (n = 0; n < di->len; n++) {
+                out[n] = *--c;
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x566ad0
+int NuFileExtRemove(char *out, char *in, int outsize) {
+    int len;
+    FILEEXTINFO *si;
+
+    len = NuStrCpy(out, in);
+    si = NuFileExtFind(in, len);
+    if (si != NULL) {
+        out[len - si->len] = '\0';
+        return si->type;
+    }
+    return -1;
+}
+
+// FUNCTION: BIONICLE 0x566b10
+int NuFileInitEx(int deviceid, int rebootiop, int eject) {
+    NuPSFileInitDevices(deviceid, rebootiop, eject);
+    memset(memfiles, 0, sizeof(memfiles));
+    memset(datfiles, 0, sizeof(datfiles));
+    file_criticalsection = NuThreadCreateCriticalSection();
+    NuFileExtInit();
+    return deviceid;
+}
+
+// FUNCTION: BIONICLE 0x566b60
+int NuFileOpenSize(NUFILE fh) {
+    if (fh >= 0x1000) {
+        return NuMcFileOpenSize(fh - 0x1000);
+    }
+    if (fh >= 0x800) {
+        return datfiles[fh - 0x800].len;
+    }
+    if (fh >= 0x400) {
+        return memfiles[fh - 0x400].end - memfiles[fh - 0x400].start;
+    }
+    return file_info[fh - 1].file_length;
+}
+
+// FUNCTION: BIONICLE 0x566bc0
+void NuMemFileClose(NUFILE fh) {
+    if (fh >= 0x800) {
+        datfiles[fh - 0x800].ndh->dfhandle = 0;
+        datfiles[fh - 0x800].used = 0;
+    } else {
+        memfiles[fh - 0x400].used = 0;
+    }
+}
+
+// FUNCTION: BIONICLE 0x566c00
+int NuMemFilePos(NUFILE fh) {
+    NUDATFILE *info;
+
+    if (fh >= 0x800) {
+        info = &datfiles[fh - 0x800];
+        return info->pos - info->start;
+    }
+    fh -= 0x400;
+    return memfiles[fh].curr - memfiles[fh].start;
+}
+
+// FUNCTION: BIONICLE 0x566c40
+int NuMemFileSeek(NUFILE fh, int offset, int origin) {
+    if (fh >= 0x800) {
+        return NuDatFileSeek(fh, offset, origin);
+    }
+    fh -= 0x400;
+    switch (origin) {
+    case 1:
+        memfiles[fh].curr += offset;
+        break;
+    case 2:
+        memfiles[fh].curr = memfiles[fh].end - offset;
+        break;
+    default:
+        memfiles[fh].curr = memfiles[fh].start + offset;
+        break;
+    }
+    return memfiles[fh].curr - memfiles[fh].start;
+}
+
+// FUNCTION: BIONICLE 0x566cc0
+int NuFilePos(NUFILE fh) {
+    FILEINFO *info;
+    int rv;
+
+    if (fh >= 0x1000) {
+        return NuMcSeek(fh - 0x1000, 0, 2, 0);
+    }
+    if (fh >= 0x400) {
+        return NuMemFilePos(fh);
+    }
+    fh--;
+    info = &file_info[fh];
+    if (info->use_buff) {
+        return info->read_pos;
+    }
+    rv = NuPSFileLSeek(fh, 0, 1);
+    while (rv < 0) {
+        rv = NuPSFileLSeek(fh, 0, 1);
+    }
+    return rv;
+}
+
+// FUNCTION: BIONICLE 0x566d40
+int NuFileSeek(NUFILE fh, int offset, int origin) {
+    FILEINFO *info;
+
+    if (fh >= 0x1000) {
+        return NuMcSeek(fh - 0x1000, offset, origin, 0);
+    }
+    if (fh >= 0x400) {
+        return NuMemFileSeek(fh, offset, origin);
+    }
+    fh--;
+    info = &file_info[fh];
+    if (info->use_buff) {
+        switch (origin) {
+        case 1:
+            info->read_pos += offset;
+            return info->read_pos;
+        case 2:
+            info->read_pos = info->file_length - offset;
+            return info->read_pos;
+        default:
+            info->read_pos = offset;
+            return offset;
+        }
+    }
+    return NuPSFileLSeek(fh, offset, origin);
 }

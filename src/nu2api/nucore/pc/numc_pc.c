@@ -5,6 +5,6 @@
  * this one stub stands for all of them. The file name is ours. */
 
 // STUB: BIONICLE 0x57a600
-int NuMcWrite() {
+int NuMcFolded() {
     return 0;
 }

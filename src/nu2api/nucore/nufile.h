@@ -74,7 +74,18 @@ typedef struct nudatinfo_s {
     int ppack : 1;
 } NUDATFINFO;
 
-typedef struct nudfnode_s NUDFNODE;
+typedef struct nudfnode_s {
+    short childix;
+    short sibix;
+    char *txt;
+} NUDFNODE;
+
+typedef struct fileextinfo_s {
+    char extension[13]; /* stored reversed */
+    char type;
+    char platform;
+    char len;
+} FILEEXTINFO;
 
 typedef struct nudathdr_s {
     int ver;
@@ -126,6 +137,16 @@ int NuFileWriteChar(NUFILE fh, char data);
 int NuFileWriteString(NUFILE fh, char *str);
 int NuFileWriteStringV(NUFILE fh, char *fmt, ...);
 int NuDatFileSeek(NUFILE fh, int offset, int origin);
+int NuDatFileFindTree(NUDATHDR *ndh, char *fname);
+void NuFileExtInit(void);
+int NuFileExtConvert(char *out, char *in, int outsize);
+int NuFileExtGetExt(char *out, int outsize, int type);
+int NuFileExtRemove(char *out, char *in, int outsize);
+int NuFileInitEx(int deviceid, int rebootiop, int eject);
+void NuMemFileClose(NUFILE fh);
+int NuMemFilePos(NUFILE fh);
+int NuMemFileSeek(NUFILE fh, int offset, int origin);
+int NuFilePos(NUFILE fh);
 NUDATHDR *NuDatSet(NUDATHDR *dh);
 NUDATHDR *NuDatGet(void);
 
@@ -146,7 +167,16 @@ int NuPSFileRead(int fd, void *buf, int nbyte);
 int NuPSFileWrite(int fd, void *buf, int nbyte);
 int NuPSFileLSeek(int fd, int offset, int where);
 
-/* Memory-card file layer: stubbed out on PC (pc/numc_pc.c). */
-int NuMcWrite();
+/* Memory-card file layer: on PC every entry point is an empty `return 0`, and the linker
+ * folded them into one function (pc/numc_pc.c), so the names all alias it. */
+int NuMcFolded();
+#define NuMcWrite NuMcFolded
+#define NuMcRead NuMcFolded
+#define NuMcSeek NuMcFolded
+#define NuMcClose NuMcFolded
+#define NuMcFileOpenSize NuMcFolded
+
+/* PC device setup (pc/nufile_pc.c); an empty function on PC, folded by the linker. */
+void NuPSFileInitDevices(int deviceid, int rebootiop, int eject);
 
 #endif

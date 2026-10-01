@@ -104,6 +104,13 @@ exact; `tools/permute.py` automates some of them.
   `return 0` functions, all folded into one copy at `0x57a600`; one stub stands for all of
   them (`pc/numc_pc.c`). An unreferenced `static` function is dropped entirely, so its
   marker can only go in once something calls it (`AquireFileBuffer`).
+- **`add reg, 0x10; jne` loops over a static array are `for (p = array; p != NULL; p++)`.**
+  The pointer never becomes NULL, so the loop only ends via a match; the compiler keeps
+  the useless test (the extension table in nufile).
+- **An `__inline` function with no out-of-line call in its own file isn't emitted.**
+  `NuFileSeek` is `__inline` in the original (it's inlined into `NuFileEndBlkRead`), but
+  marking it so before its inlining callers exist dropped it from the object and left
+  other files' calls unresolved. Add the `__inline` together with those callers.
 - **A loop in an inlined helper isn't unrolled; the same loop written inline is.**
   `NuPSFileOpen`'s free-handle search became a 4× unrolled loop until moved into a
   `static __inline` helper (58% → 81%).
@@ -116,8 +123,8 @@ exact; `tools/permute.py` automates some of them.
   (`tools/floatconsts.py`), since the exe has no relocations.
 - A reference to `global - offset` (e.g. `NuTrigTable - 4` from a loop counting from 1)
   isn't mapped. The code is identical, but it shows as ~92% (`NuTrigInit`) or ~97%
-  (`NuPow`, which writes its ring buffers through `pow_x - 4` etc.). Candidate for an
-  upstream reccmp improvement.
+  (`NuPow`, which writes its ring buffers through `pow_x - 4` etc.) and ~95%
+  (`NuFileOpenSize`'s `file_info[fh - 1]`). Candidate for an upstream reccmp improvement.
 
 ## Open questions
 

@@ -170,12 +170,18 @@ headless boot to title) → commit.
       28 exact (`NuPSFileOpen` 81%). Hook DLL now routes stdio to the exe's CRT
       (`docs/running.md`). Hook test: 211 functions, title reached, file reads through
       `NuPSFileRead`.
-- [ ] `nucore/nufile.c` part 2: `0x5664c0` (`NuDatFileFindTree`?), the extension table
-      (`0x5665c0` static helper, `NuFileExtInit` `0x566610`, `NuFileExtConvert`), init,
-      `NuFileOpen`/`Close`/`Read`/`Seek`/`Size`/`OpenSize`, buffering
-      (`AquireFileBuffer` `0x566000`), memory/dat file read/seek/close,
-      `NuFileReadFloat/Int/...`, `NuFileLoadBuffer` (`0x566000–0x567be0`). Then the
-      unclaimed `0x567bf0–0x5687c6` (nudatfile/nufilepak?).
+- [x] `nucore/nufile.c` part 2a: `NuDatFileFindTree`, the extension lookups
+      (`NuFileExtFind` static, `ExtConvert`, `ExtGetExt`, `ExtRemove`), `NuFileInitEx`,
+      `NuFileOpenSize`, `NuMemFileClose/Pos/Seek`, `NuFilePos`, `NuFileSeek`: 12
+      functions, 9 exact + `OpenSize` identical (reccmp `global - offset` limit);
+      `ExtFind` 95%, `NuFileSeek` 85%. Memory-card names alias one folded stub
+      (`NuMcFolded`). Hook test: 220 functions, title reached.
+- [ ] `nucore/nufile.c` part 2b: `NuFileEndBlkRead` (`0x566dd0`; inlines `NuFileSeek`,
+      `NuMemFileSeek`, `NuDatFileSeek`, which then become `__inline`), `NuFileAlign`,
+      `NuDatGetFileInfo` (`0x566fb0`), `0x567050`, `NuDatFileRead` (`0x567120`), then
+      `0x567270–0x567be0` (`NuFileOpen`, `Close`, `Size`, `Read` + `AquireFileBuffer`,
+      `NuFileRead*`), the extension table init (`0x5665c0` helper, `NuFileExtInit`
+      `0x566610`, ~40 strings). Then the unclaimed `0x567bf0–0x5687c6`.
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
 
 Tooling backlog (pick up when near-misses pile up):
