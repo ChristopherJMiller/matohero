@@ -58,6 +58,10 @@ exact; `tools/permute.py` automates some of them.
 
 - `dec edi; test edi, edi; jle` is `if (--n <= 0)`; `n < 1` gives `cmp edi, 1; jl`
   (`NuStrNCpy`).
+- **`x *= 16` and `x <<= 4` both compile to `shl`, but allocate registers differently.**
+  `curr_num <<= 4; curr_num += hexcodetoint(…);` shifted in `edx` and copied to `ebx`
+  for the call; `*= 16` shifts in `ebx` directly, as the original does (nurdpi
+  `get_tok`, 96% → 100%). Try the arithmetic spelling when a shift's register is off.
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;

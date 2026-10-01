@@ -7,7 +7,8 @@
                                            (bodies between the braces, separated by
                                            lines of ----)
 
-The function is found by name next to its `// FUNCTION: BIONICLE 0x...` marker. Variants are
+The function is found by name next to its `// FUNCTION: BIONICLE 0x...` marker, or by that
+address (`tools/permute.py 0x56d8f0`) when the name is ambiguous (static functions). Variants are
 written to a scratch directory under build/ (so neither the build nor reccmp sees them) and compiled in batches by
 one cl run each, since Wine startup dominates a compile. The function is compared
 in-process: both versions are disassembled and operands that
@@ -53,19 +54,24 @@ MD = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
 
 
 def find_function(name):
+    """Returns (source, address, name, text, body start, body end) for a function name or
+    marker address."""
+    if re.fullmatch(r"0x[0-9a-fA-F]+", name):
+        pat = rf"// FUNCTION: BIONICLE ({re.escape(name)})\n([^\n]*?\b(\w+)\s*\([^)]*\)\s*\{{)"
+    else:
+        pat = rf"// FUNCTION: BIONICLE (0x[0-9a-fA-F]+)\n([^\n]*\b({re.escape(name)})\s*\([^)]*\)\s*\{{)"
     for src in sorted(build.SRC.rglob("*")):
         if src.suffix.lower() not in (".c", ".cpp"):
             continue
         text = src.read_text()
-        m = re.search(rf"// FUNCTION: BIONICLE (0x[0-9a-fA-F]+)\n([^\n]*\b{re.escape(name)}\s*\([^)]*\)\s*\{{)", text)
+        m = re.search(pat, text)
         if m:
-            start = m.start(2)
             body_start = m.end(2)
             depth, i = 1, body_start
             while depth:
                 depth += {"{": 1, "}": -1}.get(text[i], 0)
                 i += 1
-            return src, int(m.group(1), 16), text, body_start, i - 1
+            return src, int(m.group(1), 16), m.group(3), text, body_start, i - 1
     sys.exit(f"{name}: no annotated definition in src/")
 
 
@@ -256,7 +262,7 @@ def main():
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
-    src, addr, text, b0, b1 = find_function(args.function)
+    src, addr, args.function, text, b0, b1 = find_function(args.function)
     body = text[b0:b1]
     orig_code = original_bytes(addr)
     size = original_size(addr)
@@ -367,7 +373,7 @@ def main():
         out = subprocess.run([str(ROOT / "tools" / "reccmp"), "reccmp", "--target", "BIONICLE"],
                              capture_output=True, text=True).stdout
         for line in out.splitlines():
-            if f" {args.function} (" in line:
+            if f"({addr:#x})" in line:
                 print(re.sub(r"\x1b\[[0-9;]*m", "", line).strip())
 
 

@@ -72,6 +72,4 @@ NUFPAR *NuFParOpen(NUFILE fh);
 void NuFParDestroy(NUFPAR *fp);
 NUFPAR *NuFParCreate(char *fname);
 
-/* Recursive-descent expression evaluators (nurdpi.c, nurdpf.c). */
-
 #endif

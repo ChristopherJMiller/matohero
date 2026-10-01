@@ -154,9 +154,12 @@ headless boot to title) → commit.
       `0x56ca30–0x56cebe`): 6/6 exact on the first build, emission order as in the exe.
       Declarations in `nurdp.h`. Hook test: 241 functions, title reached, `NuRDPFVar`
       343 calls from the exe.
-- [ ] `nucore/nurdpi.c` (saga): the int evaluator, `NuRDPI` = `0x56e0b0` after rnc
-      (stub today); likely `get_tok` `0x56d8f0`, `prim` `0x56ddb0`, `term` `0x56de60`,
-      `expr` `0x56dfc0` (`0x56d810`/`0x56d880` are the end of rnc or unplaced).
+- [x] `nucore/nurdpi.c` (saga): the int evaluator behind `NuFParGetIntRDP`
+      (`ishexnum`, `hexcodetoint`, `get_tok`, `prim`, `term`, `expr`, `NuRDPI`,
+      `0x56d810–0x56e0de`): 7/7 exact. `NuRDPIVar` isn't in the PC exe. `get_tok`'s last
+      4% was `curr_num *= 16` for saga's `<<= 4` (`docs/matching.md`); `tools/permute.py`
+      now also takes a marker address, for statics whose names repeat across files.
+      Hook test: 244 functions, title reached, `NuFParGetIntRDP` 725 calls.
 - [ ] Rest of `0x56c3a0–0x56cf3e`: `NuFrameBegin`/`NuFrameEnd` (need nu3d/PC callees
       stubbed), `0x56c820` (ms timer, `NuTimeGetTime`?), `0x56c980` (sets
       `nuapi.video_swap_mode` and `native_FPS`), `0x56cec0`/`0x56cf00`/`0x56cf20`
