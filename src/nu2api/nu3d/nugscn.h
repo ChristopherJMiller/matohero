@@ -223,6 +223,27 @@ typedef struct nubounds_s {
     NUVEC4 *boxes;
 } NUBOUNDS;
 
+/* A scene's visibility state (PS2 layout; the tree types are opaque here). */
+typedef struct nuvisibility_s {
+    int nobjects;
+    void *octree;
+    void *boxtree;
+    void *occlusion;
+    void *shadows;
+    void *InstTree;
+    NUPORTALINFO *portalsys;
+    unsigned char *PortalVisiFlags; /* one bit per instance */
+    unsigned char *visibuff;
+    unsigned char *visiflags;
+    unsigned int clipping_done : 1;
+    unsigned int shadows_done : 1;
+    unsigned int octree_done : 1;
+    unsigned int boxtree_done : 1;
+    unsigned int InstTree_done : 1;
+    unsigned int portals_done : 1;
+    unsigned int pad : 26;
+} NUVISIBILITY;
+
 /* A named path of points. */
 typedef struct nugspline_s {
     short len;
@@ -252,6 +273,8 @@ struct nugscn_s {
     NUBOUNDS bounds;
     char unknown_1a4[0x1b4 - 0x1a4];
     NUDISPLAYSCENE *display_list;
+    char unknown_1b8[0x1e0 - 0x1b8];
+    NUVISIBILITY visibility; /* placed by PortalVisiFlags at 0x1fc */
 };
 
 /* Handle to a special: one of special/special_obj is set. */

@@ -26,7 +26,9 @@ portable platform layer for Linux.
    --json build/report.json`, then `tools/regress.py <previous report> build/report.json`.
    Nothing that matched 100% may regress, and no other function may drop either.
    After reverting a source experiment, rebuild before comparing or generating progress
-   (a stale `build/` once showed 5 phantom regressions).
+   (a stale `build/` once showed 5 phantom regressions). The same goes after
+   `tools/hook.py`: `tools/progress.py` run right after a hook build counted 7 fewer
+   matches.
 3. Commit locally with a descriptive message. Never push, never rewrite pushed history.
 4. Update the queue below (check off, add follow-ups), run `tools/progress.py` to
    refresh `docs/progress.md`, and update docs for anything learned.
@@ -464,10 +466,16 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NuRndrLineStrip2d` (`0x542e00`, PS2 name from its `drawSquare`) is stubbed;
       `NuRndrLine3dDbg` is folded into `NuEmptyFolded`. Hook test: 379 functions; the
       exe's `clipPortal` calls `clipExtents`/`drawClippedPortal` 7.9k times.
-- [ ] The portal code's platform half (PS2 `ps2/nuportal_ps2.c`), stubbed so far:
-      `Initialise_PS` `0x55b470`, `FlagRoomInstancesAsVisible` `0x55b480`,
-      `SetAllInstancesVisible` `0x55b500`, `SetAllInstancesHidden` `0x55b550`,
-      `clipRoomAgainstFrustrum` `0x55b5a0`.
+- [x] The portal code's platform half, `nu3d/pc/nuportal_pc.c` (PS2
+      `ps2/nuportal_ps2.c`; it sits between `nudlist` and `nuhtml` on PC): `Initialise_PS`,
+      `FlagRoomInstancesAsVisible`, `SetAllInstancesVisible`/`Hidden` (`memset` of the
+      bit array, or each instance's `visitest`), `clipRoomAgainstFrustrum` (a `switch` on
+      the sphere test) exact; `clipRoomAgainstFrustrum_nodisplaylist` (`0x55b3c0`) 46%
+      (register roles of `i`/`gsc` swapped and a byte load of the flags; structural
+      variants and the permuter exhausted). `PortalVisiFlags[625]` at `0x357d6c0`; PC
+      `NUGSCN` gets the PS2's `NUVISIBILITY` at `0x1e0` (placed by `PortalVisiFlags` at
+      `0x1fc`). Hook test: 384 functions; these run under the hooked
+      `NuPortalVisibility` (1.9k calls).
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nuqfnt` (30), `nudlist`
       (14).
 

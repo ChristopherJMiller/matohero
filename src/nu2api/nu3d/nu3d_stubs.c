@@ -109,31 +109,6 @@ int NuRndrLineStrip2d(NUVTX_TLTC1 *vtx, NUMTL *mtl, int cnt) {
     return 0;
 }
 
-
-
-
-/* PS2: nu3d/ps2/nuportal_ps2.c; PC file name unknown. */
-
-// STUB: BIONICLE 0x55b470
-void Initialise_PS(NUGSCN *gsc) {
-}
-
-// STUB: BIONICLE 0x55b480
-void FlagRoomInstancesAsVisible(NUROOM *room, NUGSCN *gsc) {
-}
-
-// STUB: BIONICLE 0x55b500
-void SetAllInstancesVisible(NUGSCN *gsc) {
-}
-
-// STUB: BIONICLE 0x55b550
-void SetAllInstancesHidden(NUGSCN *gsc) {
-}
-
-// STUB: BIONICLE 0x55b5a0
-void clipRoomAgainstFrustrum(NUGSCN *gsc, NUROOM *room, NUFRUSTRUM *frust) {
-}
-
 // STUB: BIONICLE 0x54f7a0
 void NuRndrSphere(NUVEC *pos, float radius, unsigned int col, float yscale) {
 }
