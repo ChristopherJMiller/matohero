@@ -85,7 +85,36 @@ void NuRndrUpdateCameraPlane(void);
 void NuRndrGetSpecularMtx(NUMTX *out, NUMTL *mtl);
 void NuRndrSetSpecularMtx(NUMTX *m);
 
+/* Post-effect parameters (PS2 layouts). */
+typedef struct nudofparameters {
+    int hasDepthOfField;
+    float aperture;
+    float focalLength;
+    float focalPlane;
+} NUDOFPARAMETERS;
+
+typedef struct nucameramotionblurparameters {
+    int hasMotion;
+    int applyMotion;
+    NUMTX viewProj;
+    NUMTX preViewProj;
+    float timeElapsed;
+    float shutterSpeed;
+    float threshold;
+} NUCAMERAMOTIONBLURPARAMETERS;
+
 /* nurndr_gen.c */
+extern int NuRndr_ShadowScene;
+extern int global_GobjIsReflectedGeometry;
+extern int global_GobjIsShadowReceive;
+extern NUCAMERAMOTIONBLURPARAMETERS NuRndr_cameraMotionBlur;
+extern NUDOFPARAMETERS NuRndr_depthOfField;
+int NuRndIsReflectionGobj(void);
+void NuRndrStartShadowReceiveRender(void);
+void NuRndrEndShadowReceiveRender(void);
+void NuDepthOfFieldEffect(float aperture, float focalLength, float planeInFocus);
+void NuCameraMotionBlurEffect(NUMTX *viewProj, NUMTX *preViewProj, float timeElapsed, float shutterSpeed, float threshold);
+void NuDynamicLightingRenderShadows(void);
 extern float global_windscale;
 extern float global_windspeed;
 extern unsigned int global_frame_count;

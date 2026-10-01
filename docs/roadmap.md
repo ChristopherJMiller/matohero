@@ -657,14 +657,20 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NuTrigTable`; the PC computes the cosine index as `0x4000 - (int)(x * -10430.378f)`.
       New globals: `global_windscale`/`global_windspeed` (`0x616d68`/`0x616d6c`, 1.0) and
       `global_frame_count` (`0x348f76c`).
-- [ ] `nurndr_gen.c` part 2: the PC functions around the wind code, all unnamed so far.
-      - `0x54fc00`: returns `0x348f774`.
-      - `0x54fc10`/`0x54fc20`: set and clear `0x348f778`; called from `0x54b4e0`.
-      - `0x54fc30` and `0x54fc60`: store parameters for `MainRenderFx`.
-      - `0x54fcb0`: sets `0x348f744`.
-      - `0x54f9d0` (543 bytes) and `0x54fed0` (701 bytes).
-      Match them against the PS2 file's short hooks (`NuRndrStartShadowReceiveRender`,
-      `NuRndrSetWind`, …).
+- [x] `nurndr_gen.c` part 2: the render-pass and post-effect hooks, 6/6 exact:
+      `NuRndIsReflectionGobj` (`0x54fc00`), `NuRndrStartShadowReceiveRender`/`End`
+      (`0x54fc10`/`0x54fc20`), `NuDepthOfFieldEffect` (`0x54fc30`),
+      `NuCameraMotionBlurEffect` (`0x54fc60`) and `NuDynamicLightingRenderShadows`
+      (`0x54fcb0`). They were named through the PS2 globals they store:
+      `NuRndr_ShadowScene` `0x348f744`, `global_GobjIsReflectedGeometry`/`IsShadowReceive`
+      `0x348f774`/`0x348f778`, and the PS2-layout `NuRndr_cameraMotionBlur` `0x35bba80`
+      and `NuRndr_depthOfField` `0x35bbb50`. The PC has no reflection-pass setters:
+      nothing writes the reflection flag. Hook test: `NuRndIsReflectionGobj` 399k calls.
+- [ ] `nurndr_gen.c` part 3, debug shapes (after the immediate-mode renderer): `0x54f7a0`
+      and `0x54f9d0` (543 bytes each, NuTrigTable rings; `0x54f9d0` is called from
+      `charbaseRenderInst`), `0x54fed0` (701 bytes) and its wrapper `0x550190` (21 bytes,
+      from `AddOnceOnlyThings`). Probably the PS2's `NuRndrSphere`/`SphereEx`/
+      `SphereMtx` family.
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%), and
