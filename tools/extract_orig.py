@@ -12,6 +12,7 @@ Produces (all gitignored):
   orig/game/         installed game tree (data, movies, DLLs) from the MSI/Main.cab
   orig/Bionicle.exe  the reference binary we decompile against (decrypted, see docs/binary-notes.md)
   orig/ps2proto/     prototype ELF with symbols/.mdebug, its linker map, and SLES/SYSTEM.CNF
+  orig/nuconfig.txt  the UK controller config the installer puts next to the exe
 
 Requires the dev shell (7z, msiextract, unar).
 """
@@ -138,6 +139,12 @@ def main():
                             (ORIG / "retail").mkdir(exist_ok=True)
                             shutil.copy2(got, ORIG / "retail" / name.lower())
                         got.unlink()
+
+            # Per-language files the installer copies next to the exe; we use the UK set.
+            cfg = f"{GAME_DIR_IN_ISO}/files_UK/nuconfig.txt".lower()
+            if cfg in lower and not (ORIG / "nuconfig.txt").exists():
+                extract(iso, lower[cfg], ORIG)
+                print("nuconfig.txt (UK) -> orig/nuconfig.txt")
 
             # Installed game tree: needs the MSI and Main.cab side by side.
             if "bionicle heroes.msi" in lower and "main.cab" in lower and not (ORIG / "game").exists():

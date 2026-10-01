@@ -33,6 +33,10 @@
 
             # Running the game / the period MSVC toolchain
             wineWow64Packages.stable  # cached; runs 32-bit PEs via new WoW64 mode
+            xvfb-run     # headless runs of the game (tools/rungame --headless)
+            xwd
+            imagemagick
+            xdotool
 
             # Scripting
             (python3.withPackages (ps: with ps; [ pefile capstone lief ]))

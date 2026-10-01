@@ -57,7 +57,10 @@ portable platform layer for Linux.
       the CRT (`0x5b4a34`); `WinMainCRTStartup` is in reccmp's report ignore list.
 - [x] **Progress page.** `tools/progress.py` regenerates `docs/progress.md`: functions
       and bytes matched, per original module, with a dated history.
-- [ ] **Run the original game under Wine** (D3D9 via WineD3D/DXVK); document how.
+- [x] **Run the original game under Wine.** `tools/rungame` (setup redoes the
+      installer's Ogg2Wav music conversion; headless mode uses Xvfb + a Wine virtual
+      desktop). Reaches the title screen in ~80 s with software rendering. See
+      `docs/running.md`.
 - [ ] **Hook DLL**: build `src/` into a DLL; a loader patches each 100%-matched
       function in the original exe with a jump into the DLL, so decompiled code runs
       in-game. Smoke test: boots to the title screen.

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Run BIONICLE Heroes under Wine from a working copy of the installed game.
+#   tools/rungame setup                 copy orig/game to run/game and finish the install
+#                                       (nuconfig.txt, Ogg2Wav music conversion)
+#   tools/rungame [--headless[=SECS]] [--keys "T:KEY ..."] [--exe PATH] [-- game args]
+#                                       run the game; --headless runs it in Xvfb for SECS
+#                                       seconds (default 40), saving a screenshot every 5 s
+#                                       to run/shots/; --keys presses xdotool KEYs at those
+#                                       times, e.g. --keys "15:Escape 25:Return"
+# The Wine prefix is run/prefix, separate from the compiler's toolchain/wineprefix.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+game="$root/run/game"
+export WINEPREFIX="$root/run/prefix"
+export WINEDEBUG="${WINEDEBUG:--all}"
+export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mscoree,mshtml=}"
+
+setup() {
+    [[ -d "$root/orig/game" ]] || { echo "orig/game missing; run tools/extract_orig.py" >&2; exit 1; }
+    mkdir -p "$root/run"
+    rm -rf "$game"
+    cp -r "$root/orig/game" "$game"
+    if [[ -f "$root/orig/nuconfig.txt" ]]; then
+        cp "$root/orig/nuconfig.txt" "$game/nuconfig.txt"
+    fi
+    # The InstallShield script decodes the music at install time:
+    # Ogg2Wav.exe walks a folder and runs oggdec.exe on each *.ogg.
+    # Flags as the installer would need them: recurse into _Music/_Cutscenes, no UI.
+    # Output is <name>_l.wgt/<name>_r.wgt next to each source (originals deleted).
+    (cd "$game/Audio" && wine Ogg2Wav.exe /recursive /quiet "$(winepath -w "$game/Audio")")
+    wineserver -w
+    echo "run/game ready: $(find "$game/Audio" -iname "*.wgt" | wc -l) .wgt files, $(find "$game/Audio" -iname "*.ogg" | wc -l) .ogg left"
+}
+
+run() {
+    local headless="" exe="$game/Bionicle.exe" keys=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --headless) headless=40 ;;
+            --headless=*) headless="${1#*=}" ;;
+            --exe) exe="$(realpath "$2")"; shift ;;
+            --keys) keys="$2"; shift ;;
+            --) shift; break ;;
+            *) break ;;
+        esac
+        shift
+    done
+    [[ -d "$game" ]] || setup
+    cd "$game"
+    if [[ -z "$headless" ]]; then
+        exec wine "$exe" "$@"
+    fi
+    mkdir -p "$root/run/shots"
+    rm -f "$root/run/shots/"*.png
+    KEYS="$keys" xvfb-run -a -s "-screen 0 1024x768x24" bash -c '
+        # A Wine virtual desktop absorbs the fullscreen mode switch Xvfb cannot do.
+        wine explorer /desktop=bionicle,1024x768 "$1" "${@:3}" > "$2/run/game.log" 2>&1 &
+        for t in $(seq 1 '"$headless"'); do
+            sleep 1
+            for k in $KEYS; do
+                [[ "${k%%:*}" == "$t" ]] && xdotool key "${k#*:}"
+            done
+            if (( t % 5 == 0 )); then
+                xwd -root -silent | magick xwd:- "$2/run/shots/t$(printf %03d "$t").png"
+            fi
+        done
+        wineserver -k
+    ' _ "$exe" "$root" "$@"
+    ls "$root/run/shots"
+}
+
+case "${1:-}" in
+    setup) setup ;;
+    *) run "$@" ;;
+esac

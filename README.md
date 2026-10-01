@@ -103,6 +103,7 @@ a plate comment with the PS2 signature, source object and how the pairing was fo
 ## Docs
 
 - [docs/roadmap.md](docs/roadmap.md): milestones toward a Linux build, and the work queue
+- [docs/running.md](docs/running.md): running the game under Wine, including headless smoke tests
 - [docs/ps2-prototype.md](docs/ps2-prototype.md): the PS2 prototype's symbols, map and source tree
 - [docs/progress.md](docs/progress.md): matching progress
 - [docs/prior-art.md](docs/prior-art.md): existing BH/Nu2 reverse-engineering work and tooling

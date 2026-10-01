@@ -26,3 +26,6 @@ reccmp-build.yml
 
 # Claude Code session state
 .claude/scheduled_tasks.lock
+
+# Runnable game copy and its Wine prefix (tools/rungame)
+run/
