@@ -87,11 +87,10 @@ Order: self-contained math first, then core services. "saga" = opensagadev/saga 
 file. Each object: decompile → match → hook-test (`tools/hook.py --trace --install`,
 headless boot to title) → commit.
 
-- [ ] **Hook objects that define globals.** `tools/hook.py` skips any object defining
-      an annotated `GLOBAL` (its copy would diverge from the exe's). Patch those
-      objects' COFF symbol tables in the hook build so the definitions become external
-      references bound to the original addresses (statics renamed per object). Needed
-      before almost any other object can be hook-tested; `nurand.obj` is the first case.
+- [x] **Hook objects that define globals.** `tools/coffpatch.py` unbinds annotated
+      globals, stubs and mismatching functions in hook-build copies of objects (statics
+      renamed per object), so any object with a matched function can run in-game.
+      `nurand` + `listman`: 19 hooks, title screen reached.
 - [x] `numath/nurand.c` (saga): 9/9 exact. Needed float constants in reccmp
       (`tools/floatconsts.py`, since the exe has no relocations).
 - [ ] `numath/nuvec.c` (saga), PC ~`0x570240–0x570a30`, ~24 functions

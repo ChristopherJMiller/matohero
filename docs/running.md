@@ -53,9 +53,12 @@ of each hooked function in the exe, pointing at the recompiled copy.
 
 `tools/hook.py` assembles the DLL from the matching build:
 
-- **Objects:** those whose annotated functions all match (exact or effective) and that
-  define no `GLOBAL`s or `STUB`s. Mixed objects are listed as "not hooked" until they
-  match.
+- **Objects:** every object with at least one matched (exact or effective) function, as a
+  patched copy (`tools/coffpatch.py` rewrites its COFF symbol table). Matched functions
+  get hooked; static ones are made external under a per-object name so the hook table
+  can reference them. Stubs, still-mismatching functions and annotated `GLOBAL`s are
+  *unbound*: their symbols become undefined externals, so the object's code uses the
+  exe's copies, not its own. A file can therefore be hook-tested while partly done.
 - **Everything else they touch stays in the exe.** Unresolved references from a first
   link pass are bound to their original addresses in a generated `glue.asm`. Globals
   become absolute symbols (`_nu_current_thread_id EQU 03517EF0h`); functions become
@@ -70,8 +73,10 @@ of each hooked function in the exe, pointing at the recompiled copy.
 every 5 s. Calls between functions inside the DLL bypass the trampolines, so only calls
 coming from the exe are counted.
 
-First result (2026-09-30), booting to the title screen with all 10 `listman.c`
-functions redirected:
+Booting to the title screen with `listman.c` and `numath/nurand.c` redirected (19
+functions; `nurand`'s `fseed`, `NuWindQS` and static `global_rand` bound to the exe's):
+`NuRandFloatSeeded` ran 3,444 times, `NuRandIntSeeded` 3,338, `NuLstGetNext` ~35,000.
+The listman-only run:
 
 ```
          1 005654c0 NuLstCreate

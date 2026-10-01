@@ -7,8 +7,11 @@ recompiled copy, so decompiled code gets exercised in-game long before the whole
 is decompiled.
 
 What goes in:
-  * objects from the matching build (tools/build.py) whose annotated functions all match
-    (exact or effective, per reccmp) and that define no annotated globals or stubs;
+  * every object from the matching build (tools/build.py) with at least one matched
+    function (exact or effective, per reccmp), as a patched copy (tools/coffpatch.py):
+    its stubs, still-mismatching functions and annotated globals are unbound from the
+    local definitions so they resolve to the exe's; static matched functions are made
+    external so the hook table can name them;
   * glue.asm (generated): everything those objects reference that still lives in the
     exe, at its original address. Data via absolute symbols (link resolves DIR32 to
     them as-is); functions via `jmp [slot]` thunks, because link treats an absolute
@@ -25,6 +28,7 @@ relocating.
                              bhhook-trace.txt next to the exe every 5 s
 """
 import argparse
+import collections
 import csv
 import json
 import re
@@ -32,6 +36,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import coffpatch
 
 ROOT = Path(__file__).resolve().parent.parent
 BUILD = ROOT / "build"
@@ -100,48 +106,78 @@ def main():
     by_recomp = {addr: (name, is_func, obj) for name, (addr, is_func, obj) in publics.items()}
     sizes = {int(r["address"], 16): int(r["size"]) for r in csv.DictReader(open(FUNCS))}
 
-    # Original address of every function the matching build knows (incl. stubs).
-    orig_of = {}      # mangled -> original address
-    display = {}      # mangled -> name as reccmp reports it
-    matched = {}      # mangled -> bool (exact/effective)
-    obj_funcs = {}    # object -> [mangled]
+    # Every function the matching build knows: mangled -> (original address, status, object).
+    funcs = {}
+    display = {}
     for e in entries:
         recomp = int(e["recomp"], 16) if e.get("recomp") else None
         if recomp not in by_recomp:
             continue
         name, _, obj = by_recomp[recomp]
-        orig_of[name] = int(e["address"], 16)
-        display[name] = e["name"]
-        matched[name] = not e.get("stub") and (e["matching"] == 1.0 or bool(e.get("effective")))
-        if not e.get("stub"):
-            obj_funcs.setdefault(obj, []).append(name)
-
-    # Globals: annotated definitions, matched to their mangled public by name.
-    global_objs = set()
-    stub_objs = set()
-    for kind, addr, src, code in annotations():
-        if kind == "GLOBAL":
-            name = global_name(code)
-            for mangled, (_, is_func, obj) in publics.items():
-                if not is_func and name and (mangled == "_" + name or mangled.startswith(f"?{name}@@3")):
-                    orig_of[mangled] = addr
-                    global_objs.add(obj)
-    for name, ok in matched.items():
-        if name in orig_of and not ok and name not in sum(obj_funcs.values(), []):
-            stub_objs.add(publics[name][2])
-
-    # Objects that can run in-game: every annotated function matches, no globals/stubs.
-    include, skipped = [], []
-    for obj, names in sorted(obj_funcs.items()):
-        if obj.startswith("LIBCMT") or obj in global_objs or obj in stub_objs:
-            continue
-        if all(matched[n] for n in names):
-            include.append(obj)
+        if e.get("stub"):
+            status = "stub"
+        elif e["matching"] == 1.0 or e.get("effective"):
+            status = "matched"
         else:
-            skipped.append(obj)
-    hooks = [(orig_of[n], n) for obj in include for n in obj_funcs[obj]
-             if sizes.get(orig_of[n], MIN_PATCH) >= MIN_PATCH]
-    objs = [p for p in (BUILD / "obj").rglob("*.obj") if p.name in include]
+            status = "partial"
+        funcs[name] = (int(e["address"], 16), status, obj)
+        display[name] = e["name"]
+    orig_of = {n: f[0] for n, f in funcs.items()}
+    obj_paths = {p.name: p for p in (BUILD / "obj").rglob("*.obj")}
+
+    # Annotated globals -> the symbol their object defines (static or not).
+    globals_by_obj = collections.defaultdict(dict)  # object -> {symbol: (address, static)}
+    for kind, addr, src, code in annotations():
+        name = global_name(code) if kind == "GLOBAL" else None
+        path = obj_paths.get(src.with_suffix(".obj").name)
+        if not name or not path:
+            continue
+        for _, sym, value, section, storage in coffpatch.symbols(path.read_bytes()):
+            defined = section > 0 or (section == 0 and value > 0)  # value>0: communal
+            if defined and (sym == "_" + name or sym.startswith(f"?{name}@@3")):
+                globals_by_obj[path.name][sym] = (addr, storage == 3)
+                break
+    data_names = set()
+    for syms in globals_by_obj.values():
+        for sym, (addr, static) in syms.items():
+            if not static:
+                orig_of[sym] = addr
+                data_names.add(sym)
+
+    # Any object with a matched function goes in. Within it, matched functions get hooked;
+    # stubs, partial matches and annotated globals are unbound from their local copies and
+    # bound to the exe's (statics get a per-object name).
+    include = sorted({obj for _, status, obj in funcs.values()
+                      if status == "matched" and not obj.startswith("LIBCMT")})
+    hooks, objs, unbound = [], [], 0
+    (OUT / "obj").mkdir(parents=True, exist_ok=True)
+    for k, objname in enumerate(include):
+        path = obj_paths[objname]
+        storage = {sym: stor for _, sym, _, _, stor in coffpatch.symbols(path.read_bytes())}
+        changes = {}
+        for name, (orig, status, obj) in funcs.items():
+            if obj != objname:
+                continue
+            static = storage.get(name) == 3
+            local = f"{name}$h{k}" if static else name
+            if status == "matched":
+                if sizes.get(orig, MIN_PATCH) >= MIN_PATCH:
+                    if static:
+                        changes[name] = ("export", local)
+                        display[local] = display[name]
+                    hooks.append((orig, local))
+            else:
+                changes[name] = ("unbind", local)
+                orig_of[local] = orig
+                unbound += 1
+        for sym, (addr, static) in globals_by_obj.get(objname, {}).items():
+            local = f"{sym}$h{k}" if static else sym
+            changes[sym] = ("unbind", local)
+            orig_of[local] = addr
+            data_names.add(local)
+        dst = OUT / "obj" / objname
+        coffpatch.patch(path, dst, changes)
+        objs.append(dst)
 
     OUT.mkdir(parents=True, exist_ok=True)
     r = msvc("cl", "/nologo", "/c", "/O2", "/MT", "/W3", f"/Fo{winpath(OUT / 'hookmain.obj')}",
@@ -173,8 +209,8 @@ def main():
         sys.exit("no original address for: " + ", ".join(unknown))
 
     lines = [".386", ".model flat", ""]
-    data_syms = sorted(u for u in unresolved if u in orig_of and not publics[u][1])
-    func_syms = sorted(u for u in unresolved if u in orig_of and publics[u][1])
+    data_syms = sorted(u for u in unresolved if u in orig_of and u in data_names)
+    func_syms = sorted(u for u in unresolved if u in orig_of and u not in data_names)
     for s in data_syms:
         lines += [f"PUBLIC {s}", f"{s} EQU 0{orig_of[s]:X}h"]
     lines += ["", "_DATA SEGMENT"]
@@ -211,10 +247,9 @@ def main():
         sys.exit(second.stdout)
 
     dll = OUT / "xinput1_1.dll"
-    print(f"built {dll.relative_to(ROOT)}{' (trace)' if args.trace else ''}: {len(hooks)} hooked functions from {len(include)} objects; "
+    print(f"built {dll.relative_to(ROOT)}{' (trace)' if args.trace else ''}: {len(hooks)} hooked functions from "
+          f"{len(include)} objects ({unbound} unmatched functions left to the exe); "
           f"{len(data_syms)} globals and {len(func_syms)} functions bound to the exe")
-    for obj in skipped:
-        print(f"  not hooked (has non-matching functions): {obj}")
     if args.install:
         game = ROOT / "run" / "game"
         if not game.exists():
