@@ -17,3 +17,4 @@ __pycache__/
 
 # Ghidra project (regenerate with tools/; contains game code)
 ghidra/
+.venv/

@@ -83,3 +83,33 @@ plus the usual Win32 DLLs. No relocations, so the image always loads at `0x40000
 Sizes above are from the retail header. The crack's rebuilt section headers round
 virtual sizes up to the page (and swap `.text`'s virtual/raw sizes), so tools reading
 the reference binary will see e.g. `.text` virtual size `0x1c6000`.
+
+## Code generation fingerprint
+
+From Ghidra's auto-analysis (5,507 functions, ~1.5 MB of function bodies) and byte
+statistics over `.text`:
+
+- **Optimized release build, frame pointers mostly omitted** (`/O2`-style): only ~950
+  functions open with `push ebp; mov ebp, esp`.
+- **`/GS` on**: 286 functions call `__security_check_cookie`.
+- **C++ exceptions** (`/EHsc`-style): ~130 functions set up an EH frame
+  (`push -1; push handler; mov eax, fs:[0]`), plus compiler-generated `Unwind@` funclets
+  at the end of `.text`.
+- **x87 floating point, no SSE**: about 3,200 `fld dword [mem]` against 3 `movss`.
+- Functions are 16-byte aligned (91%) and padded with `0xCC`.
+- Median function is 109 bytes; 90% are under 700 bytes; the largest is ~9 KB.
+
+These are starting guesses for compiler flags. The real flags get pinned down by
+compiling candidate functions and comparing.
+
+## Rough address map
+
+| Range | Contents |
+|-------|----------|
+| `0x401000`–`~0x535000` | game code (`main.cpp` ≈ `0x4897c0`, `charsys\`, `edtools\edui.c`, `gui\`) |
+| `~0x535000`–`~0x5b4a00` | Nu2 engine (`nucamera_gen.c`, `nufile.c`, `pc\nurndr.c`, `pc\nusound.cpp`, `d3dCalls.cpp`, `Geoms\MeshGeom.cpp`), probably linked as a static library |
+| `0x5b4a34`–`0x5c4000` | statically linked MSVC 7.1 CRT (`operator new`, `_sprintf`, …; matched by Ghidra's function ID database) |
+| `0x5c4000`–end | compiler-generated EH `Unwind@`/`Catch@` funclets |
+
+Source-file hints come from `tools/ghidra_scripts/ExportOverview.java`, which writes
+`build/source_hints.csv`. Boundaries are approximate.
