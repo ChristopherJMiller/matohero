@@ -429,13 +429,22 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       plus the `break` stop it). Tried: spellings of the access, a cached local, `r++`,
       `__inline`, store and type variants, declaration orders, the permuter (0.601 →
       0.607). Hook test: 364 functions, `PointInRoom` 87k calls.
-- [ ] `nuportal_gen.c` part 3: `clipTestBox`?
-      (`0x53f920`), `buildFrustrum` (`0x53fb80`), `createPortalFrustrum` (`0x53fd30`),
-      `0x53efa0` (frustum copy, edx = source), the drawing helpers `0x53f040`–`0x53f420`
-      (they call `NuCameraUnlock`/`Relock`), `0x53ffe0`, `0x540020`, the extents helper
-      `0x540280` (ebx/esi/edi) and rectangle clip `0x540370`, then `roomRecursive` and
-      `NuPortalVisibility` among `0x540430`–`0x540b40`. `0x53ef50` (zeroes a `NUVEC`,
-      game callers) sits before them.
+- [x] `nuportal_gen.c` part 3: `clipTestBox` (effective: the original evaluates `y`
+      before `z` inside `x + (y + z) + w`, which no source order reproduces),
+      `NuPortalRoomClipTestAll` and `NuPortalClipTest` exact (the latter needs two
+      separate `if (…) return 1;`s to share one block), plus `NuFrustrumAllocate`
+      (`__inline`) and `copyFrustrum` (`0x53efa0`, edx = source; the struct copy
+      overwrites the new planes pointer, an original bug). `copyFrustrum` is a static with
+      no caller yet, so it isn't emitted or checked until `roomRecursive` lands. Hook test:
+      367 functions, `clipTestBox` 128k calls.
+- [ ] `nuportal_gen.c` part 4, top-down because the rest are statics: `NuPortalVisibility`
+      (`0x540b40`, called from `0x486550`) → `roomRecursive` (`0x540960`, recursive) →
+      `0x540430` (portal clip: extents `0x540280`, rect clip `0x540370`, `buildFrustrum`
+      `0x53fd30`, `drawClippedPortal` `0x53f420`), `0x540640` (`createPortalFrustrum`:
+      extents, `transposeClipPlanes` `0x53fb80`), `0x540020` (room-instance clip),
+      `copyFrustrum`, `drawPortal` `0x53f040`; `NuPortalVisibility` also calls
+      `drawViewFrustrum` `0x53f300` and `0x53ffe0`. `drawSquare` is `0x53f1d0`.
+      `0x540d80` on starts another file.
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nuqfnt` (30), `nudlist`
       (14).
 
