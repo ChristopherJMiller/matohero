@@ -37,6 +37,9 @@
             (python3.withPackages (ps: with ps; [ pefile capstone lief ]))
           ];
 
+          # analyzeHeadless isn't on PATH; scripts use $GHIDRA_INSTALL_DIR/support/analyzeHeadless
+          GHIDRA_INSTALL_DIR = "${pkgs.ghidra}/lib/ghidra";
+
           shellHook = ''
             echo "bionicle-heroes decomp shell — game files live in ./orig (gitignored)"
           '';
