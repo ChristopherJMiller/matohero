@@ -54,7 +54,9 @@ struct numtl_s {
     short renderplane : 8;
     short pad : 4;
     short unknown_02;
-    unsigned char rs[0x38];
+    unsigned char rs[0x2c];
+    struct numtl_s *next; /* the next pass of a multi-pass material */
+    int unknown_34[2];
     NUDISPLAYLIST *dlist_mtl; /* the material's list in a dynamic scene */
     NUMTLATTRIB attrib;
     unsigned char unknown_48[0x54 - 0x48];
@@ -63,7 +65,13 @@ struct numtl_s {
     float alpha;
     short tid; /* int on PS2 */
     short sort_pri;
-    int unknown_7c[(0x214 - 0x7c) / 4]; /* 0x214 bytes: NuQFntCreate copies whole ones */
+    int unknown_7c[(0x9c - 0x7c) / 4];
+    short unknown_9c;
+    unsigned char special_id; /* index into nurndr_forced_mtl_table */
+    unsigned char unknown_9f;
+    int unknown_a0[(0x1b8 - 0xa0) / 4];
+    int unknown_1b8; /* a forced material stands in directly only if this agrees */
+    int unknown_1bc[(0x214 - 0x1bc) / 4]; /* 0x214 bytes: NuQFntCreate copies whole ones */
 };
 
 /* The PC's shader description (0x158 bytes; differs from saga's). Only the fields the
@@ -91,5 +99,7 @@ void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc);
 void NuMtlUpdate(NUMTL *mtl);
 void NuMtlSetRenderPlane(NUMTL *mtl, int newplane);
 void NuMtlDestroy(NUMTL *mtl);
+/* A copy of the forced material made to fit a scene material (name ours). */
+NUMTL *NuMtlGetForcedVariant(NUMTL *mtl, NUMTL *forced);
 
 #endif

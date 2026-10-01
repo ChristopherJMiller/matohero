@@ -2,6 +2,7 @@
 #define NURNDR_H
 
 #include "nugscn.h"
+#include "numtl.h"
 
 /* nurndr_gen.c, not decompiled yet (globals defined in nu3d_stubs.c). */
 extern NUMTL *nurndr_forced_mtl;
@@ -69,8 +70,27 @@ int NuRndrLineStrip2d(NUVTX_TLTC1 *vtx, NUMTL *mtl, int cnt);
 int NuRndrSetSpecularLight(NUVEC *dir, NUCOLOUR4 *intensity);
 int NuRndrStateUpdateCameraState(void);
 
-/* nudlist.c, not decompiled yet. */
+/* nudlist.c */
 void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec);
-int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, void *blend_values);
+int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, DEFORMERWEIGHTSARRAY *blend_vals);
+
+/* A light that casts shadows: its matrices, then the list its shadow casters are drawn
+ * into (PS2 layout up to there; the rest isn't placed). */
+typedef struct nudynamiclight_s {
+    NUMTX view;
+    NUMTX projection;
+    NUMTX warpTransform;
+    NUMTX warpTransformInverse;
+    NUMTX shadowTransform;
+    NUVEC4 projectionParams;
+    NUDISPLAYLIST geometryDList;
+} NUDYNAMICLIGHT;
+
+/* nurndr_gen.c globals and PS2 nurndr/nustream functions, not decompiled yet
+ * (nu3d_stubs.c). */
+extern NUDYNAMICLIGHT *NuRndr_shadowLight;
+extern int nurndr_force_lod;
+void WindShear(NUMTX *windmtx, NUMTX *instmtx, int wind_scale, int wind_speed);
+void RndrStateSetConstAlphaTint(unsigned int const_alpha_enabled, unsigned int const_tint_enabled, float const_alpha, NUCOLOUR3 *const_tint, NUMTL *mtl);
 
 #endif

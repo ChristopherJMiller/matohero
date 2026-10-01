@@ -604,19 +604,31 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       (docs/matching.md, open questions); not hooked until it matches.
       `NUDISPLAYSCENE.bounds` is now the PS2 `NUBOUNDS`, and
       `DisplayListUpdateSpecialTransformPS` folds into `NuEmptyFolded`.
-- [ ] `nudlist.c` part 10: `NuDisplayListRndrSpecial` (`0x554be0`, 1372 bytes, stubbed in
-      `nu3d_stubs.c`; PS2 locals: `sob`, `buff`, `outcode`, `clip_obj`, `ds`, `scene_mtl`,
-      `dlist`, `windmtx`, `geom_tx`, `centre`, `dist`, `geom`). Calls, in PS2 order:
-      `WindShear` (`0x54fe40`), `NuCameraClipTestExtents` (`0x53da80`, skipped while a
-      forced outcode at `0x616bb0` isn't -1), `NuVecAdd`/`NuVecScale`/`NuVecMtxTransform`/
-      `NuCameraDistSqr` (clip-range LOD pick through `special_obj->clip_range`, against
-      `0x5f5f64`), the forced-material lookup (`0x5425e0`, `nurndr_forced_mtl`/`_table`),
-      `NuDisplayListLinkItems`, the render-state helpers (`0x544e80` =
-      `RndrStateSetConstAlphaTint`?, `DisplayListUpdateRenderState` `0x544cb0`), and per
-      geometry the `…TransformPS` creators (rigid `0x55b830`, skin `0x55b860`, face-on →
-      `NuZeroFolded`). Unknown globals to name from the PS2 code: `0x3492e30` (early
-      out), `0x348f748`/`0x348f750`, `0x616ba0` (1.0f)/`0x616ba4`, `0x337a3b4`/`0x337a3b8`,
-      `0x35e92c0`.
+- [x] `nudlist.c` part 10: `NuDisplayListRndrSpecial` (`0x554be0`, 1372 bytes, was
+      stubbed) at 79% (rest in docs/matching.md, open questions; not hooked until it
+      matches). It clip-tests a special object, picks its level of detail by camera
+      distance or `nurndr_force_lod`, swaps in forced materials, and adds each material
+      pass of each geometry to its dynamic list or the shadow light's list. The PS2's
+      `NuDisplayListAddItem` is inlined on PC (a `static __inline` here), and
+      `DisplayListCreateGeomTransformPS` is folded into `…RigidSkinTransformPS` (a
+      cast-pointer macro keeps the PS2 arguments); the face-on creators fold into
+      `NuZeroFolded`. New globals: the `nospecials` static (`0x3492e30`);
+      `nuspecial_const_alpha_enabled`/`_alpha`/`_tint_enabled`/`_tint` and
+      `nuspecial_clip_state` (`0x337a3b4`, `0x616ba0`, `0x337a3b8`, `0x616ba4`,
+      `0x616bb0`, in `nuspecial.c` as on PS2); `NuRndr_shadowLight` (`0x348f748`),
+      `nurndr_force_lod` (`0x348f750`), and `render_state` (`0x35e92c0`, a
+      `NUGLOBALRNDRSTATE` that now has a PS2-sized placeholder body). PC `NUMTL` gains
+      `next` (`0x30`), `special_id` (`0x9e`) and the field at `0x1b8` that decides
+      whether a forced material stands in directly. `NUDYNAMICLIGHT` is placed up to its
+      display list. Stubs: `WindShear` (`0x54fe40`), `NuCameraClipTestExtents`
+      (`0x53da80`), `RndrStateSetConstAlphaTint` (`0x544e80`) and the PC-only
+      forced-material variant lookup (`0x5425e0`, `NuMtlGetForcedVariant`, name ours).
+      Hook test: save prompt reached, `NuSpecialDrawAt` 98k calls into the exe's copy.
+- [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
+      `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
+      `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%), and
+      the stubbed callees above (`WindShear`, `RndrStateSetConstAlphaTint` and
+      `NuMtlGetForcedVariant` are small).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

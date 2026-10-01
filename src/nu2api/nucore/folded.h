@@ -35,6 +35,8 @@ void NuEmptyFolded();
 int NuZeroFolded();
 #define NuRndrSetViewMtx NuZeroFolded
 #define DisplayListPrintItemPS NuZeroFolded
+#define DisplayListCreateFaceonTransformPS ((void *(*)(VARIPTR *, NUMTX *, NUMTL *))NuZeroFolded)
+#define NuDisplayListPrepareFaceonPS ((void *(*)(VARIPTR *, void *, NUMTX *))NuZeroFolded)
 
 /* Empty `void` functions of the PC platform layer, which was built with frame pointers
  * (`push ebp; mov ebp, esp; pop ebp; ret`), so they fold separately. */

@@ -10,6 +10,22 @@
  * special objects; the finders handle that case in static helpers (inlined on PS2; names
  * ours). */
 
+// GLOBAL: BIONICLE 0x337a3b4
+int nuspecial_const_alpha_enabled;
+
+// GLOBAL: BIONICLE 0x616ba0
+float nuspecial_const_alpha = 1.0f;
+
+// GLOBAL: BIONICLE 0x337a3b8
+int nuspecial_const_tint_enabled;
+
+// GLOBAL: BIONICLE 0x616ba4
+NUCOLOUR3 nuspecial_const_tint = {1.0f, 1.0f, 1.0f};
+
+/* The outcode specials are drawn with; -1 clip-tests them. */
+// GLOBAL: BIONICLE 0x616bb0
+int nuspecial_clip_state = -1;
+
 // GLOBAL: BIONICLE 0x337a3bc
 int nuspecial_draw_state;
 

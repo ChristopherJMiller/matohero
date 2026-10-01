@@ -93,5 +93,11 @@ void RndrStateClear(NURNDRSTATE *state);
 void RndrStateResetSharedGlobalState(void);
 void RndrStateResetGlobalState(NUGLOBALRNDRSTATE *state);
 void DisplayListUpdateRenderState(NUDISPLAYLIST *dlist, NUGLOBALRNDRSTATE *local_state);
+extern NUGLOBALRNDRSTATE render_state;
+
+/* The PS2's DisplayListCreateGeomTransformPS: on PC the same code as the rigid-skin one,
+ * so the linker folded the two; called with the PS2 arguments. */
+#define DisplayListCreateGeomTransformPS \
+    ((void *(*)(VARIPTR *, NUMTX *, NUMTL *, void *, void *))DisplayListCreateRigidSkinTransformPS)
 
 #endif

@@ -360,6 +360,17 @@ exact; `tools/permute.py` automates some of them.
   of the list head; the original stores the tested register itself, and its inlined copy
   stores a zeroed `ebx`. That came from `pri->sys_next = NULL` (97% → exact, and the
   inlined copy matched as well).
+- **A value kept across a call is a variable, not a repeated expression.** MSVC doesn't
+  CSE a memory load across a call. `NuDisplayListRndrSpecial` keeps a geometry's pointer
+  in `ebp` from before `DisplayListCreateGeomTransformPS` to the item after it, so the
+  source has a local for it (`next`). Sharing that local with the `&geom` out-parameter
+  forced it into memory and cost a stack slot (61% → 65%).
+- **Default-then-override vs. `if`/`else` for a forced value.** `forced =
+  nurndr_forced_mtl; if (table && id) forced = table[id];` lost the original's
+  jump-threaded blocks, where each source gets its own compare. Nested `if (table) { if
+  (id) forced = table[id]; else forced = nurndr_forced_mtl; } else forced =
+  nurndr_forced_mtl;` got them (65% → 79%; `tools/permute.py --try` scored six forms in
+  one run).
 - **Load an argument into its variable first when the original loads it early.**
   `NuDisplayListCreateMtlDlist(mtl->dlist_mtl->mtl_item, …)` loaded `mtl_item` just before
   the push. The original loads it ahead of the buffer-offset arithmetic, which came from
@@ -422,6 +433,13 @@ exact; `tools/permute.py` automates some of them.
   locals), and the y and z rows sum in another order. Nothing changed the layout:
   declaration order, `NUMTX` for `FabsTransform`, `NuFabs` inline in the sums (the later
   engine's version, 47%), a mix of both (45%), and the permuter.
+
+- **`NuDisplayListRndrSpecial` (79%).** The rest is register rotation (the
+  `NuVecAdd`/`NuVecScale` argument registers, `nurndr_forced_mtl` held in `ecx` across the
+  loop), the forced-material compare duplicated per source (table entry or
+  `nurndr_forced_mtl`), the level-of-detail pick's block order, and one in-place `add` to
+  `add_item` that ours does as load/add/store. The permuter and batches of hand variants
+  (index forms, increment forms, wind test forms) changed nothing.
 
 - **`NuUTF8ToUnicode` (33%)**: identical code with `ecx`/`edx` swapped for the source
   pointer and the byte temporary. The permuter's moves and hand variants (loop forms,

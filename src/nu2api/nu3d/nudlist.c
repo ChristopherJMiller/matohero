@@ -3,12 +3,15 @@
 #include "folded.h"
 #include "nufloat.h"
 #include "nuhtml.h"
+#include "nucamera.h"
 #include "numem.h"
 #include "numtl.h"
 #include "nuspecial.h"
+#include "nuvec.h"
 #include "nuvu0.h"
 #include "nustring.h"
 #include "nuthread.h"
+#include "nurndr.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -31,6 +34,9 @@ static int dyn_geom_pos = 6;
 
 // GLOBAL: BIONICLE 0x616ebc
 static int next_pos = 7;
+
+// GLOBAL: BIONICLE 0x3492e30
+static int nospecials;
 
 // GLOBAL: BIONICLE 0x616eb0
 int nudlist_debug_level = 2;
@@ -662,6 +668,141 @@ void NuDisplayListSwapBuffersBeginFrame(void) {
     }
     RndrStateResetSharedGlobalState();
     NuThreadCriticalSectionEnd(dlm->loading_critical_section);
+}
+
+/* Appends an item that calls (or uses) call_addr to a list's slots reserved by
+ * NuDisplayListLinkItems (inlined on PC). */
+static __inline NUDISPLAYLISTITEM *NuDisplayListAddItem(NUDISPLAYLIST *dl, unsigned char type, void *call_addr) {
+    dl->add_item->type = type;
+    dl->add_item->id = 3;
+    dl->add_item->next = call_addr;
+    return dl->add_item++;
+}
+
+/* Draws a special object at mtx (bent by its wind settings first): clip-tests it, picks
+ * the level of detail by camera distance (or the forced one), and adds each material
+ * pass of each of its geometries to the material's dynamic list, or to the shadow
+ * light's list while one is set. Forced materials replace the scene's ones. Returns the
+ * outcode (0: not drawn). 79%: register choice, block order in the level-of-detail pick
+ * and the forced-material compare (docs/matching.md, open questions). */
+// FUNCTION: BIONICLE 0x554be0
+int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, DEFORMERWEIGHTSARRAY *blend_vals) {
+    NUSPECIALOBJECT *sob;
+    VARIPTR *buff;
+    NUDISPLAYLISTITEM *item;
+    int outcode;
+    NUCLIPOBJECT *clip_obj;
+    NUDISPLAYSCENE *ds;
+    unsigned int i;
+    NUMTL *scene_mtl;
+    NUDISPLAYLIST *dlist;
+    NUMTX windmtx;
+    void *geom_tx;
+    NUVEC centre;
+    float dist;
+    void *geom;
+    void *next;
+    NUMTL *forced;
+
+    if (nospecials) {
+        return 0;
+    }
+    if (special == NULL) {
+        return 0;
+    }
+    sob = special->special_obj;
+    if (sob->wind_scale != 0) {
+        WindShear(&windmtx, mtx, sob->wind_scale, sob->wind_speed);
+        mtx = &windmtx;
+    }
+    outcode = nuspecial_clip_state;
+    if (outcode == -1) {
+        outcode = NuCameraClipTestExtents((NUVEC *)&sob->min, (NUVEC *)&sob->max, mtx, 0.0f, 0);
+    }
+    if (outcode == 0) {
+        return 0;
+    }
+    if (sob->clip_range[0] != 0.0f) {
+        if (nurndr_force_lod != 0) {
+            for (i = 0; sob->clip_range[i] != 0.0f && i != nurndr_force_lod; i++) {
+            }
+            clip_obj = &sob->clip_objects[i];
+        } else {
+            NuVecAdd(&centre, (NUVEC *)&sob->min, (NUVEC *)&sob->max);
+            NuVecScale(&centre, &centre, 0.5f);
+            NuVecMtxTransform(&centre, &centre, mtx);
+            dist = NuCameraDistSqr(&centre);
+            if (dist < 0.0f) {
+                dist = 0.0f;
+            }
+            for (i = 0; dist < sob->clip_range[i]; i++) {
+            }
+            clip_obj = &sob->clip_objects[i];
+        }
+    } else {
+        clip_obj = sob->clip_objects;
+    }
+    ds = special->scene->display_list;
+    geom_tx = NULL;
+    for (i = 0; i < clip_obj->nclip_items; i++) {
+        scene_mtl = ds->mtls[clip_obj->mtls[i]];
+        if (nurndr_forced_mtl != NULL || nurndr_forced_mtl_table != NULL) {
+            if (nurndr_forced_mtl_table != NULL) {
+                if (scene_mtl->special_id != 0) {
+                    forced = nurndr_forced_mtl_table[scene_mtl->special_id];
+                } else {
+                    forced = nurndr_forced_mtl;
+                }
+            } else {
+                forced = nurndr_forced_mtl;
+            }
+            if (forced != NULL) {
+                if (scene_mtl->unknown_1b8 == forced->unknown_1b8) {
+                    scene_mtl = forced;
+                } else {
+                    scene_mtl = NuMtlGetForcedVariant(scene_mtl, forced);
+                }
+            }
+        }
+        for (; scene_mtl != NULL; scene_mtl = scene_mtl->next) {
+            if (NuRndr_shadowLight != NULL) {
+                dlist = &NuRndr_shadowLight->geometryDList;
+                dlist->dlist = ds;
+                NuDisplayListLinkItems(dlist, 1);
+                NuDisplayListAddItem(dlist, 0x80, scene_mtl);
+            } else {
+                dlist = scene_mtl->dlist_mtl;
+                dlist->dlist->dynamic_used_this_frame = 1;
+                dlist->dlist->mtl_used[dlist->dlist->buffer][dlist->mtl_id / 8] |= 1 << (dlist->mtl_id % 8);
+                RndrStateSetConstAlphaTint(nuspecial_const_alpha_enabled, nuspecial_const_tint_enabled, nuspecial_const_alpha, &nuspecial_const_tint, scene_mtl);
+                DisplayListUpdateRenderState(dlist, &render_state);
+            }
+            if (ds->items[clip_obj->items[i]].type != 0x8f) {
+                if (!skinned) {
+                    buff = NuDisplayListLinkItems(dlist, 2);
+                    next = ds->items[clip_obj->items[i]].next;
+                    geom_tx = DisplayListCreateGeomTransformPS(buff, mtx, dlist->dlist->mtls[dlist->mtl_id], next, geom_tx);
+                    NuDisplayListAddItem(dlist, 0x8c, geom_tx);
+                    NuDisplayListAddItem(dlist, 0x82, next);
+                } else {
+                    display_list_buffer->intaddr = (display_list_buffer->intaddr + 15) & ~15;
+                    item = display_list_buffer->item;
+                    buff = NuDisplayListLinkItems(dlist, 3);
+                    next = ds->items[clip_obj->items[i]].next;
+                    geom_tx = DisplayListCreateGeomTransformPS(buff, mtx, dlist->dlist->mtls[dlist->mtl_id], next, geom_tx);
+                    NuDisplayListAddItem(dlist, 0x8c, geom_tx);
+                    NuDisplayListAddItem(dlist, 0x99, DisplayListCreateSkinTransformPS(buff, skin_mtx, blend_vals, next, &geom, item + 2));
+                    NuDisplayListAddItem(dlist, 0x98, geom);
+                }
+            } else {
+                buff = NuDisplayListLinkItems(dlist, 2);
+                NuDisplayListAddItem(dlist, 0x90, DisplayListCreateFaceonTransformPS(buff, mtx, dlist->dlist->mtls[dlist->mtl_id]));
+                NuDisplayListAddItem(dlist, 0x8f, NuDisplayListPrepareFaceonPS(buff, ds->items[clip_obj->items[i]].next, mtx));
+            }
+        }
+    }
+    RndrStateSetConstAlphaTint(0, 0, 0.0f, NULL, NULL);
+    return outcode;
 }
 
 /* One line of the HTML dump for an item (PS2 name). */

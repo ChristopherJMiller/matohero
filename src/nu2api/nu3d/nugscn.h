@@ -10,7 +10,10 @@
 typedef struct numtl_s NUMTL;
 typedef struct nugscn_s NUGSCN;
 typedef struct nudisplayscene_s NUDISPLAYSCENE;
-typedef struct nuglobalrndrstate_s NUGLOBALRNDRSTATE;
+/* Global render state: the PS2 size, nothing placed yet. */
+typedef struct nuglobalrndrstate_s {
+    int unknown[0x1a0 / 4];
+} NUGLOBALRNDRSTATE;
 
 /* The render state a material list was last drawn with (PS2 layout). */
 typedef struct nurndrstate_s {

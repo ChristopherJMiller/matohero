@@ -9,6 +9,12 @@
 
 /* nu3d functions and globals the decompiled code uses, not decompiled yet. */
 
+// GLOBAL: BIONICLE 0x348f748
+NUDYNAMICLIGHT *NuRndr_shadowLight;
+
+// GLOBAL: BIONICLE 0x348f750
+int nurndr_force_lod;
+
 // GLOBAL: BIONICLE 0x348f754
 NUMTL *nurndr_forced_mtl;
 
@@ -81,9 +87,22 @@ void NuHGobjEval(NUHGOBJ *hgobj, int njanims, NUJOINTANIM *janim, NUMTX *mtx_arr
 void d3dSetTransform(int state, NUMTX *m) {
 }
 
-// STUB: BIONICLE 0x554be0
-int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, void *blend_values) {
+// STUB: BIONICLE 0x54fe40
+void WindShear(NUMTX *windmtx, NUMTX *instmtx, int wind_scale, int wind_speed) {
+}
+
+// STUB: BIONICLE 0x53da80
+int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, int clip_to_screen) {
     return 0;
+}
+
+// STUB: BIONICLE 0x544e80
+void RndrStateSetConstAlphaTint(unsigned int const_alpha_enabled, unsigned int const_tint_enabled, float const_alpha, NUCOLOUR3 *const_tint, NUMTL *mtl) {
+}
+
+// STUB: BIONICLE 0x5425e0
+NUMTL *NuMtlGetForcedVariant(NUMTL *mtl, NUMTL *forced) {
+    return forced;
 }
 
 // STUB: BIONICLE 0x581070
@@ -178,6 +197,10 @@ void RndrStateClear(NURNDRSTATE *state) {
 // STUB: BIONICLE 0x544c50
 void RndrStateResetSharedGlobalState(void) {
 }
+
+/* The shared render state (PS2 name). */
+// GLOBAL: BIONICLE 0x35e92c0
+NUGLOBALRNDRSTATE render_state;
 
 
 // STUB: BIONICLE 0x550250

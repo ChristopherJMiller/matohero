@@ -90,6 +90,7 @@ void NuCameraRayCast(NUVEC *p, float x, float y);
 void NuCameraTransformScreenClip(NUVEC *dest, NUVEC *src, int n, NUMTX *w);
 void NuCameraTransformScreen(NUVEC *dest, NUVEC *src, int n, NUMTX *w);
 int NuCameraClipTestExtentsGeneric(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, int flags, float *min_z);
+int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, int clip_to_screen);
 int NuCameraClipTestSphere(NUVEC *pnt, float radius, NUMTX *wm);
 float NuCameraDistSqr(NUVEC *p);
 int NuCameraClipTestExtentsAxisAligned(NUVEC4 *Pos, NUVEC4 *Extents, float FarClip);
