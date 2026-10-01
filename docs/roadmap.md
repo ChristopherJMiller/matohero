@@ -578,11 +578,18 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       dynamic material lists and the manager's material buffers; `items_per_mtl` 8,
       `dyn_geom_pos` 6) exact. `DisplayListCreatePS` is a folded empty function on PC.
       The game initialises through both in the hook test.
-- [ ] `nudlist.c` part 7: `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes, stubbed)
-      with `0x553d90` (finds each sort priority's first material by
-      `renderplane << 17 + sort_pri`; called twice from it on `dyn_mtl_dlist`);
-      `NuDisplayListUpdateSpecial` (`0x554610`), `NuDisplayListRndrSpecial` (`0x554be0`);
-      `DisplayListCreateSkinTransformPS` (`0x55b860`).
+- [x] `nudlist.c` part 7: `DisplayListFindFirstMtls` (`0x553d90`, name ours: each sort
+      priority's first material by `renderplane << 17 + sort_pri`) exact once it indexes
+      `ds->sort_pris[i]` instead of keeping a pointer; `DisplayListCreateSkinTransformPS`
+      (`0x55b860`) 43% (the original walks the index bytes with a pointer and derives
+      the count by subtraction; index and pointer forms and the permuter didn't get
+      there). PC `NUMTL` gets its first-short bitfields (`renderplane` at bits 4–11; no
+      `sbexists`).
+- [ ] `nudlist.c` part 8: `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes, stubbed:
+      drops deleted materials from the dynamic scene, compacts its sort priorities,
+      links new ones; calls `DisplayListFindFirstMtls` and
+      `NuDisplayListCreateMtlDlist`); `NuDisplayListUpdateSpecial` (`0x554610`, x87 box
+      transform with inlined vector helpers), `NuDisplayListRndrSpecial` (`0x554be0`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

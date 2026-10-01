@@ -3,6 +3,7 @@
 
 #include "nufile.h"
 #include "nugscn.h"
+#include "nurndr.h"
 
 /* Display lists: the scenes' material lists, sorted by priority and drawn each frame. */
 
@@ -64,6 +65,7 @@ int NuDisplayListAddRenderScene(void);
 
 /* Not decompiled yet (nu3d_stubs.c). */
 void DisplayListLinkDynamicMtls(void);
+void DisplayListFindFirstMtls(NUDISPLAYSCENE *ds);
 void DisplayListCreateDynMtlList(VARIPTR *buff, VARIPTR buffend);
 
 /* nutimebar.c, not decompiled yet. */
@@ -79,6 +81,7 @@ void NuDisplayListAddMaterialState(NUDISPLAYLISTITEM *item, NUMTL *mtl);
 VARIPTR *NuDisplayListLinkItem(NUDISPLAYLIST *dl, unsigned char type, void *call_addr);
 VARIPTR *NuDisplayListLinkItems(NUDISPLAYLIST *dlist, int n);
 void *DisplayListCreateRigidSkinTransformPS(VARIPTR *buff, NUMTX *mtx);
+void *DisplayListCreateSkinTransformPS(VARIPTR *buff, NUMTX *mtx, DEFORMERWEIGHTSARRAY *blend, void *skingeom, void **geom, void *return_item);
 
 /* PC has nothing to upload or set for these; the identical bodies were folded into
  * NuDisplayListAddClut. */

@@ -47,7 +47,13 @@ typedef struct numtlattrib_s {
  * RNDRSTREAM rs at 0x124; on PC the font code passes the address 4 bytes in where it
  * passes rs, and nothing reads through it, so it is kept as bytes here. */
 struct numtl_s {
-    unsigned int unknown_00;
+    short used : 1; /* the PS2 also has sbexists before renderplane */
+    short fromblock : 1;
+    short intalloc : 1;
+    short zupd : 1;
+    short renderplane : 8;
+    short pad : 4;
+    short unknown_02;
     unsigned char rs[0x38];
     unsigned int unknown_3c;
     NUMTLATTRIB attrib;

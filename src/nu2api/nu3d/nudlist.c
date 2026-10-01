@@ -59,6 +59,34 @@ NUDISPLAYLISTITEM *NuDisplayListCreateMtlDlist(NUDISPLAYLISTITEM *item, NUMTL *m
     return item;
 }
 
+/* Points each of the scene's sort priorities at its first material: the one whose render
+ * plane and sort priority make up its key (name ours; the PS2 inlines it into
+ * DisplayListLinkDynamicMtls). */
+// FUNCTION: BIONICLE 0x553d90
+void DisplayListFindFirstMtls(NUDISPLAYSCENE *ds) {
+    int i;
+    int j;
+    int nmtls;
+    NUMTL *mtl;
+
+    nmtls = 0;
+    for (i = 0; i < ds->nsort_pris; i++) {
+        nmtls += ds->sort_pris[i].nmtls;
+    }
+    for (i = 0; i < ds->nsort_pris; i++) {
+        if (ds->sort_pris[i].nmtls == 0) {
+            continue;
+        }
+        for (j = 0; j < nmtls; j++) {
+            mtl = ds->mtls[j];
+            if ((mtl->renderplane << 17) + mtl->sort_pri == ds->sort_pris[i].sort_pri) {
+                ds->sort_pris[i].mtl_first = j;
+                break;
+            }
+        }
+    }
+}
+
 /* Starts a scene's frame: clears the used-material and used-clip-object bits of the
  * buffer being filled, and rewinds every material list. force_reset also marks all clip
  * objects of the other buffer used and restarts the lists on buffer 0. */

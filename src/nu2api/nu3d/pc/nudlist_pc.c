@@ -121,3 +121,26 @@ void *DisplayListCreateRigidSkinTransformPS(VARIPTR *buff, NUMTX *mtx) {
     buff->intaddr += sizeof(NUMTX);
     return rv;
 }
+
+/* Copies the matrices a skinned geometry uses (its index list at +8, ended by 0xff, at
+ * most 8) after a count, and returns where they start. */
+// FUNCTION: BIONICLE 0x55b860
+void *DisplayListCreateSkinTransformPS(VARIPTR *buff, NUMTX *mtx, DEFORMERWEIGHTSARRAY *blend, void *skingeom, void **geom, void *return_item) {
+    VARIPTR skhdr;
+    int mtxix;
+    unsigned char *src;
+    VARIPTR start;
+
+    start = *buff;
+    *geom = skingeom;
+    skhdr = *buff;
+    buff->intaddr += 4;
+    src = (unsigned char *)skingeom + 8;
+    *skhdr.s32 = 0;
+    for (mtxix = 0; src[mtxix] != 0xff && mtxix < 8; mtxix++) {
+        *buff->mtx44 = mtx[src[mtxix]];
+        buff->intaddr += sizeof(NUMTX);
+        (*skhdr.s32)++;
+    }
+    return start.voidptr;
+}
