@@ -23,3 +23,6 @@ ghidra/
 toolchain/
 reccmp-user.yml
 reccmp-build.yml
+
+# Claude Code session state
+.claude/scheduled_tasks.lock

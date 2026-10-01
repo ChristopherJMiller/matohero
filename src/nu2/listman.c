@@ -3,46 +3,47 @@
 #include "numem.h"
 #include "nuthread.h"
 
-/* Ported from opensagadev/saga src/nu2api/nucore/nulst.cpp (GPL-3.0). Most functions
- * match unchanged; NuLstCreateBuff is rewritten from BH's code, which predates saga's. */
+/* Logic ported from opensagadev/saga src/nu2api/nucore/nulst.cpp (GPL-3.0); names and
+ * types are the originals from the PS2 prototype's debug info. NuLstCreateBuff is
+ * written from BH's own code, which differs from saga's later engine. */
 
 // STRING: BIONICLE 0x5e07e8
 // __FILE__, passed to NuMemAlloc: ".\\listman.c"
 
 // FUNCTION: BIONICLE 0x5654c0
-NULSTHDR *NuLstCreate(i32 element_count, i32 element_size) {
+NULSTHDR *NuLstCreate(int elcnt, int elsize) {
     NULSTHDR *list;
-    i32 element_size_total;
-    i32 i;
+    int eltotsize;
+    int n;
     NULNKHDR *curr;
     NULNKHDR *next;
 
-    element_size_total = element_size + sizeof(NULNKHDR);
-    list = (NULSTHDR *)NuMemAllocAt(element_count * element_size_total + sizeof(NULSTHDR), 97);
+    eltotsize = elsize + sizeof(NULNKHDR);
+    list = (NULSTHDR *)NuMemAllocAt(elcnt * eltotsize + sizeof(NULSTHDR), 97);
 
     if (list != NULL) {
         list->free = (NULNKHDR *)(list + 1);
         list->head = NULL;
         list->tail = NULL;
 
-        list->element_count = element_count;
-        list->element_size = element_size;
-        list->element_size_total = element_size_total;
-        list->used_count = 0;
+        list->elcnt = elcnt;
+        list->elsize = elsize;
+        list->eltotsize = eltotsize;
+        list->usedcnt = 0;
 
         curr = list->free;
-        next = (NULNKHDR *)((u8 *)curr + element_size_total);
-        for (i = 1; i < element_count; i++) {
-            curr->next = next;
-            curr->id = i - 1;
+        next = (NULNKHDR *)((char *)curr + eltotsize);
+        for (n = 1; n < elcnt; n++) {
+            curr->succ = next;
+            curr->id = n - 1;
             curr->owner = list;
             curr = next;
-            next = (NULNKHDR *)((u8 *)next + element_size_total);
+            next = (NULNKHDR *)((char *)next + eltotsize);
         }
 
-        curr->next = NULL;
+        curr->succ = NULL;
         list->free_tail = curr;
-        curr->id = i - 1;
+        curr->id = n - 1;
         curr->owner = list;
         list->safe_thread = nu_current_thread_id;
     }
@@ -53,43 +54,43 @@ NULSTHDR *NuLstCreate(i32 element_count, i32 element_size) {
 /* Effective match: the original loads nu_current_thread_id into edx rather than ecx.
  * Local types and declaration order don't change it. */
 // FUNCTION: BIONICLE 0x565550
-NULSTHDR *NuLstCreateBuff(i32 element_count, i32 element_size, VARIPTR *buffer, VARIPTR end, i32 alignment) {
+NULSTHDR *NuLstCreateBuff(int elcnt, int elsize, VARIPTR *ptr, VARIPTR end, int align) {
     NULSTHDR *list;
-    u32 element_size_total;
-    u32 total;
-    i32 i;
+    unsigned int eltotsize;
+    unsigned int buffsize;
+    int n;
     NULNKHDR *curr;
     NULNKHDR *next;
 
-    list = (NULSTHDR *)((buffer->addr + alignment - 1) & ~(alignment - 1));
-    element_size_total = (element_size + sizeof(NULNKHDR) - 1 + alignment) & -alignment;
-    total = element_count * element_size_total + sizeof(NULSTHDR);
-    buffer->void_ptr = list;
-    if (total < end.addr - (u32)list) {
-        buffer->addr = (u32)list + total;
+    list = (NULSTHDR *)((ptr->addr + align - 1) & ~(align - 1));
+    eltotsize = (elsize + sizeof(NULNKHDR) - 1 + align) & -align;
+    buffsize = elcnt * eltotsize + sizeof(NULSTHDR);
+    ptr->void_ptr = list;
+    if (buffsize < end.addr - (unsigned int)list) {
+        ptr->addr = (unsigned int)list + buffsize;
 
         list->free = (NULNKHDR *)(list + 1);
         list->head = NULL;
         list->tail = NULL;
 
-        list->element_count = element_count;
-        list->element_size = element_size;
-        list->element_size_total = element_size_total;
-        list->used_count = 0;
+        list->elcnt = elcnt;
+        list->elsize = elsize;
+        list->eltotsize = eltotsize;
+        list->usedcnt = 0;
 
         curr = list->free;
-        next = (NULNKHDR *)((u8 *)curr + element_size_total);
-        for (i = 1; i < element_count; i++) {
-            curr->next = next;
-            curr->id = i - 1;
+        next = (NULNKHDR *)((char *)curr + eltotsize);
+        for (n = 1; n < elcnt; n++) {
+            curr->succ = next;
+            curr->id = n - 1;
             curr->owner = list;
             curr = next;
-            next = (NULNKHDR *)((u8 *)next + element_size_total);
+            next = (NULNKHDR *)((char *)next + eltotsize);
         }
 
-        curr->next = NULL;
+        curr->succ = NULL;
         list->free_tail = curr;
-        curr->id = i - 1;
+        curr->id = n - 1;
         curr->owner = list;
         list->safe_thread = nu_current_thread_id;
 
@@ -100,206 +101,205 @@ NULSTHDR *NuLstCreateBuff(i32 element_count, i32 element_size, VARIPTR *buffer, 
 }
 
 // FUNCTION: BIONICLE 0x565600
-NULNKHDR *NuLstAllocHead(NULSTHDR *list) {
-    u32 current_thread;
-    NULNKHDR *node;
+NULNKHDR *NuLstAllocHead(NULSTHDR *hdr) {
+    NULNKHDR *rv;
+    unsigned int threadid;
 
-    if (list->free != NULL) {
-        current_thread = nu_current_thread_id;
-
-        if (list->safe_thread != current_thread) {
+    if (hdr->free != NULL) {
+        threadid = nu_current_thread_id;
+        if (hdr->safe_thread != threadid) {
             (*NuThreadDisableThreadSwap)();
         }
 
-        node = list->free;
-        list->free = list->free->next;
-
-        if (list->free == NULL) {
-            list->free_tail = NULL;
+        rv = hdr->free;
+        hdr->free = hdr->free->succ;
+        if (hdr->free == NULL) {
+            hdr->free_tail = NULL;
         } else {
-            list->free->prev = NULL;
+            hdr->free->prev = NULL;
         }
 
-        node->next = list->head;
-
-        if (list->head != NULL) {
-            list->head->prev = node;
+        rv->succ = hdr->head;
+        if (hdr->head != NULL) {
+            hdr->head->prev = rv;
         } else {
-            list->tail = node;
+            hdr->tail = rv;
         }
+        rv->prev = NULL;
 
-        node->prev = NULL;
+        hdr->head = rv;
+        hdr->usedcnt++;
+        rv->used = 1;
 
-        list->head = node;
-        list->used_count++;
-
-        node->is_used = 1;
-
-        if (list->safe_thread != current_thread) {
+        if (hdr->safe_thread != threadid) {
             (*NuThreadEnableThreadSwap)();
         }
-
-        return node + 1;
+        return rv + 1;
     }
 
     return NULL;
 }
 
 // FUNCTION: BIONICLE 0x565680
-NULNKHDR *NuLstAllocTail(NULSTHDR *list) {
-    u32 current_thread;
-    NULNKHDR *node;
+NULNKHDR *NuLstAllocTail(NULSTHDR *hdr) {
+    NULNKHDR *rv;
+    unsigned int threadid;
 
-    if (list->free != NULL) {
-        current_thread = nu_current_thread_id;
-
-        if (list->safe_thread != current_thread) {
+    if (hdr->free != NULL) {
+        threadid = nu_current_thread_id;
+        if (hdr->safe_thread != threadid) {
             (*NuThreadDisableThreadSwap)();
         }
 
-        node = list->free;
-        list->free = list->free->next;
-
-        if (list->free == NULL) {
-            list->free_tail = NULL;
+        rv = hdr->free;
+        hdr->free = hdr->free->succ;
+        if (hdr->free == NULL) {
+            hdr->free_tail = NULL;
         } else {
-            list->free->prev = NULL;
+            hdr->free->prev = NULL;
         }
 
-        node->prev = list->tail;
-
-        if (list->tail != NULL) {
-            list->tail->next = node;
+        rv->prev = hdr->tail;
+        if (hdr->tail != NULL) {
+            hdr->tail->succ = rv;
         } else {
-            list->head = node;
+            hdr->head = rv;
         }
+        rv->succ = NULL;
 
-        node->next = NULL;
+        hdr->tail = rv;
+        rv->used = 1;
+        hdr->usedcnt++;
 
-        list->tail = node;
-
-        node->is_used = 1;
-        list->used_count++;
-
-        if (list->safe_thread != current_thread) {
+        if (hdr->safe_thread != threadid) {
             (*NuThreadEnableThreadSwap)();
         }
-
-        return node + 1;
+        return rv + 1;
     }
 
     return NULL;
 }
 
 // FUNCTION: BIONICLE 0x565700
-NULNKHDR *NuLstAllocFree(NULSTHDR *list) {
-    u32 current_thread;
-    NULNKHDR *node;
-    if (list->free != NULL) {
-        current_thread = nu_current_thread_id;
-        if (list->safe_thread != current_thread)
+NULNKHDR *NuLstAllocFree(NULSTHDR *hdr) {
+    NULNKHDR *rv;
+    unsigned int threadid;
+
+    if (hdr->free != NULL) {
+        threadid = nu_current_thread_id;
+        if (hdr->safe_thread != threadid) {
             (*NuThreadDisableThreadSwap)();
-        node = list->free;
-        list->free = list->free->next;
-        if (list->free == NULL)
-            list->free_tail = NULL;
-        else
-            list->free->prev = NULL;
-        node->prev = NULL;
-        node->is_used = 1;
-        ++list->used_count;
-        if (list->safe_thread != current_thread)
+        }
+
+        rv = hdr->free;
+        hdr->free = hdr->free->succ;
+        if (hdr->free == NULL) {
+            hdr->free_tail = NULL;
+        } else {
+            hdr->free->prev = NULL;
+        }
+
+        rv->prev = NULL;
+        rv->used = 1;
+        ++hdr->usedcnt;
+
+        if (hdr->safe_thread != threadid) {
             (*NuThreadEnableThreadSwap)();
-        return node + 1;
+        }
+        return rv + 1;
     }
+
     return NULL;
 }
 
 // FUNCTION: BIONICLE 0x565760
-void NuLstAttachTail(NULSTHDR *list, NULNKHDR *node) {
-    u32 current_thread = nu_current_thread_id;
-    if (list->safe_thread != current_thread)
+void NuLstAttachTail(NULSTHDR *hdr, NULNKHDR *rv) {
+    unsigned int threadid = nu_current_thread_id;
+
+    if (hdr->safe_thread != threadid) {
         (*NuThreadDisableThreadSwap)();
-    node->prev = list->tail;
-    node->next = NULL;
-    if (list->tail != NULL)
-        list->tail->next = node;
-    else
-        list->head = node;
-    list->tail = node;
-    if (list->safe_thread != current_thread)
+    }
+
+    rv->prev = hdr->tail;
+    rv->succ = NULL;
+    if (hdr->tail != NULL) {
+        hdr->tail->succ = rv;
+    } else {
+        hdr->head = rv;
+    }
+    hdr->tail = rv;
+
+    if (hdr->safe_thread != threadid) {
         (*NuThreadEnableThreadSwap)();
+    }
 }
 
 // FUNCTION: BIONICLE 0x5657b0
-void NuLstFree(NULNKHDR *node) {
-    u32 current_thread;
-    NULSTHDR *list;
+void NuLstFree(NULNKHDR *lnk) {
+    NULSTHDR *hdr;
+    unsigned int threadid;
 
-    node--;
-    list = node->owner;
+    lnk--;
+    hdr = lnk->owner;
 
-    current_thread = nu_current_thread_id;
-
-    if (list->safe_thread != current_thread) {
+    threadid = nu_current_thread_id;
+    if (hdr->safe_thread != threadid) {
         (*NuThreadDisableThreadSwap)();
     }
 
-    if (node->next != NULL) {
-        node->next->prev = node->prev;
+    if (lnk->succ != NULL) {
+        lnk->succ->prev = lnk->prev;
     } else {
-        list->tail = node->prev;
+        hdr->tail = lnk->prev;
     }
 
-    if (node->prev != NULL) {
-        node->prev->next = node->next;
+    if (lnk->prev != NULL) {
+        lnk->prev->succ = lnk->succ;
     } else {
-        list->head = node->next;
+        hdr->head = lnk->succ;
     }
 
-    node->prev = list->free_tail;
-    node->next = NULL;
-
-    if (list->free_tail != NULL) {
-        list->free_tail->next = node;
+    lnk->prev = hdr->free_tail;
+    lnk->succ = NULL;
+    if (hdr->free_tail != NULL) {
+        hdr->free_tail->succ = lnk;
     } else {
-        list->free_tail = list->free = node;
+        hdr->free_tail = hdr->free = lnk;
     }
+    hdr->free_tail = lnk;
 
-    list->free_tail = node;
+    hdr->usedcnt--;
+    lnk->used = 0;
 
-    list->used_count--;
-
-    node->is_used = 0;
-
-    if (list->safe_thread != current_thread) {
+    if (hdr->safe_thread != threadid) {
         (*NuThreadEnableThreadSwap)();
     }
 }
 
 // FUNCTION: BIONICLE 0x565840
-NULNKHDR *NuLstGetByIdx(NULSTHDR *list, i32 index) {
-    NULNKHDR *node = (NULNKHDR *)((u8 *)(list + 1) + (i16)list->element_size_total * index);
-    if (node->is_used) {
-        return node + 1;
+NULNKHDR *NuLstGetByIdx(NULSTHDR *hdr, int idx) {
+    NULNKHDR *rv = (NULNKHDR *)((char *)(hdr + 1) + hdr->eltotsize * idx);
+
+    if (rv->used) {
+        return rv + 1;
     }
     return NULL;
 }
 
 // FUNCTION: BIONICLE 0x565860
-NULNKHDR *NuLstGetNext(NULSTHDR *list, NULNKHDR *node) {
-    if (node != NULL) {
-        --node;
-        if (node->next != NULL) {
-            return node->next + 1;
+NULNKHDR *NuLstGetNext(NULSTHDR *hdr, NULNKHDR *lnk) {
+    if (lnk != NULL) {
+        --lnk;
+        if (lnk->succ != NULL) {
+            return lnk->succ + 1;
         }
-    } else if (list->head != NULL) {
-        return list->head + 1;
+    } else if (hdr->head != NULL) {
+        return hdr->head + 1;
     }
     return NULL;
 }
 
 // FUNCTION: BIONICLE 0x565890
-NULNKHDR *NuLstAlloc(NULSTHDR *list) {
-    return NuLstAllocHead(list);
+NULNKHDR *NuLstAlloc(NULSTHDR *hdr) {
+    return NuLstAllocHead(hdr);
 }

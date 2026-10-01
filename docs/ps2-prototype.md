@@ -18,6 +18,21 @@ order, so each object's functions appear in their original source order. C++ ent
 carry the demangled signature from the map, e.g.
 `charbaseRelocateCharDef(chardef_s *, variptr_u *, variptr_u)`.
 
+## Types, parameters and locals
+
+`tools/ps2dump` runs ccc's `stdump` (packaged in `nix/ccc.nix`) over the `.mdebug`
+section and writes C++ into `orig/ps2proto/stdump/`:
+
+- `types.h`: about 27,800 lines of structs, unions, enums and typedefs with field offsets,
+  e.g. `struct nulsthdr_s { /* 0x10 */ short int elcnt; … }`
+- `functions.cpp`: every function with parameter names and types and its locals
+- `globals.cpp`: globals with addresses and types
+
+These are the original TT names and types, so they're the naming authority for this
+project. They differ from the names other decomps invented (saga calls `elcnt`
+`element_count`). Types matter for matching too: `elcnt` and friends are signed `short`,
+which is why the PC code uses `movsx`.
+
 ## Source tree
 
 Objects live under `h:\Bionicle\Ps2\Source\`, in three projects:

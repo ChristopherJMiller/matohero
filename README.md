@@ -68,6 +68,9 @@ original address:
 NULNKHDR *NuLstGetByIdx(NULSTHDR *list, i32 index) {
 ```
 
+Use the original names and types from the PS2 prototype (`orig/ps2proto/stdump/`,
+see [docs/ps2-prototype.md](docs/ps2-prototype.md)).
+
 Globals use `// GLOBAL:`, string literals `// STRING:`, and placeholders for
 not-yet-decompiled callees `// STUB:`. See the
 [reccmp annotation docs](https://github.com/isledecomp/reccmp/blob/master/docs/annotations.md).

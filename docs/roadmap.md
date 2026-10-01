@@ -39,9 +39,9 @@ portable platform layer for Linux.
 - [x] **PS2 prototype ingestion.** `tools/extract_orig.py` pulls the ELF/MAP from the
       prototype `.rar`; `tools/ps2map.py` writes `orig/ps2proto/symbols.csv` (11,851
       functions in 560 objects, with C++ signatures). See `docs/ps2-prototype.md`.
-- [ ] **PS2 types.** Package a `.mdebug` (ECOFF/MIPS debug) dumper (e.g. chaoticgd/ccc
-      `stdump`) in the flake; dump structs/enums/prototypes for reference into a
-      gitignored dir.
+- [x] **PS2 types.** ccc v2.1 packaged (`nix/ccc.nix`); `tools/ps2dump` writes types,
+      functions (params/locals) and globals to `orig/ps2proto/stdump/`. `listman.c`
+      renamed to the original identifiers, still 10/10.
 - [ ] **Name the PC exe from PS2 symbols.** Tool that pairs PC functions with PS2 ones
       (shared string refs such as assert file names, call-graph shape, object
       grouping/order), writing a mapping with confidence levels.
@@ -73,3 +73,5 @@ dependency (core first) and saga coverage.
 - 2026-09-30: GPL-3.0, so code can be ported from opensagadev/saga.
 - 2026-09-30: hook-DLL approach for in-game testing before the decomp is complete.
 - 2026-09-30: commits stay local (no remote yet).
+- 2026-09-30: identifiers (functions, struct fields, params, locals) follow the PS2
+  prototype's debug info; saga and others are code sources, not naming sources.

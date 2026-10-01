@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Dump the PS2 prototype's .mdebug debug info as C++ (types, functions with
+# params/locals, globals) into orig/ps2proto/stdump/. Uses ccc's stdump (dev shell).
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+elf="$root/orig/ps2proto/BION~213.ELF"
+out="$root/orig/ps2proto/stdump"
+mkdir -p "$out"
+for what in types functions globals; do
+    ext=$([[ $what == types ]] && echo h || echo cpp)
+    stdump "$what" "$elf" > "$out/$what.$ext" 2> >(grep -v "Invalid SNDLL section" >&2)
+done
+wc -l "$out"/*

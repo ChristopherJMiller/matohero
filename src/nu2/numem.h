@@ -3,9 +3,7 @@
 
 #include "nutypes.h"
 
-/* Name is a guess: Crash WoC's Nu2 has NuMemAlloc(size); BH's build passes the call
- * site's file and line, as in debug-aware TT allocators. */
-void *NuMemAllocFn(i32 size, char *file, i32 line);
+void *NuMemAllocFn(int size, char *file, int line);
 
 #define NuMemAlloc(size) NuMemAllocFn((size), __FILE__, __LINE__)
 

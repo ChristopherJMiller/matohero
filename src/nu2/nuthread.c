@@ -6,7 +6,7 @@
 nuthreaddisableswapfn *NuThreadDisableThreadSwap;
 
 // GLOBAL: BIONICLE 0x6174d0
-nuthreadenableswapfn *NuThreadEnableThreadSwap;
+nuthreaddisableswapfn *NuThreadEnableThreadSwap;
 
 // GLOBAL: BIONICLE 0x3517ef0
-u32 nu_current_thread_id;
+unsigned int nu_current_thread_id;

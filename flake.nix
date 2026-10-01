@@ -36,6 +36,9 @@
 
             # Scripting
             (python3.withPackages (ps: with ps; [ pefile capstone lief ]))
+
+            # PS2 prototype debug info (.mdebug): stdump, uncc
+            (pkgs.callPackage ./nix/ccc.nix { })
           ];
 
           # analyzeHeadless isn't on PATH; scripts use $GHIDRA_INSTALL_DIR/support/analyzeHeadless
