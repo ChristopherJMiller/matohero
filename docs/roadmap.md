@@ -93,7 +93,14 @@ headless boot to title) → commit.
       `nurand` + `listman`: 19 hooks, title screen reached.
 - [x] `numath/nurand.c` (saga): 9/9 exact. Needed float constants in reccmp
       (`tools/floatconsts.py`, since the exe has no relocations).
-- [ ] `numath/nuvec.c` (saga), PC ~`0x570240–0x570a30`, ~24 functions
+- [x] `numath/nuvec.c` (saga): 24 functions, 18 exact + 4 effective; `NuVecRotateX/Z`
+      (91%) and `NuVecDist`/`XZDist` (98%, `pop ecx` vs `add esp,4` cleanup) to revisit.
+      Lesson: MSVC canonicalizes the order of `+` terms, but each product's operand order
+      shows (`m0->_01 * v0->x` vs `v0->x * m0->_01`). Hook test: 39 functions in-game,
+      `NuVecNorm` 93,840 calls during boot.
+- [ ] **Permuter.** Generalize the ad-hoc scripts used on nuvec (operand-order flips,
+      term permutations, temporaries, statement order) into `tools/permute.py <function>`
+      that tries source variants and reports the best reccmp score.
 - [ ] `numath/nutrig.c` (saga), ~`0x570c10–0x571220`, ~10
 - [ ] `numath/numtx.c` (saga), ~`0x56e250–0x56fc50`, ~30
 - [ ] `numath/nuquat.c` (saga), ~`0x56fd60–0x570060`, ~4

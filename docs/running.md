@@ -57,8 +57,10 @@ of each hooked function in the exe, pointing at the recompiled copy.
   patched copy (`tools/coffpatch.py` rewrites its COFF symbol table). Matched functions
   get hooked; static ones are made external under a per-object name so the hook table
   can reference them. Stubs, still-mismatching functions and annotated `GLOBAL`s are
-  *unbound*: their symbols become undefined externals, so the object's code uses the
-  exe's copies, not its own. A file can therefore be hook-tested while partly done.
+  *unbound*: references to them are redirected to new undefined externals, so the
+  object's code uses the exe's copies, not its own. (The local definition survives as
+  `<name>$dead`, because `/O2` puts every function in a COMDAT section that needs its
+  defining symbol.) A file can therefore be hook-tested while partly done.
 - **Everything else they touch stays in the exe.** Unresolved references from a first
   link pass are bound to their original addresses in a generated `glue.asm`. Globals
   become absolute symbols (`_nu_current_thread_id EQU 03517EF0h`); functions become
