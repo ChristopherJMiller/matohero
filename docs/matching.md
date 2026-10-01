@@ -82,6 +82,11 @@ exact; `tools/permute.py` automates some of them.
   `NuVecMagSqr`, `NuVecMag`, `NuGetWChar`, `NuFParUnGetWord`, `NuFParClose`,
   `NuFParInit`, `NuFreeFPar` so far. Whether the compiler then inlines a given call
   is still its own choice (`NuStrNCmp` calls `NuStrLen`, `NuStrGetExt` inlines it).
+- **One helper, inlined in one caller and called by another: a `static __inline` copy.**
+  `NuStringTableLoadCSV` inlines `NuAsciiToUnicode`, but `NuSPrintfW` calls it; marking
+  `NuAsciiToUnicode` `__inline` got it inlined into `NuSPrintfW` too (exact → regressed).
+  A file-local `static __inline AsciiToUnicode` used only by `LoadCSV` matches both. The
+  original probably had a macro or a private copy there.
 - **Function order in an object.** `/O2` implies `/Gy`, so each function is its own
   COMDAT, emitted in source order, except that a function calling one defined *later* in
   the file (i.e. not compiled yet) is deferred to the end of the object, whether or not

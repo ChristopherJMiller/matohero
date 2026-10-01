@@ -144,9 +144,6 @@ headless boot to title) → commit.
       18 functions, 17 exact + 1 effective; `NuSPrintfW` now exact too. Found that the
       original builds with **`/Ob1`** (only `__inline` functions inline), now global, with
       `__inline` on the helpers that get inlined. Hook test: 143 functions, title reached.
-- [ ] `nucore/nustring.c` part 3: `NuStringTableLoadCSV` (`0x568ff0`, 1148 bytes) and
-      `NuStringTableLoadTXT` (`0x569480`). They use `NUFPAR`/`NuFile`, so do them after
-      `nufpar` and `nufile`.
 - [x] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga) and
       `nucore/pc/nutime_pc.c` (QueryPerformanceCounter ticks): 16 functions, all exact,
       plus the `nuapi` global (`0x3607b60`, PS2 layout). Win32 imports compare by name,
@@ -195,8 +192,11 @@ headless boot to title) → commit.
 - [ ] nufile near-miss pass (`GetFileInfo` 61%, `Read` 81%, `EndBlkRead` 82%, `Open`
       83%, `LoadBuffer` 83%, `Close` 87%, `DatFileRead` 85%, `FileSeek` 85%, `ExtFind`
       95%, `PSFileOpen` 81%) after the compile-order experiment below.
-- [ ] `nucore/nustring.c` part 3 (`NuStringTableLoadCSV`/`TXT`), now that nufile and
-      nufpar are in.
+- [x] `nucore/nustring.c` part 3: `NuStringTableLoadCSV` (`0x568ff0`, 1148 bytes) and
+      `NuStringTableLoadTXT` (`0x569480`): both exact. `LoadCSV` inlines a copy of
+      `NuAsciiToUnicode` that `NuSPrintfW` calls, so it uses a `static __inline` copy
+      (`docs/matching.md`). Hook test: 235 functions, title reached, the game's CSV
+      string tables loaded by our code.
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
 
 Tooling backlog (pick up when near-misses pile up):

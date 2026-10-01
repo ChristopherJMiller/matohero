@@ -57,6 +57,8 @@ void NuAsciiToUnicode(NUWCHAR16 *dest, char *src);
 void NuUTF8ToUnicode(NUWCHAR16 *dest, NUWCHAR8 *src);
 NUWCHAR8 *NuUnicodeCharFromUTF8(NUWCHAR *unicode, NUWCHAR8 *utf8);
 void NuStringTableSetFormat(int format);
+int NuStringTableLoadCSV(char *filename, VARIPTR *ptr, VARIPTR end, char *label, char *language);
+int NuStringTableLoadTXT(char *filename, VARIPTR *ptr, VARIPTR end);
 int NuStringTableGetFormat(void);
 void NuStringTableSetBank(int bank);
 void NuStringTableUnload(void);

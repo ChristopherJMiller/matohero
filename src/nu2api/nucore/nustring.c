@@ -1,5 +1,8 @@
 #include "nustring.h"
 
+#include "nufile.h"
+#include "nufpar.h"
+
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -121,7 +124,7 @@ void NuStrCat(char *str, char *ext) {
 }
 
 // FUNCTION: BIONICLE 0x568850
-int NuStrCpy(char *dst, char *src) {
+__inline int NuStrCpy(char *dst, char *src) {
     char *dst0 = dst;
 
     if (src != NULL) {
@@ -419,7 +422,7 @@ void NuStrCatW(NUWCHAR *str, NUWCHAR *ext) {
 }
 
 // FUNCTION: BIONICLE 0x568a80
-int NuStrCpyW(NUWCHAR *dst, NUWCHAR *src) {
+__inline int NuStrCpyW(NUWCHAR *dst, NUWCHAR *src) {
     int cnt = 0;
 
     if (src == NULL) {
@@ -723,6 +726,208 @@ void NuStringTableSetFormat(int format) {
 // FUNCTION: BIONICLE 0x568fe0
 int NuStringTableGetFormat(void) {
     return nustring_format;
+}
+
+/* NuAsciiToUnicode as inlined into NuStringTableLoadCSV. NuSPrintfW calls the real one
+ * out of line, which no single __inline/non-inline choice reproduces, so the inlined copy
+ * is separate until the compiler's inlining rules are better understood. */
+static __inline void AsciiToUnicode(NUWCHAR16 *dest, char *src) {
+    int cnt = 0;
+
+    *dest = 0;
+    if (src == NULL) {
+        return;
+    }
+    while (src[cnt] != '\0') {
+        dest[cnt] = (unsigned char)src[cnt];
+        cnt++;
+    }
+    dest[cnt] = 0;
+}
+
+// FUNCTION: BIONICLE 0x568ff0
+int NuStringTableLoadCSV(char *filename, VARIPTR *ptr, VARIPTR end, char *label, char *language) {
+    NUFPAR *fp;
+    void *mem;
+    int size;
+    NUFILE fh;
+    int len;
+    int col;
+    int label_col;
+    int language_col;
+    int num;
+    int max;
+    NUWCHAR wlabel[64];
+    NUWCHAR wlanguage[64];
+    char *wordParseBuff;
+    char *lineParseBuff;
+    char *tempParseBuff;
+    int ParseBuffSize;
+    NUSTRING *str;
+    NUSTRINGBANK *bank;
+
+    label_col = -1;
+    language_col = -1;
+    num = 0;
+    max = 0;
+    ParseBuffSize = 0x8000;
+    bank = &StringBank[CurrentStringBank];
+    AsciiToUnicode(wlabel, label);
+    AsciiToUnicode(wlanguage, language);
+    bank->Strings = NULL;
+    bank->MaxStrings = 0;
+    bank->NumStrings = 0;
+    mem = (void *)(end.intaddr - 0x100000);
+    size = NuFileLoadBuffer(filename, mem, 0x100000);
+    wordParseBuff = (char *)mem + size;
+    lineParseBuff = (char *)mem + size + ParseBuffSize;
+    tempParseBuff = (char *)mem + size + ParseBuffSize + ParseBuffSize;
+    fh = NuMemFileOpen(mem, size, NUFILE_READ);
+    if (fh != 0) {
+        fp = NuFParOpen(fh);
+        if (fp != NULL) {
+            fp->wbuff = wordParseBuff;
+            fp->lbuff = lineParseBuff;
+            fp->lBuffSize = ParseBuffSize;
+            fp->wBuffSize = ParseBuffSize;
+            while (NuFParGetLine(fp)) {
+                max++;
+            }
+            NuFParClose(fp);
+        }
+        NuFileClose(fh);
+    }
+    str = (NUSTRING *)((ptr->intaddr + 3) & ~3);
+    ptr->intaddr = ((ptr->intaddr + 3) & ~3) + max * sizeof(NUSTRING);
+    fh = NuMemFileOpen(mem, size, NUFILE_READ);
+    if (fh != 0) {
+        fp = NuFParOpen(fh);
+        if (fp != NULL) {
+            fp->wbuff = wordParseBuff;
+            fp->lbuff = lineParseBuff;
+            fp->lBuffSize = ParseBuffSize;
+            fp->wBuffSize = ParseBuffSize;
+            while (NuFParGetLine(fp)) {
+                col = 0;
+                while (NuFParGetWord(fp)) {
+                    if (NuStrICmpW((NUWCHAR *)fp->wbuff, wlabel) == 0) {
+                        label_col = col;
+                    }
+                    if (NuStrICmpW((NUWCHAR *)fp->wbuff, wlanguage) == 0) {
+                        language_col = col;
+                    }
+                    col++;
+                }
+                if (label_col >= 0 && language_col >= 0) {
+                    break;
+                }
+            }
+            if (label_col >= 0 && language_col >= 0) {
+                while (NuFParGetLine(fp)) {
+                    col = 0;
+                    while (NuFParGetWord(fp)) {
+                        if (col == label_col) {
+                            len = NuStrLenW((NUWCHAR *)fp->wbuff) + 1;
+                            str[num].id = ptr->s8;
+                            ptr->intaddr += len;
+                            NuUnicodeToAscii(str[num].id, (NUWCHAR16 *)fp->wbuff);
+                        }
+                        if (col == language_col) {
+                            if (nustring_format == 1) {
+                                len = NuStrLenW((NUWCHAR *)fp->wbuff) + 1;
+                                str[num].text = (NUWCHAR *)((ptr->intaddr + 1) & ~1);
+                                ptr->intaddr = ((ptr->intaddr + 1) & ~1) + len * 2;
+                                NuStrCpyW(str[num].text, (NUWCHAR *)fp->wbuff);
+                            } else {
+                                NuUnicodeToUTF8((NUWCHAR8 *)tempParseBuff, (NUWCHAR16 *)fp->wbuff);
+                                len = NuStrLen(tempParseBuff) + 1;
+                                str[num].text_utf8 = (NUWCHAR8 *)((ptr->intaddr + 1) & ~1);
+                                ptr->intaddr = ((ptr->intaddr + 1) & ~1) + len;
+                                NuStrCpy((char *)str[num].text_utf8, tempParseBuff);
+                            }
+                        }
+                        col++;
+                        if (col > label_col && col > language_col) {
+                            if (str[num].id != NULL && str[num].text != NULL) {
+                                num++;
+                            } else {
+                                str[num].id = NULL;
+                                str[num].text = NULL;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            NuFParClose(fp);
+            bank->Strings = str;
+            bank->NumStrings = num;
+            bank->MaxStrings = max;
+        }
+        NuFileClose(fh);
+    }
+    return bank->NumStrings;
+}
+
+// FUNCTION: BIONICLE 0x569480
+int NuStringTableLoadTXT(char *filename, VARIPTR *ptr, VARIPTR end) {
+    NUFPAR *fp;
+    void *mem;
+    int size;
+    NUFILE fh;
+    int len;
+    int num;
+    int max;
+    NUSTRING *str;
+    NUSTRINGBANK *bank;
+
+    bank = &StringBank[CurrentStringBank];
+    bank->Strings = NULL;
+    bank->MaxStrings = 0;
+    bank->NumStrings = 0;
+    num = 0;
+    max = 0;
+    mem = (void *)(end.intaddr - 0x100000);
+    size = NuFileLoadBuffer(filename, mem, 0x100000);
+    fh = NuMemFileOpen(mem, size, NUFILE_READ);
+    if (fh != 0) {
+        fp = NuFParOpen(fh);
+        if (fp != NULL) {
+            while (NuFParGetLine(fp)) {
+                max++;
+            }
+            NuFParClose(fp);
+        }
+        NuFileClose(fh);
+    }
+    str = (NUSTRING *)((ptr->intaddr + 3) & ~3);
+    ptr->intaddr = ((ptr->intaddr + 3) & ~3) + max * sizeof(NUSTRING);
+    fh = NuMemFileOpen(mem, size, NUFILE_READ);
+    if (fh != 0) {
+        fp = NuFParOpen(fh);
+        if (fp != NULL) {
+            while (NuFParGetLine(fp)) {
+                NuFParGetWord(fp);
+                NuFParGetWord(fp);
+                len = NuStrLenW((NUWCHAR *)fp->wbuff) + 1;
+                str[num].id = ptr->s8;
+                ptr->intaddr += len;
+                NuUnicodeToAscii(str[num].id, (NUWCHAR16 *)fp->wbuff);
+                NuFParGetWord(fp);
+                len = NuStrLenW((NUWCHAR *)fp->wbuff) + 1;
+                str[num].text = (NUWCHAR *)((ptr->intaddr + 1) & ~1);
+                ptr->intaddr = ((ptr->intaddr + 1) & ~1) + len * 2;
+                NuStrCpyW(str[num].text, (NUWCHAR *)fp->wbuff);
+                num++;
+            }
+            NuFParClose(fp);
+            bank->Strings = str;
+            bank->NumStrings = num;
+            bank->MaxStrings = max;
+        }
+        NuFileClose(fh);
+    }
+    return bank->NumStrings;
 }
 
 // FUNCTION: BIONICLE 0x569690
