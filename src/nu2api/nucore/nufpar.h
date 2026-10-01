@@ -3,6 +3,7 @@
 
 #include "nufile.h"
 #include "nustring.h"
+#include "nurdp.h"
 
 struct nufpar_s;
 
@@ -72,7 +73,5 @@ void NuFParDestroy(NUFPAR *fp);
 NUFPAR *NuFParCreate(char *fname);
 
 /* Recursive-descent expression evaluators (nurdpi.c, nurdpf.c). */
-int NuRDPI(char *expr);
-float NuRDPF(char *expr);
 
 #endif

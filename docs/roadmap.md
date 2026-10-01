@@ -149,12 +149,19 @@ headless boot to title) → commit.
       plus the `nuapi` global (`0x3607b60`, PS2 layout). Win32 imports compare by name,
       so platform code matches like anything else. Hook test: 159 functions, title
       reached, `NuTimeGetFrameTime` 373k calls.
+- [x] `nucore/nurdpf.c` (saga): the float expression evaluator behind
+      `NuFParGetFloatRDP` (`get_tok`, `prim`, `term`, `expr`, `NuRDPFVar`, `NuRDPF`,
+      `0x56ca30–0x56cebe`): 6/6 exact on the first build, emission order as in the exe.
+      Declarations in `nurdp.h`. Hook test: 241 functions, title reached, `NuRDPFVar`
+      343 calls from the exe.
+- [ ] `nucore/nurdpi.c` (saga): the int evaluator, `NuRDPI` = `0x56e0b0` after rnc
+      (stub today); likely `get_tok` `0x56d8f0`, `prim` `0x56ddb0`, `term` `0x56de60`,
+      `expr` `0x56dfc0` (`0x56d810`/`0x56d880` are the end of rnc or unplaced).
 - [ ] Rest of `0x56c3a0–0x56cf3e`: `NuFrameBegin`/`NuFrameEnd` (need nu3d/PC callees
       stubbed), `0x56c820` (ms timer, `NuTimeGetTime`?), `0x56c980` (sets
-      `nuapi.video_swap_mode` and `native_FPS`), `0x56ca30–0x56ce90` (`nurdpf.c`, the float
-      expression evaluator behind `NuFParGetFloatRDP`; `NuRDPF` = `0x56ce90`; the int
-      one, `NuRDPI` = `0x56e0b0`, sits after rnc), `0x56cec0`/`0x56cf00`/`0x56cf20` (critical-section table at
-      `0x34c5fb8`), `0x56c3a0`/`0x56c3d0` (tables at `0x34c57e4`, maybe nulang).
+      `nuapi.video_swap_mode` and `native_FPS`), `0x56cec0`/`0x56cf00`/`0x56cf20`
+      (critical-section table at `0x34c5fb8`), `0x56c3a0`/`0x56c3d0` (tables at
+      `0x34c57e4`, maybe nulang).
 - [x] `nucore/nufpar.c` (saga): all 24 PC functions exact (BH has one command stack,
       saga two). Stubs for the nufile callees, `NuFileExists` (`pc/nufile_pc.c`) and the
       expression evaluators `NuRDPI`/`NuRDPF`. Hook test: 183 functions, title reached,
