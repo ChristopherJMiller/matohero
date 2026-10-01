@@ -12,7 +12,9 @@ targets:
       name_substitutions: []
       allow_hash_mismatch: false
     report:
-      ignore_functions: []
+      # Statically linked MSVC CRT, auto-matched through the entry point.
+      ignore_functions:
+      - WinMainCRTStartup
       ignore_variables: []
       icon:
     marker_aliases: {}

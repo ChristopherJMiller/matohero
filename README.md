@@ -57,6 +57,7 @@ tools/build.py                           # compile src/ under Wine, link build/B
 tools/reccmp project detect --what recompiled --search-path build   # once
 tools/reccmp reccmp --target BIONICLE    # per-function similarity report
 tools/reccmp reccmp --target BIONICLE --verbose 0x565550            # diff one function
+tools/progress.py                        # refresh docs/progress.md
 ```
 
 Source lives in `src/<library>/`, mirroring the original tree (`src/nu2/listman.c` was

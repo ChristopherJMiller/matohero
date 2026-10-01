@@ -25,8 +25,8 @@ portable platform layer for Linux.
 2. Build and compare before committing: `tools/build.py && tools/reccmp reccmp --target BIONICLE`.
    Nothing that matched 100% may regress.
 3. Commit locally with a descriptive message. Never push, never rewrite pushed history.
-4. Update the queue below (check off, add follow-ups), `docs/progress.md`, and docs for
-   anything learned.
+4. Update the queue below (check off, add follow-ups), run `tools/progress.py` to
+   refresh `docs/progress.md`, and update docs for anything learned.
 5. If blocked on something only Chris can provide or decide, add it to **Needs from
    Chris** and move on to another task.
 6. Ask before: large downloads, deleting anything outside `build/`/scratch, license
@@ -50,26 +50,29 @@ portable platform layer for Linux.
 - [x] **Object regions.** `orig/ps2proto/pc_objects.csv`: 3,202/4,843 game+engine
       functions placed in an original source file; core-run filter cut propagated-pair
       isolation to ~2–3%.
-- [ ] **Name the PC-only files.** The big gaps (`0x5717b0–0x57c8d0`, `0x5809e0–0x594060`,
-      …) sit where PS2 has `nups2`/`*/ps2` code: they're the `pc\` renderer/platform
-      files (`.\pc\nurndr.c`, `.\d3dCalls.cpp`, `.\pcapi.cpp`). Map them from PC
-      assert strings and saga's PC-side names.
 - [x] **Names into Ghidra.** `tools/ghidra names` applies the PS2 mapping (namespaces,
       plate comments); `tools/reccmp ghidra-import` applies matched functions' names and
       signatures (struct members come through empty, and unions aren't supported).
-- [ ] **PS2 types into Ghidra.** Turn `orig/ps2proto/stdump/types.h` into a Ghidra data
-      type archive (or apply it through a script) so decompiler output gets real struct
-      members.
-- [ ] **Library code out of the score**: mark statically linked CRT/third-party code
-      (`// LIBRARY:` or report ignores) so accuracy reflects game code.
-- [ ] **Progress page**: `tools/progress.py` → `docs/progress.md` (functions and bytes
-      matched, per object/module).
+- [x] **Library code out of the score.** `tools/progress.py` counts only code below
+      the CRT (`0x5b4a34`); `WinMainCRTStartup` is in reccmp's report ignore list.
+- [x] **Progress page.** `tools/progress.py` regenerates `docs/progress.md`: functions
+      and bytes matched, per original module, with a dated history.
 - [ ] **Run the original game under Wine** (D3D9 via WineD3D/DXVK); document how.
 - [ ] **Hook DLL**: build `src/` into a DLL; a loader patches each 100%-matched
       function in the original exe with a jump into the DLL, so decompiled code runs
       in-game. Smoke test: boots to the title screen.
 - [ ] **Re-layout `src/`** to mirror the original tree from the PS2 map
       (`nu2api/gamelib/listman.c`, …), keeping PC-only files (`pc\…`) in place.
+
+M1 polish (after the hook DLL works):
+
+- [ ] **Name the PC-only files.** The big gaps (`0x5717b0–0x57c8d0`, `0x5809e0–0x594060`,
+      …) sit where PS2 has `nups2`/`*/ps2` code: they're the `pc\` renderer/platform
+      files (`.\pc\nurndr.c`, `.\d3dCalls.cpp`, `.\pcapi.cpp`). Map them from PC
+      assert strings and saga's PC-side names.
+- [ ] **PS2 types into Ghidra.** Turn `orig/ps2proto/stdump/types.h` into a Ghidra data
+      type archive (or apply it through a script) so decompiler output gets real struct
+      members.
 
 ### M2 onward
 
