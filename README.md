@@ -93,6 +93,7 @@ The resulting project in `ghidra/` is gitignored.
 
 ## Docs
 
+- [docs/roadmap.md](docs/roadmap.md): milestones toward a Linux build, and the work queue
 - [docs/prior-art.md](docs/prior-art.md): existing BH/Nu2 reverse-engineering work and tooling
 - [docs/binary-notes.md](docs/binary-notes.md): the target binary, toolchain
   fingerprint, engine and section layout

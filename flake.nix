@@ -29,6 +29,7 @@
             unshield     # InstallShield .cab
             cabextract
             msitools
+            unar         # RAR (p7zip in nixpkgs is built without it)
 
             # Running the game / the period MSVC toolchain
             wineWow64Packages.stable  # cached; runs 32-bit PEs via new WoW64 mode

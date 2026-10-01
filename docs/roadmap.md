@@ -1,0 +1,75 @@
+# Roadmap
+
+**End goal:** build the game from source for other platforms, starting with Linux via GCC.
+
+The path: a matching decompilation against the shipped PC exe (MSVC 7.1 SP1), testable
+in-game early through a hook DLL, then a second compiler (MinGW-GCC on Windows), then a
+portable platform layer for Linux.
+
+## Milestones
+
+| | Milestone | Done when |
+|---|---|---|
+| M0 | Toolchain and harness | build + reccmp loop works ✅ |
+| M1 | Groundwork | PS2 symbols mapped onto the PC exe, names in Ghidra, CRT excluded from scoring, progress page, hook DLL running decompiled code in-game |
+| M2 | Nu2 engine core | `nu2api` modules (nucore, numath, nufile, …) matched |
+| M3 | Game code | game-side objects matched (charsys, gui, gamelib, …) |
+| M4 | Standalone exe | the recompiled exe runs the game without the original |
+| M5 | Second compiler | same source builds with MinGW-GCC for Windows and runs |
+| M6 | Linux | platform layer (D3D9, DirectInput, DirectSound, Bink, Win32) replaced; GCC build runs natively |
+
+## Working rules (each loop iteration)
+
+1. Read this file and `docs/progress.md`; take the first unchecked task in the queue
+   (or the next file in the current milestone). Keep it to one focused unit of work.
+2. Build and compare before committing: `tools/build.py && tools/reccmp reccmp --target BIONICLE`.
+   Nothing that matched 100% may regress.
+3. Commit locally with a descriptive message. Never push, never rewrite pushed history.
+4. Update the queue below (check off, add follow-ups), `docs/progress.md`, and docs for
+   anything learned.
+5. If blocked on something only Chris can provide or decide, add it to **Needs from
+   Chris** and move on to another task.
+6. Ask before: large downloads, deleting anything outside `build/`/scratch, license
+   changes, publishing anything.
+
+## Queue
+
+### M1: Groundwork
+
+- [ ] **PS2 prototype ingestion.** Extend `tools/extract_orig.py` to pull
+      `BION~213.ELF`/`.MAP` from the Sep 28 2006 prototype `.rar`. Parse the `.MAP` into
+      an object → functions table (`h:\Bionicle\Ps2\Source\…`), the original source tree.
+- [ ] **PS2 types.** Package a `.mdebug` (ECOFF/MIPS debug) dumper (e.g. chaoticgd/ccc
+      `stdump`) in the flake; dump structs/enums/prototypes for reference into a
+      gitignored dir.
+- [ ] **Name the PC exe from PS2 symbols.** Tool that pairs PC functions with PS2 ones
+      (shared string refs such as assert file names, call-graph shape, object
+      grouping/order), writing a mapping with confidence levels.
+- [ ] **Names into Ghidra** (reccmp-ghidra-import or our own script from the mapping).
+- [ ] **Library code out of the score**: mark statically linked CRT/third-party code
+      (`// LIBRARY:` or report ignores) so accuracy reflects game code.
+- [ ] **Progress page**: `tools/progress.py` → `docs/progress.md` (functions and bytes
+      matched, per object/module).
+- [ ] **Run the original game under Wine** (D3D9 via WineD3D/DXVK); document how.
+- [ ] **Hook DLL**: build `src/` into a DLL; a loader patches each 100%-matched
+      function in the original exe with a jump into the DLL, so decompiled code runs
+      in-game. Smoke test: boots to the title screen.
+- [ ] **Re-layout `src/`** to mirror the original tree from the PS2 map
+      (`nu2api/gamelib/listman.c`, …), keeping PC-only files (`pc\…`) in place.
+
+### M2 onward
+
+Filled in as M1 lands: one queue entry per original object file, ordered by
+dependency (core first) and saga coverage.
+
+## Needs from Chris
+
+- **DirectX SDK (April 2006)**, the release that shipped `d3dx9_30.dll`. The game uses
+  `ID3DXEffect`/`ID3DXEffectPool`/`ID3DXFont`, whose method layouts changed after the
+  Dec 2002 SDK in `~/Downloads`. Needed once renderer code is reached; archive.org has it.
+
+## Decisions
+
+- 2026-09-30: GPL-3.0, so code can be ported from opensagadev/saga.
+- 2026-09-30: hook-DLL approach for in-game testing before the decomp is complete.
+- 2026-09-30: commits stay local (no remote yet).
