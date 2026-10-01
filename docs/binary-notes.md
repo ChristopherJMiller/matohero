@@ -112,4 +112,4 @@ compiling candidate functions and comparing.
 | `0x5c4000`–end | compiler-generated EH `Unwind@`/`Catch@` funclets |
 
 Source-file hints come from `tools/ghidra_scripts/ExportOverview.java`, which writes
-`build/source_hints.csv`. Boundaries are approximate.
+`ghidra/export/source_hints.csv`. Boundaries are approximate.

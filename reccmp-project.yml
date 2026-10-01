@@ -1,0 +1,18 @@
+targets:
+  BIONICLE:
+    filename: Bionicle.exe
+    source_root: src
+    hash:
+      sha256: e1daa3dc24cc184cce1b0b01df032bd9a32b2a29d265ae04dbc6c90978d7c4a8
+    data_sources: []
+    encoding:
+    ghidra:
+      ignore_types: []
+      ignore_functions: []
+      name_substitutions: []
+      allow_hash_mismatch: false
+    report:
+      ignore_functions: []
+      ignore_variables: []
+      icon:
+    marker_aliases: {}

@@ -1,6 +1,6 @@
 // Export a function list and a source-file hint map from the analyzed program.
 //
-// Writes into the directory given as the first script argument (default: build/):
+// Writes into the directory given as the first script argument (default: ghidra/export/):
 //   functions.csv     address,size,name,thunk,callers,callees
 //   source_hints.csv  source_path,function_address,function_name,string_address
 //
@@ -9,7 +9,7 @@
 // contiguously, so the hints sketch the original object file boundaries.
 //
 // Usage: analyzeHeadless ghidra BionicleHeroes -process Bionicle.exe -noanalysis \
-//          -scriptPath tools/ghidra_scripts -postScript ExportOverview.java build
+//          -scriptPath tools/ghidra_scripts -postScript ExportOverview.java ghidra/export
 //@category BionicleDecomp
 
 import java.io.File;
@@ -30,7 +30,7 @@ public class ExportOverview extends GhidraScript {
 	@Override
 	protected void run() throws Exception {
 		String[] args = getScriptArgs();
-		File outDir = new File(args.length > 0 ? args[0] : "build");
+		File outDir = new File(args.length > 0 ? args[0] : "ghidra/export");
 		outDir.mkdirs();
 
 		int total = 0, named = 0;

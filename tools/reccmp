@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Run a reccmp tool with the project's Wine prefix (reccmp runs cvdump.exe under Wine).
+#   tools/reccmp reccmp --target BIONICLE
+#   tools/reccmp project detect --what recompiled --search-path build
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tool="$1"
+shift
+export WINEPREFIX="$root/toolchain/wineprefix"
+export WINEDEBUG="${WINEDEBUG:--all}"
+cd "$root"
+exec "reccmp-$tool" "$@"

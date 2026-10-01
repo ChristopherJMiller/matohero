@@ -1,0 +1,2 @@
+# Python tools not packaged in nixpkgs; the dev shell installs these into .venv.
+reccmp @ git+https://github.com/isledecomp/reccmp@e91a51bfadfbb600adfdc750589ac40ae9742883

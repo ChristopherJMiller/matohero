@@ -21,3 +21,5 @@ ghidra/
 
 # MSVC toolchain (Microsoft binaries; rebuild with tools/setup_msvc.py)
 toolchain/
+reccmp-user.yml
+reccmp-build.yml
