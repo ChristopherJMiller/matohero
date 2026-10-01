@@ -37,3 +37,31 @@ and loading screen. This is the baseline smoke test for modified builds (hook DL
 
 Log: `run/game.log`. Wine debug channels go through `WINEDEBUG`, e.g.
 `WINEDEBUG=err+all,warn+d3d tools/rungame --headless=20`.
+
+## Hook DLL: decompiled code in the original game
+
+```sh
+tools/hook.py --install          # build build/hook/xinput1_1.dll and copy it into run/game
+tools/rungame --headless=85      # run/game/bhhook.log: "bhhook: redirected N functions"
+rm run/game/xinput1_1.dll        # back to the unmodified game
+```
+
+The game imports `xinput1_1.dll`, so the hook DLL takes that name (`rungame` adds the
+`xinput1_1=n,b` override when it's present). Its `XInputGetState`/`GetCapabilities`/…
+pass through to `xinput1_3`. On load, `DllMain` writes a `jmp` over the first five bytes
+of each hooked function in the exe, pointing at the recompiled copy.
+
+`tools/hook.py` assembles the DLL from the matching build:
+
+- **Objects:** those whose annotated functions all match (exact or effective) and that
+  define no `GLOBAL`s or `STUB`s. Mixed objects are listed as "not hooked" until they
+  match.
+- **Everything else they touch stays in the exe.** Unresolved references from a first
+  link pass are bound to their original addresses in a generated `glue.asm`. Globals
+  become absolute symbols (`_nu_current_thread_id EQU 03517EF0h`); functions become
+  `jmp [slot]` thunks, because `link` treats absolute symbols as RVAs for `call rel32`.
+  The DLL is `/FIXED` at `0x10000000`, so none of this needs relocating.
+- Functions shorter than 5 bytes aren't patched.
+
+First result (2026-09-30): the 10 `listman.c` functions redirected, game reaches the
+title screen as before.

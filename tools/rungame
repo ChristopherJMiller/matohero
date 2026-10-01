@@ -47,6 +47,12 @@ run() {
     done
     [[ -d "$game" ]] || setup
     cd "$game"
+    # The hook DLL (tools/hook.py --install) stands in for xinput1_1; Wine must prefer it
+    # over its builtin. Remove run/game/xinput1_1.dll to run the original unmodified.
+    if [[ -f "$game/xinput1_1.dll" ]]; then
+        export WINEDLLOVERRIDES="$WINEDLLOVERRIDES;xinput1_1=n,b"
+        rm -f "$game/bhhook.log"
+    fi
     if [[ -z "$headless" ]]; then
         exec wine "$exe" "$@"
     fi

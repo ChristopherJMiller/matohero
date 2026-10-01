@@ -102,7 +102,7 @@ def main():
     rsp = BUILD / "link.rsp"
     rsp.write_text("\n".join(
         LINK_FLAGS
-        + [f"/OUT:{winpath(exe)}", f"/PDB:{winpath(BUILD / 'Bionicle.pdb')}"]
+        + [f"/OUT:{winpath(exe)}", f"/PDB:{winpath(BUILD / 'Bionicle.pdb')}", f"/MAP:{winpath(BUILD / 'Bionicle.map')}"]
         + [f'"{winpath(o)}"' for o in objs]
         + ["kernel32.lib", "user32.lib", "gdi32.lib", "advapi32.lib"]
     ) + "\n")

@@ -61,9 +61,11 @@ portable platform layer for Linux.
       installer's Ogg2Wav music conversion; headless mode uses Xvfb + a Wine virtual
       desktop). Reaches the title screen in ~80 s with software rendering. See
       `docs/running.md`.
-- [ ] **Hook DLL**: build `src/` into a DLL; a loader patches each 100%-matched
-      function in the original exe with a jump into the DLL, so decompiled code runs
-      in-game. Smoke test: boots to the title screen.
+- [x] **Hook DLL.** `tools/hook.py --install` builds `xinput1_1.dll` (matched objects +
+      generated glue binding everything else to original addresses); the game loads it
+      and runs our code. Smoke test passes: 10 functions redirected, title screen reached.
+- [ ] **Hook trace mode.** Optional per-hook call counters dumped to `bhhook.log` at
+      exit, to prove which decompiled functions actually ran during a smoke test.
 - [ ] **Re-layout `src/`** to mirror the original tree from the PS2 map
       (`nu2api/gamelib/listman.c`, …), keeping PC-only files (`pc\…`) in place.
 

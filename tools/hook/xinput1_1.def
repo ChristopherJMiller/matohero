@@ -1,0 +1,8 @@
+; The game imports xinput1_1.dll; the hook DLL takes its place. These pass through to
+; xinput1_3 (hookmain.c), which Wine ships and the DirectX runtime installs on Windows.
+LIBRARY xinput1_1
+EXPORTS
+    XInputEnable
+    XInputGetCapabilities
+    XInputGetState
+    XInputSetState
