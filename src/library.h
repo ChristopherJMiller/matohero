@@ -3,3 +3,6 @@
 
 // LIBRARY: BIONICLE 0x5b4d0c
 // _ftol2
+
+// LIBRARY: BIONICLE 0x5b6500
+// _CIpow

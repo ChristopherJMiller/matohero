@@ -11,6 +11,8 @@ exact; `tools/permute.py` automates some of them.
   sometimes mixed within one expression). The permuter flips products.
 - **Parentheses stop reassociation.** `dy * 512.0f / dx` became `dy / dx * -512` with a
   negated table index; `(dy * 512.0f) / dx` matched (`fxyd` in nutrig).
+- **Comparison operand order is visible too.** `pow_x[n] == x` loads `x` first, and
+  `x == pow_x[n]` loads `pow_x[n]` first (`NuPow`). The permuter flips these.
 - **Branch order follows the `if`.** `test ah, 1; jne` comes from
   `if (x >= 0.0f) {…} else {…}`, while `if (x < 0.0f)` gives `test ah, 5; jp`
   (`NuASin`).
@@ -41,7 +43,9 @@ exact; `tools/permute.py` automates some of them.
 - Float constants in the original are only recognized via `build/orig-floats.csv`
   (`tools/floatconsts.py`), since the exe has no relocations.
 - A reference to `global - offset` (e.g. `NuTrigTable - 4` from a loop counting from 1)
-  isn't mapped. The code is identical, but it shows as ~92% (`NuTrigInit`).
+  isn't mapped. The code is identical, but it shows as ~92% (`NuTrigInit`) or ~97%
+  (`NuPow`, which writes its ring buffers through `pow_x - 4` etc.). Candidate for an
+  upstream reccmp improvement.
 
 ## Open questions
 

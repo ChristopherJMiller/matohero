@@ -13,7 +13,8 @@ are masked before a sequence match. The best candidate is then confirmed with re
 
 Variant dimensions, from what mattered on earlier files:
   * operand order of each product `a * b` (MSVC canonicalizes sums, not products);
-  * operand order of comparisons `a < b` <-> `b > a`;
+  * operand order of comparisons: `a < b` <-> `b > a`, `a == b` <-> `b == a` (the
+    load order of x87 compares follows it);
   * order of the local variable declarations (affects register allocation).
 Small spaces are searched exhaustively, larger ones by hill climbing.
 """
@@ -41,8 +42,8 @@ EXE = ROOT / "orig" / "Bionicle.exe"
 IMAGE_LO, IMAGE_HI = 0x400000, 0x3800000
 TERM = r"[A-Za-z_][\w]*(?:(?:->|\.)[\w]+|\[[^\]]*\])*|\d+(?:\.\d+)?f?"
 PRODUCT = re.compile(rf"({TERM}) \* ({TERM})")
-COMPARE = re.compile(rf"({TERM}) (<|>|<=|>=) ({TERM})")
-FLIP = {"<": ">", ">": "<", "<=": ">=", ">=": "<="}
+COMPARE = re.compile(rf"({TERM}) (<=|>=|==|!=|<|>) ({TERM})")
+FLIP = {"<": ">", ">": "<", "<=": ">=", ">=": "<=", "==": "==", "!=": "!="}
 MD = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
 
 

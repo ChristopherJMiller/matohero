@@ -104,9 +104,10 @@ headless boot to title) → commit.
       safe statement reordering, temporaries, if/else vs ?:.
 - [x] `numath/nutrig.c` part 1 (saga): 11 functions, 10 exact (`NuTrigInit` identical but
       ~92% from a reccmp limitation, see `docs/matching.md`); `NuPowFast` 93% (`pop ecx`).
-- [ ] `numath/nutrig.c` part 2: `NuPow` (32-entry result cache, inline `exp(log)`),
-      `NuLog10` and `NuExp10` (lazily built tables via `NuMemAlloc`, lines 868/928),
-      currently stubs in `nutrig_stubs.c`.
+- [x] `numath/nutrig.c` part 2: `NuLog10`, `NuExp10` exact; `NuPow` identical code at 97%
+      (reccmp's `array - 4` limitation). nutrig complete: 14 functions, all but
+      `NuPowFast` (`pop ecx` question) identical. Hook test: title reached, tables built
+      in-game through the exe's allocator.
 - [ ] `numath/numtx.c` (saga), ~`0x56e250–0x56fc50`, ~30
 - [ ] `numath/nuquat.c` (saga), ~`0x56fd60–0x570060`, ~4
 - [ ] `numath/nufloat.c`, `numath/nuplane.c` (saga), small

@@ -1,13 +1,17 @@
 #include "nutrig.h"
 
 #include "nufloat.h"
+#include "numem.h"
+#include "nutypes.h"
 
+#include <float.h>
 #include <math.h>
 
 /* Trigonometry. Based on opensagadev/saga src/nu2api/numath/nutrig*.c(pp) (GPL-3.0);
- * names from the PS2 prototype. In PC order. NuPow, NuLog10 and NuExp10 come between
- * NuACos and NuAtan2; until they're decompiled their stubs live in nutrig_stubs.c (a stub
- * in this file would get inlined into NuPowFast). */
+ * names from the PS2 prototype. In PC order. */
+
+// STRING: BIONICLE 0x5e0970
+// __FILE__, passed to NuMemAlloc: ".\\nutrig.c"
 
 // GLOBAL: BIONICLE 0x360a300
 float NuTrigTable[32768];
@@ -68,6 +72,19 @@ static unsigned short ang[513] = {
     0x1f84, 0x1f8f, 0x1f99, 0x1fa4, 0x1fae, 0x1fb8, 0x1fc3, 0x1fcd, 0x1fd7, 0x1fe1,
     0x1fec, 0x1ff6, 0x2000
 };
+
+/* NuPow's cache of recent results: pow_cache_free is the next slot to overwrite. */
+// GLOBAL: BIONICLE 0x34c627c
+static int pow_cache_free;
+
+// GLOBAL: BIONICLE 0x34c61f8
+static float pow_x[32];
+
+// GLOBAL: BIONICLE 0x34c60f0
+static float pow_y[32];
+
+// GLOBAL: BIONICLE 0x34c6170
+static float pow_rv[32];
 
 // FUNCTION: BIONICLE 0x570b80
 void NuTrigInit(void) {
@@ -162,6 +179,130 @@ short NuASin(float Sin) {
 // FUNCTION: BIONICLE 0x570e10
 short NuACos(float Cos) {
     return 0x4000 - NuASin(Cos);
+}
+
+// FUNCTION: BIONICLE 0x570e30
+float NuPow(float x, float y) {
+    // GLOBAL: BIONICLE 0x61797c
+    static int first_time = 1;
+    int n;
+    float pow_r;
+
+    if (x == 0.0f) {
+        return 0.0f;
+    }
+    if (first_time) {
+        first_time = 0;
+        for (n = 0; n < 32; n++) {
+            pow_x[n] = FLT_MAX;
+        }
+    }
+    for (n = 0; n < 32; n++) {
+        if (pow_x[n] == x && pow_y[n] == y) {
+            return pow_rv[n];
+        }
+    }
+    pow_r = (float)exp(log(x) * y);
+    pow_x[pow_cache_free] = x;
+    pow_y[pow_cache_free] = y;
+    pow_rv[pow_cache_free] = pow_r;
+    pow_cache_free = (pow_cache_free + 1) & 31;
+    return pow_r;
+}
+
+/* log10 from a table of log10(1.000..9.999), after scaling x into [1000, 10000). */
+// FUNCTION: BIONICLE 0x570fa0
+float NuLog10(float x) {
+    // GLOBAL: BIONICLE 0x34c61f0
+    static float *logtable;
+    // GLOBAL: BIONICLE 0x617980
+    static int first_time = 1;
+    float fx;
+    float lerpval;
+    int ix;
+    float n;
+
+    if (first_time) {
+        logtable = (float *)NuMemAllocAt(9000 * sizeof(float), 868);
+        if (logtable == NULL) {
+            return 0.0f;
+        }
+        for (fx = 1000.0f; fx <= 9999.0f; fx += 1.0f) {
+            logtable[(int)fx - 1000] = (float)log10(fx * 0.001f);
+        }
+        first_time = 0;
+    }
+    if (x <= 0.0f) {
+        return FLT_MAX;
+    }
+    n = 3.0f;
+    if (x >= 10000.0f) {
+        while (x > 10000.0f) {
+            x *= 0.1f;
+            n += 1.0f;
+        }
+    } else {
+        while (x < 1000.0f) {
+            x *= 10.0f;
+            n -= 1.0f;
+        }
+    }
+    x -= 1000.0f;
+    ix = (int)x;
+    lerpval = x - ix;
+    if (ix < 8999) {
+        return n + logtable[ix] * (1.0f - lerpval) + logtable[ix + 1] * lerpval;
+    }
+    return n + logtable[ix];
+}
+
+/* 10^x from a table of 10^(i/10000), times a power of ten for the integer part. */
+// FUNCTION: BIONICLE 0x5710f0
+float NuExp10(float x) {
+    // GLOBAL: BIONICLE 0x34c6278
+    static float *alogtable;
+    // GLOBAL: BIONICLE 0x617984
+    static int first_time = 1;
+    float rv;
+    float fx;
+    float lerpval;
+    int shift;
+    int ix;
+
+    if (first_time) {
+        alogtable = (float *)NuMemAllocAt(10000 * sizeof(float), 928);
+        if (alogtable == NULL) {
+            return 0.0f;
+        }
+        for (fx = 0.0f; fx <= 9999.0f; fx += 1.0f) {
+            alogtable[(int)fx] = (float)pow(10.0, fx * 0.0001f);
+        }
+        first_time = 0;
+    }
+    if (x == FLT_MAX) {
+        return FLT_MAX;
+    }
+    shift = (int)x;
+    fx = x - shift;
+    if (fx < 0.0f) {
+        fx += 1.0f;
+        shift--;
+    }
+    fx *= 10000.0f;
+    ix = (int)fx;
+    lerpval = fx - ix;
+    if (ix < 9999) {
+        rv = (1.0f - lerpval) * alogtable[ix] + lerpval * alogtable[ix + 1];
+    } else {
+        rv = alogtable[ix];
+    }
+    for (; shift > 0; shift--) {
+        rv *= 10.0f;
+    }
+    for (; shift < 0; shift++) {
+        rv *= 0.1f;
+    }
+    return rv;
 }
 
 // FUNCTION: BIONICLE 0x571220
