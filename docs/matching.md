@@ -192,6 +192,10 @@ exact; `tools/permute.py` automates some of them.
   writing `dlm->dlists[j]` made MSVC walk the array with a pointer and a separate
   counter as the original does, where `global_dlist_manager.dlists[j]` indexed it
   (79% → 100%). When the PS2 lists such a pointer, use it.
+- **`|` between a test and a flag survives inlining; `||` folds.** `NuHtmlEnd` inlines
+  `NuHtmlFlush(1)` and still computes `txt > flush` (`cmp`/`sbb`/`neg`/`or 1`) before an
+  always-taken branch; with `txt > flush || force` our build dropped the test (29% →
+  100% with `(txt > flush) | force`).
 - **Toggling a 1-bit field.** `bf = !bf`, `bf ^= 1`, `bf = bf ^ 1` and `bf = bf == 0`
   all give the original's `not`/`xor`/`and`/`xor` insert; `bf = ~bf` extracts the bit
   first (`shr`/`shl`).
@@ -353,6 +357,13 @@ exact; `tools/permute.py` automates some of them.
   both builds), and progress/hooks count them as effective.
 
 ## Open questions
+
+- **Which parameters a static gets in registers, with one caller.**
+  `DisplayListPrintItems` (63%) takes `item` in `ecx` and `flags` in `eax` in the
+  original; ours puts `item` and `fh` in registers (the three end up in the same
+  callee-saved registers, with `flags` and `fh` swapped). Parameter orders, a `follow`
+  local, loop shapes and the permuter changed nothing; its caller
+  `NuDisplayListDrawRenderScene` (69%) only differs because of it.
 
 - **`NuUTF8ToUnicode` (33%)**: identical code with `ecx`/`edx` swapped for the source
   pointer and the byte temporary. The permuter's moves and hand variants (loop forms,

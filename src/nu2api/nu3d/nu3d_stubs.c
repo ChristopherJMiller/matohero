@@ -182,3 +182,8 @@ void RndrStateClear(NURNDRSTATE *state) {
 // STUB: BIONICLE 0x544c50
 void RndrStateResetSharedGlobalState(void) {
 }
+
+// STUB: BIONICLE 0x555bc0
+int NuDisplayListAddRenderScene(void) {
+    return 0;
+}

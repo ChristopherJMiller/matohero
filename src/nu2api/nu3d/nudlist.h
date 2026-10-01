@@ -1,11 +1,17 @@
 #ifndef NUDLIST_H
 #define NUDLIST_H
 
+#include "nufile.h"
 #include "nugscn.h"
 
 /* Display lists: the scenes' material lists, sorted by priority and drawn each frame. */
 
-typedef struct nudisplaylistrenderscene_s NUDISPLAYLISTRENDERSCENE;
+/* The sort priorities drawn together, plus a list for the 2D items. */
+typedef struct nudisplaylistrenderscene_s {
+    int nsort_pris;
+    NUSORTPRI **sort_pris;
+    NUDISPLAYLISTITEM render_2d_first;
+} NUDISPLAYLISTRENDERSCENE;
 typedef struct numtlanimset_s NUMTLANIMSET;
 
 /* PS2 layout; the PC's global_dlist_manager offsets agree with it. */
@@ -38,13 +44,23 @@ typedef struct nudisplaylistmanager_s {
 } NUDISPLAYLISTMANAGER;
 
 extern NUDISPLAYLISTMANAGER global_dlist_manager;
+extern int nudlist_debug_level;
+extern int do_capture;
+extern NUFILE capture_fh;
 
 void NuDisplaySceneAdd(NUDISPLAYSCENE *ds);
 void NuDisplayListSwapBuffersBeginFrame(void);
 void NuDisplayListExecute(NUDISPLAYLISTITEM *item, NUDISPLAYLISTITEMFN *fntable);
+void DisplayListPrintItem(NUDISPLAYLISTITEM *item, int id, int nfilter, int *filter, NUFILE fh);
+void NuDisplayListDrawRenderScene(int scene_id);
+void NuDisplayListDrawAll(void);
+
+/* Not decompiled yet (nu3d_stubs.c). */
+int NuDisplayListAddRenderScene(void);
 
 /* pc/nudlist_pc.c (PS2: ps2/nudlistPS2.c). */
 void NuDisplaySceneAddPS(NUDISPLAYSCENE *ds);
+void DisplayListExecutePS(NUDISPLAYLISTITEM *item);
 
 /* PS2: nu3d/ps2/nurndrstat.c, not decompiled yet. */
 void RndrStateClear(NURNDRSTATE *state);

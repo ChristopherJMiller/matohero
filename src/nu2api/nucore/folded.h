@@ -21,6 +21,7 @@ void NuEmptyFolded();
 #define NuPSFileInitDevices NuEmptyFolded
 #define NuVideoSetSwapModePS NuEmptyFolded
 #define FaceYDirStream NuEmptyFolded
+#define NuDisplayListDebugToFile NuEmptyFolded
 /* Called through a prototype so the floats aren't promoted to double. */
 #define NuRndrLine3dDbg ((void (*)(float, float, float, float, float, float, unsigned int))NuEmptyFolded)
 
@@ -28,6 +29,7 @@ void NuEmptyFolded();
  * stream setup (nu3d/ps2/nustream.c), which has no PC counterpart. */
 int NuZeroFolded();
 #define NuRndrSetViewMtx NuZeroFolded
+#define DisplayListPrintItemPS NuZeroFolded
 
 /* Empty `void` functions of the PC platform layer, which was built with frame pointers
  * (`push ebp; mov ebp, esp; pop ebp; ret`), so they fold separately. */

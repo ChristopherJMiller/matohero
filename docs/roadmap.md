@@ -535,15 +535,25 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `multirender_current` at `0x40`. Stubs: `RndrStateClear` (`0x5447c0`),
       `RndrStateResetSharedGlobalState` (`0x544c50`), `numtl_renderplane` (`0x348c884`).
       Hook test: `NuDisplayListSwapBuffersBeginFrame` 3.5k calls.
-- [ ] `nudlist.c` part 2: `NuDisplayListDrawAll` (`0x555f80`) with
+- [x] `nudlist.c` part 2, drawing and the HTML dump: `NuDisplayListDrawAll`,
+      `DisplayListPrintItem` (all 26 item names, `STRING` markers from the original's
+      table), `DisplayListExecutePS` (`0x55b700`, name ours: `NuDisplayListExecute` with
+      the PC handler table `0x617020`, a placeholder here) exact;
       `NuDisplayListDrawRenderScene` (`0x555eb0`; pc_names said `CaptureSortPriority`, but
-      it takes a render scene index) and the HTML dump helpers (`0x5554a0` and
-      `DisplayListPrintItem` `0x555140`, nuhtml `0x55b910`…`0x55ba20`);
-      `NuDisplayListSwapBuffersEndFrame` (`0x556030`) with the statics `0x553e40` (1785
-      bytes), `0x554980`, `0x555520` (esi = ds; `DisplayListMaterialClipUpdate`?),
-      `0x5555e0`; the item builders `0x5539f0`, `0x553cf0`, `0x553d90`;
-      `NuDisplayListUpdateSpecial` (`0x554610`), `NuDisplayListRndrSpecial` (`0x554be0`),
-      `0x555880`, `0x555bc0`; and the rest of `pc/nudlist_pc.c` (`0x55b6c0`–`0x55b8e0`).
+      it takes a render scene index) 69% and `DisplayListPrintItems` (`0x5554a0`, static,
+      name ours; inlined in the PS2's `NuDisplaySceneDebug`) 63%: the static gets
+      `item`/`fh` in registers where the original has `item`/`flags`; parameter orders,
+      body variants and the permuter didn't change it. New `nuhtml.c`, 5/5 exact
+      (`NuHtmlBegin`, `Write`, `Heading1`, `Banner`, `End`; the flush is an inlined
+      `NuHtmlFlush` whose test is `(txt > flush) | force`). `DisplayListPrintItemPS` and
+      `NuDisplayListDebugToFile` are folded empty functions on PC. Hook test:
+      `NuDisplayListDrawAll` 2.9k calls draw every frame through our code.
+- [ ] `nudlist.c` part 3: `NuDisplayListSwapBuffersEndFrame` (`0x556030`) with the statics
+      `0x553e40` (1785 bytes), `0x554980`, `0x555520` (esi = ds;
+      `DisplayListMaterialClipUpdate`?), `0x5555e0`; the item builders `0x5539f0`,
+      `0x553cf0`, `0x553d90`; `NuDisplayListUpdateSpecial` (`0x554610`),
+      `NuDisplayListRndrSpecial` (`0x554be0`), `0x555880`, `NuDisplayListAddRenderScene`
+      (`0x555bc0`, stubbed); and the rest of `pc/nudlist_pc.c` (`0x55b6c0`–`0x55b8e0`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at
