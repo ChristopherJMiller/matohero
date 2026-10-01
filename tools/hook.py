@@ -26,6 +26,8 @@ relocating.
   tools/hook.py --install    also copy it into run/game (see tools/rungame)
   tools/hook.py --trace      count calls to each hooked function; the DLL rewrites
                              bhhook-trace.txt next to the exe every 5 s
+  tools/hook.py --skip A,B   leave functions A and B (names or name prefixes) to the exe,
+                             e.g. to bisect a hook that breaks the game
 """
 import argparse
 import collections
@@ -85,6 +87,26 @@ def annotations():
     return out
 
 
+# CRT functions with state shared with the exe (stdio streams, ...). The DLL links its own
+# CRT, so these must go to the exe's copies (src/library.h has their addresses): a FILE*
+# from the exe's fopen used with the DLL's fseek hangs the game. Pure helpers (_ftol2,
+# __security_check_cookie with the DLL's own cookie) stay local.
+EXE_CRT = {"fopen", "fclose", "fread", "fwrite", "fseek", "ftell"}
+
+
+def library_functions():
+    """C name -> original address, from the LIBRARY markers in src/library.h."""
+    out = {}
+    lines = (ROOT / "src" / "library.h").read_text().splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"// LIBRARY: BIONICLE (0x[0-9a-fA-F]+)", line)
+        if m and i + 1 < len(lines):
+            n = re.match(r"//\s*(\w+)", lines[i + 1])
+            if n:
+                out[n.group(1)] = int(m.group(1), 16)
+    return out
+
+
 def global_name(code_line):
     """'unsigned int nu_current_thread_id;' -> 'nu_current_thread_id'."""
     m = re.search(r"(\w+)\s*(\[[^\]]*\])?\s*(=|;)", code_line)
@@ -95,7 +117,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--install", action="store_true", help="copy the DLL into run/game")
     ap.add_argument("--trace", action="store_true", help="count calls per hooked function")
+    ap.add_argument("--skip", default="", help="comma-separated function names/prefixes to leave to the exe")
     args = ap.parse_args()
+    skip = [p for p in args.skip.split(",") if p]
 
     subprocess.run([str(ROOT / "tools" / "build.py")], check=True)
     report = BUILD / "report.json"
@@ -119,6 +143,8 @@ def main():
         elif e["matching"] == 1.0 or e.get("effective"):
             status = "matched"
         else:
+            status = "partial"
+        if status == "matched" and any(e["name"].startswith(p) for p in skip):
             status = "partial"
         funcs[name] = (int(e["address"], 16), status, obj)
         display[name] = e["name"]
@@ -204,6 +230,18 @@ def main():
         if m:
             unresolved.add(m.group(1))
     unresolved.add("_bh_hooks")
+    # Stateful CRT functions our objects call: thunk them to the exe's CRT (glue.obj is
+    # linked ahead of libcmt, so its definitions win).
+    lib = library_functions()
+    referenced = set()
+    for o in objs:
+        for _, sym, value, section, storage in coffpatch.symbols(o.read_bytes()):
+            if section == 0 and value == 0 and storage == 2:
+                referenced.add(sym)
+    for cname in EXE_CRT:
+        if "_" + cname in referenced and cname in lib:
+            unresolved.add("_" + cname)
+            orig_of["_" + cname] = lib[cname]
     unknown = sorted(u for u in unresolved if u not in orig_of and not u.startswith("_bh_"))  # glue defines _bh_*
     if unknown:
         sys.exit("no original address for: " + ", ".join(unknown))

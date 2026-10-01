@@ -15,3 +15,21 @@
 
 // GLOBAL: BIONICLE 0x639088
 extern unsigned int __security_cookie;
+
+// LIBRARY: BIONICLE 0x5b6248
+// fread
+
+// LIBRARY: BIONICLE 0x5b6314
+// fclose
+
+// LIBRARY: BIONICLE 0x5b646c
+// fwrite
+
+// LIBRARY: BIONICLE 0x5b6aea
+// fopen
+
+// LIBRARY: BIONICLE 0x5b6e3b
+// ftell
+
+// LIBRARY: BIONICLE 0x5b6f0b
+// fseek

@@ -67,6 +67,14 @@ of each hooked function in the exe, pointing at the recompiled copy.
   `jmp [slot]` thunks, because `link` treats absolute symbols as RVAs for `call rel32`.
   The DLL is `/FIXED` at `0x10000000`, so none of this needs relocating.
 - Functions shorter than 5 bytes aren't patched.
+- **The C runtime is split.** The DLL statically links its own CRT. Pure helpers
+  (`_ftol2`, `strlen`, `__security_check_cookie` with the DLL's own cookie) can stay
+  local, but anything with state shared with the exe must be the exe's copy: a `FILE*`
+  from the exe's `fopen` passed to the DLL's `fseek` hung the game at boot. `hook.py`
+  thunks the functions in its `EXE_CRT` list (stdio so far) to their addresses from
+  `src/library.h`; add to it when decompiled code starts calling `malloc`, `rand`, …
+- A hook that breaks the game can be bisected with
+  `tools/hook.py --install --skip NuPSFile,DEV_` (names or prefixes left to the exe).
 
 ### Trace mode
 

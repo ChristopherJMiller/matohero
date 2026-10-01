@@ -162,7 +162,20 @@ headless boot to title) → commit.
       saga two). Stubs for the nufile callees, `NuFileExists` (`pc/nufile_pc.c`) and the
       expression evaluators `NuRDPI`/`NuRDPF`. Hook test: 183 functions, title reached,
       the game's script files parsed by our code (`NuFParGetWord` 138k calls).
-- [ ] `nucore/nufile.c` (saga), ~52
+- [x] `nucore/nufile.c` part 1: devices and paths (`NuFileUpCase`, `ReldirFix`,
+      `GetDeviceFromPath`, current/sys/dll directories, `FormatName`), memory files
+      (`Open`/`Addr`/`Write`), `NuFileWrite*`, `NuDatFileSeek`/`Set`/`Get`, plus the PC
+      layer `pc/nufile_pc.c` (`host_device`, `DEV_FormatName`, `DEVHOST_Interrogate`,
+      `NuFileExists`, `NuPSFileOpen/Close/Read/Write/LSeek` on CRT stdio): 29 functions,
+      28 exact (`NuPSFileOpen` 81%). Hook DLL now routes stdio to the exe's CRT
+      (`docs/running.md`). Hook test: 211 functions, title reached, file reads through
+      `NuPSFileRead`.
+- [ ] `nucore/nufile.c` part 2: `0x5664c0` (`NuDatFileFindTree`?), the extension table
+      (`0x5665c0` static helper, `NuFileExtInit` `0x566610`, `NuFileExtConvert`), init,
+      `NuFileOpen`/`Close`/`Read`/`Seek`/`Size`/`OpenSize`, buffering
+      (`AquireFileBuffer` `0x566000`), memory/dat file read/seek/close,
+      `NuFileReadFloat/Int/...`, `NuFileLoadBuffer` (`0x566000–0x567be0`). Then the
+      unclaimed `0x567bf0–0x5687c6` (nudatfile/nufilepak?).
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
 
 Tooling backlog (pick up when near-misses pile up):

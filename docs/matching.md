@@ -95,8 +95,18 @@ exact; `tools/permute.py` automates some of them.
   14–38% to 55–70%.
 - A wrapper that only calls another function with the same arguments compiles to a bare
   `jmp` (the PC `…VU0` thunks).
-- Stubs (empty bodies for not-yet-decompiled functions) are safe in the same file now:
-  under `/Ob2` they used to get inlined into callers and collapse them.
+- **Keep stubs in a separate file anyway.** Under `/Ob1` they aren't inlined, but a
+  caller compiled after a callee in the same file uses the callee's actual register
+  usage: `NuDatFileSeek` (deferred behind the `NuFileSeek` stub) kept a pointer in `ecx`
+  across the call because the stub didn't touch it (30% → 100% once the stubs moved to
+  `nufile_stubs.c`).
+- **Identical functions are folded (`/OPT:ICF`).** The PC's memory-card layer is a set of
+  `return 0` functions, all folded into one copy at `0x57a600`; one stub stands for all of
+  them (`pc/numc_pc.c`). An unreferenced `static` function is dropped entirely, so its
+  marker can only go in once something calls it (`AquireFileBuffer`).
+- **A loop in an inlined helper isn't unrolled; the same loop written inline is.**
+  `NuPSFileOpen`'s free-handle search became a 4× unrolled loop until moved into a
+  `static __inline` helper (58% → 81%).
 - `__FILE__`/`__LINE__` call sites: pass the original line explicitly (`NuMemAllocAt`);
   `#line` breaks reccmp's line mapping.
 
