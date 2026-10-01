@@ -77,8 +77,11 @@ of each hooked function in the exe, pointing at the recompiled copy.
   (`_ftol2`, `strlen`, `__security_check_cookie` with the DLL's own cookie) can stay
   local, but anything with state shared with the exe must be the exe's copy: a `FILE*`
   from the exe's `fopen` passed to the DLL's `fseek` hung the game at boot. `hook.py`
-  thunks the functions in its `EXE_CRT` list (stdio so far) to their addresses from
-  `src/library.h`; add to it when decompiled code starts calling `malloc`, `rand`, …
+  renames our objects' references to the functions in its `EXE_CRT` list (stdio,
+  `malloc`/`free`) to `_bh_crt_<name>` and thunks those to the exe's copies (addresses
+  from `src/library.h`); add to it when decompiled code starts calling `rand`, … Only our
+  objects are redirected: overriding `malloc` DLL-wide crashed the game before it showed
+  anything, since the DLL's CRT startup allocates before the exe's heap exists.
 - A hook that breaks the game can be bisected with
   `tools/hook.py --install --skip NuPSFile,DEV_` (names or prefixes left to the exe).
 

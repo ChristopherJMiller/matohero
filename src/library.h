@@ -36,3 +36,9 @@ extern unsigned int __security_cookie;
 
 // LIBRARY: BIONICLE 0x5b6f60
 // _alldiv
+
+// LIBRARY: BIONICLE 0x5b6a7c
+// malloc
+
+// LIBRARY: BIONICLE 0x5b6964
+// free

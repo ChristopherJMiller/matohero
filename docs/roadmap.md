@@ -238,7 +238,16 @@ headless boot to title) → commit.
       `NuAsciiToUnicode` that `NuSPrintfW` calls, so it uses a `static __inline` copy
       (`docs/matching.md`). Hook test: 235 functions, title reached, the game's CSV
       string tables loaded by our code.
-- [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
+- [x] `nucore/numem.c`: `NuMemSetExternal`, `NuMemAllocFn` (external buffer,
+      discardable buffer, heap or `malloc`, with debug head/tail marks) and
+      `NuMemFreeFn`: 3/3 exact, globals placed (`0x34b72f8–0x34b731c`, marks at
+      `0x6171f8`). Heap calls stubbed (`nuheap_stubs.c`: `NuHeapFree` `0x56d210`,
+      `NuHeapAllocAligned` `0x56d300`). The hook DLL now sends our `malloc`/`free` to the
+      exe's CRT per object (DLL-wide crashed it, `docs/running.md`). Hook test: 271
+      functions, every engine allocation through our code, input works.
+- [ ] `nucore/nuheap.c` (`0x56d0a0–0x56d319`: create, aligned alloc, free) and the
+      leftovers around numem: `0x565c40` (fills `count * 16` bytes), `0x565930` (index
+      lookup in 0x50-byte records; maybe gamelib's glutils).
 
 Tooling backlog (pick up when near-misses pile up):
 

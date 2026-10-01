@@ -87,11 +87,14 @@ def annotations():
     return out
 
 
-# CRT functions with state shared with the exe (stdio streams, ...). The DLL links its own
-# CRT, so these must go to the exe's copies (src/library.h has their addresses): a FILE*
-# from the exe's fopen used with the DLL's fseek hangs the game. Pure helpers (_ftol2,
-# __security_check_cookie with the DLL's own cookie) stay local.
-EXE_CRT = {"fopen", "fclose", "fread", "fwrite", "fseek", "ftell"}
+# CRT functions with state shared with the exe (stdio streams, the heap). The DLL links its
+# own CRT, so our code's calls must go to the exe's copies (src/library.h has their
+# addresses): a FILE* from the exe's fopen used with the DLL's fseek hangs the game, and a
+# block from the exe's malloc must go back to the exe's free. Only our objects are
+# redirected; overriding the symbols DLL-wide crashed at load (the DLL's CRT startup
+# mallocs before the exe's heap exists). Pure helpers (_ftol2, __security_check_cookie
+# with the DLL's own cookie) stay local.
+EXE_CRT = {"fopen", "fclose", "fread", "fwrite", "fseek", "ftell", "malloc", "free"}
 
 
 def library_functions():
@@ -176,11 +179,22 @@ def main():
     include = sorted({obj for _, status, obj in funcs.values()
                       if status == "matched" and not obj.startswith("LIBCMT")})
     hooks, objs, unbound = [], [], 0
+    lib = library_functions()
     (OUT / "obj").mkdir(parents=True, exist_ok=True)
     for k, objname in enumerate(include):
         path = obj_paths[objname]
-        storage = {sym: stor for _, sym, _, _, stor in coffpatch.symbols(path.read_bytes())}
+        symbols = list(coffpatch.symbols(path.read_bytes()))
+        storage = {sym: stor for _, sym, _, _, stor in symbols}
         changes = {}
+        # Stateful CRT functions our code calls go to the exe's CRT under a private name
+        # (glue.asm), so the DLL's own CRT (whose startup mallocs before the exe's heap
+        # exists) keeps its copies.
+        referenced = {sym for _, sym, value, section, stor in symbols
+                      if section == 0 and value == 0 and stor == 2}
+        for cname in EXE_CRT:
+            if "_" + cname in referenced and cname in lib:
+                changes["_" + cname] = ("unbind", "_bh_crt_" + cname)
+                orig_of["_bh_crt_" + cname] = lib[cname]
         for name, (orig, status, obj) in funcs.items():
             if obj != objname:
                 continue
@@ -230,18 +244,6 @@ def main():
         if m:
             unresolved.add(m.group(1))
     unresolved.add("_bh_hooks")
-    # Stateful CRT functions our objects call: thunk them to the exe's CRT (glue.obj is
-    # linked ahead of libcmt, so its definitions win).
-    lib = library_functions()
-    referenced = set()
-    for o in objs:
-        for _, sym, value, section, storage in coffpatch.symbols(o.read_bytes()):
-            if section == 0 and value == 0 and storage == 2:
-                referenced.add(sym)
-    for cname in EXE_CRT:
-        if "_" + cname in referenced and cname in lib:
-            unresolved.add("_" + cname)
-            orig_of["_" + cname] = lib[cname]
     unknown = sorted(u for u in unresolved if u not in orig_of and not u.startswith("_bh_"))  # glue defines _bh_*
     if unknown:
         sys.exit("no original address for: " + ", ".join(unknown))

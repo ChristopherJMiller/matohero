@@ -84,6 +84,10 @@ exact; `tools/permute.py` automates some of them.
   (`NuFilePakGetItemInfo`, `NuFilePakSetItemRequired`).
 - Stores to a local struct follow the source order: `SECURITY_ATTRIBUTES` filled
   `bInheritHandle` first in the original (`NuFileCreateDir`).
+- **Statement order moves register choices even between independent statements.**
+  `NuMemAllocFn` computes the tail pointer once (`tail = …`) before copying the head mark;
+  writing it after the head copy, or inline twice, gave other registers (87% → 100%).
+  `NuMemFreeFn`'s `totalloc -= size` came after the `succ`/`prev = NULL` stores.
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;
