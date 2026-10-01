@@ -54,6 +54,11 @@ def main():
     subprocess.run([str(ROOT / "tools" / "reccmp"), "reccmp", "--target", "BIONICLE", "--silent",
                     "--json", str(REPORT)], check=True, capture_output=True)
     entries = json.load(open(REPORT))["data"]
+    # Identical code that reccmp scores below 100% because it can't name an address
+    # (tools/offsetmatch.py) counts as effective.
+    sys.path.insert(0, str(ROOT / "tools"))
+    import offsetmatch
+    identical = offsetmatch.find(REPORT)
     status = {}
     for e in entries:
         a = int(e["address"], 16)
@@ -63,7 +68,7 @@ def main():
             status[a] = "stub"
         elif e["matching"] == 1.0:
             status[a] = "exact"
-        elif e.get("effective"):
+        elif e.get("effective") or e["address"] in identical:
             status[a] = "effective"
         else:
             status[a] = "partial"
@@ -111,7 +116,7 @@ def main():
         "| | Functions |",
         "|---|---:|",
         f"| exact (100%) | {counts['exact']} |",
-        f"| effective (same code, register/ordering differences) | {counts['effective']} |",
+        f"| effective (same code; register/ordering differences, or addresses reccmp can't name) | {counts['effective']} |",
         f"| partial (in progress) | {counts['partial']} |",
         f"| stubs | {counts['stub']} |",
         f"| total, game + engine | {len(funcs)} |",

@@ -216,8 +216,9 @@ exact; `tools/permute.py` automates some of them.
   isn't mapped. The code is identical, but it shows as ~92% (`NuTrigInit`) or ~97%
   (`NuPow`, which writes its ring buffers through `pow_x - 4` etc.), ~95%
   (`NuFileOpenSize`'s `file_info[fh - 1]`) and ~90% (the PC critical sections,
-  `criticalsections[id - 1]`). Candidate for an upstream reccmp improvement. Until then
-  these don't count as matched and aren't hooked.
+  `criticalsections[id - 1]`). Candidate for an upstream reccmp improvement; meanwhile
+  `tools/offsetmatch.py` proves these identical (same offset from the same global in
+  both builds), and progress/hooks count them as effective.
 
 ## Open questions
 

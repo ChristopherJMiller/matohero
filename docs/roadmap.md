@@ -25,6 +25,8 @@ portable platform layer for Linux.
 2. Build and compare before committing: `tools/build.py && tools/reccmp reccmp --target BIONICLE
    --json build/report.json`, then `tools/regress.py <previous report> build/report.json`.
    Nothing that matched 100% may regress, and no other function may drop either.
+   After reverting a source experiment, rebuild before comparing or generating progress
+   (a stale `build/` once showed 5 phantom regressions).
 3. Commit locally with a descriptive message. Never push, never rewrite pushed history.
 4. Update the queue below (check off, add follow-ups), run `tools/progress.py` to
    refresh `docs/progress.md`, and update docs for anything learned.
@@ -286,11 +288,13 @@ Tooling backlog (pick up when near-misses pile up):
       cycle (`docs/matching.md`). `NuDatFileLoadBuffer` (35%, from 27%) now lives in
       `nufile.c` calling `NuFileSeek` as the original does; `nufile_pending.c` is gone.
 
-- [ ] **Count `global - offset` matches.** reccmp leaves raw addresses like `0x34c5fb8`
-      (`array - 0x18`) unmapped, so identical functions sit at 90–97% and are neither
-      counted nor hooked (`NuTrigInit`, `NuPow`, `NuFileOpenSize`, the three critical
-      sections). Either teach reccmp to map an address just below a known array, or add
-      a checked "identical except unmapped address" status to `progress.py`/`hook.py`.
+- [x] **Count `global - offset` matches.** `tools/offsetmatch.py` checks every
+      function below 100%: each differing instruction pair must have the same opcode and
+      length and differ only in one 4-byte field whose two values are the same offset
+      from the same annotated global (reccmp's variable matches, within 4 KB). The 6 such
+      functions (`NuTrigInit`, `NuPow`, `NuFileOpenSize`, the 3 critical sections) now
+      count as effective in `progress.py` and are hooked by `hook.py` (critical sections
+      621k calls, `NuPow` 90k in the boot test, input works).
 - [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
       `InvRSS` and `NuPlnLine3`), `x * -y` ↔ `-(x * y)`, temporaries for repeated
       loads. `--try` covers hand-written variants meanwhile.

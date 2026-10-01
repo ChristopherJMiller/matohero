@@ -8,7 +8,7 @@ is decompiled.
 
 What goes in:
   * every object from the matching build (tools/build.py) with at least one matched
-    function (exact or effective, per reccmp), as a patched copy (tools/coffpatch.py):
+    function (exact or effective per reccmp, or identical per tools/offsetmatch.py), as a patched copy (tools/coffpatch.py):
     its stubs, still-mismatching functions and annotated globals are unbound from the
     local definitions so they resolve to the exe's; static matched functions are made
     external so the hook table can name them;
@@ -129,6 +129,9 @@ def main():
     subprocess.run([str(ROOT / "tools" / "reccmp"), "reccmp", "--target", "BIONICLE", "--silent",
                     "--json", str(report)], check=True, capture_output=True)
     entries = json.load(open(report))["data"]
+    # Also hook functions identical apart from addresses reccmp can't name.
+    import offsetmatch
+    identical = offsetmatch.find(report)
     publics = parse_map(BUILD / "Bionicle.map")
     by_recomp = {addr: (name, is_func, obj) for name, (addr, is_func, obj) in publics.items()}
     sizes = {int(r["address"], 16): int(r["size"]) for r in csv.DictReader(open(FUNCS))}
@@ -143,7 +146,7 @@ def main():
         name, _, obj = by_recomp[recomp]
         if e.get("stub"):
             status = "stub"
-        elif e["matching"] == 1.0 or e.get("effective"):
+        elif e["matching"] == 1.0 or e.get("effective") or e["address"] in identical:
             status = "matched"
         else:
             status = "partial"
