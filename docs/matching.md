@@ -107,10 +107,15 @@ exact; `tools/permute.py` automates some of them.
 - **Inlining depends on what else is in the file.** Adding `NuDatFileLoadBuffer` (which
   calls `NuDatFileSeek` directly) made the out-of-line `NuDatFileSeek` start inlining
   `NuFileSeek` (100% → 49%) and stopped `NuDatOpenEx` from inlining the
-  `NuFileSeek`→`NuMemFileSeek`→`NuDatFileSeek` chain (98% → 62%). Moving it earlier in the
-  file didn't help. Compile order (deferral) and these decisions interact in ways not yet
-  modelled; see the roadmap's tooling backlog. When a new function makes a matched one
-  regress, check it in isolation before blaming the new code.
+  `NuFileSeek`→`NuMemFileSeek`→`NuDatFileSeek` chain (98% → 62%), wherever it was placed.
+  `tools/msvctest.py` (emission order and remaining calls per function) shows why: with
+  it, `NuDatFileSeek` and `NuDatFileRead` move to the end of the object (deferred), and a
+  deferred `NuDatFileSeek` inlines `NuFileSeek` while its callers stop inlining it. What
+  triggers the deferral isn't known; toy files don't reproduce it. Established so far:
+  the front end sees the whole file (an early function can inline a later one), and
+  deferral is transitive (a caller of a deferred function is deferred too).
+  `NuDatFileLoadBuffer` lives in `nufile_pending.c` meanwhile. When a new function makes
+  a matched one regress, compare emission order with `msvctest.py`.
 - **Keep stubs in a separate file anyway.** Under `/Ob1` they aren't inlined, but a
   caller compiled after a callee in the same file uses the callee's actual register
   usage: `NuDatFileSeek` (deferred behind the `NuFileSeek` stub) kept a pointer in `ecx`

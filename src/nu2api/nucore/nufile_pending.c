@@ -1,3 +1,15 @@
+#include "nufile.h"
+
+/* Functions from nufile.c kept in their own file for now: inside nufile.c they change
+ * which functions the compiler defers and inlines, and matched neighbours regress (see
+ * docs/matching.md, "Inlining depends on what else is in the file"). Here they can't
+ * inline nufile.c's __inline helpers, so they don't match, but the code is complete. */
+
+extern NUDATFILE datfiles[20];
+extern int nufile_lsn_allowed;
+
+int NuDatFileSeek(NUFILE fh, int offset, int origin);
+
 // FUNCTION: BIONICLE 0x567c80
 int NuDatFileLoadBuffer(NUDATHDR *ndh, char *fname, void *mem, int buffsize) {
     char *loadaddr;
@@ -39,4 +51,3 @@ int NuDatFileLoadBuffer(NUDATHDR *ndh, char *fname, void *mem, int buffsize) {
     }
     return 0;
 }
-

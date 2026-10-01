@@ -61,6 +61,7 @@ tools/progress.py                        # refresh docs/progress.md
 tools/objinfo.py numath/nuvec --asm      # what's known about an object before decompiling it
 tools/permute.py NuVecRotateX            # search source variants of a near-miss (--apply)
 tools/permute.py NuVecRotateX --try f   # score hand-written bodies (separated by ----)
+tools/msvctest.py t.c                   # emission order + remaining calls of a test file
 ```
 
 Source lives in `src/`, mirroring the original tree recovered from the PS2 prototype:

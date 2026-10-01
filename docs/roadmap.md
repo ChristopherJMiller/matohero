@@ -189,9 +189,9 @@ headless boot to title) → commit.
       functions, 5 exact. `rnc.c` is `NuPPUnpack` `0x56d320` + `NuPPLoadBuffer` `0x56d6b0`
       (stubs). Hook test: 233 functions, title reached.
 - [x] `nucore/nufile.c` part 2d: `NuDatOpenEx` (98.4%). `NuDatFileLoadBuffer` is
-      written (`docs/notes/NuDatFileLoadBuffer.c.txt`) but kept as a stub: in nufile.c it
-      changes the compiler's inlining of `NuDatFileSeek` (see `docs/matching.md`). Hook
-      test: 233 functions, title reached.
+      written but lives in `nufile_pending.c` (27% there): in nufile.c it changes the
+      compiler's inlining of `NuDatFileSeek` (see `docs/matching.md`). Hook test: 233
+      functions, title reached.
 - [ ] nufile near-miss pass (`GetFileInfo` 61%, `Read` 81%, `EndBlkRead` 82%, `Open`
       83%, `LoadBuffer` 83%, `Close` 87%, `DatFileRead` 85%, `FileSeek` 85%, `ExtFind`
       95%, `PSFileOpen` 81%) after the compile-order experiment below.
@@ -201,12 +201,12 @@ headless boot to title) → commit.
 
 Tooling backlog (pick up when near-misses pile up):
 
-- [ ] **Model MSVC 7.1's compile order and inlining.** Small test files (like the ones
-      that showed deferral and `/Ob1`) varying definition order, direct vs. nested calls
-      and tail calls, to predict when a function is deferred and when an `__inline`
-      callee gets inlined. nufile's `NuDatFileLoadBuffer`/`NuDatFileSeek` interaction is
-      the motivating case; reconstructing original source order from PC emission order
-      would follow from it.
+- [~] **Model MSVC 7.1's compile order and inlining.** `tools/msvctest.py` compiles a
+      file and lists emission order and remaining calls. Known: whole-file front end,
+      transitive deferral. Unknown: what defers `NuDatFileSeek`/`NuDatFileRead` once
+      `NuDatFileLoadBuffer` (in `nufile_pending.c` meanwhile) is in nufile.c; toy files
+      don't reproduce it. Next idea: bisect nufile.c itself (drop functions until the
+      deferral disappears).
 
 - [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
       `InvRSS` and `NuPlnLine3`), `x * -y` ↔ `-(x * y)`, temporaries for repeated
