@@ -9,6 +9,57 @@
 
 typedef struct numtl_s NUMTL;
 typedef struct nugscn_s NUGSCN;
+typedef struct nudisplayscene_s NUDISPLAYSCENE;
+typedef struct nurndrstate_s NURNDRSTATE;
+
+/* A display list command (PC layout: the PS2 has a size first and type/id at 2/3). type
+ * picks the handler (0x80 + index), id what NuDisplayListExecute does with it. */
+typedef struct nudisplaylistitem_s {
+    unsigned char type;
+    unsigned char id;
+    unsigned short size;
+    void *next;
+    unsigned int p[2];
+} NUDISPLAYLISTITEM;
+
+typedef void (*NUDISPLAYLISTITEMFN)(void *data);
+
+/* Per-material display list (PS2 layout). */
+typedef struct nudisplaylist_s {
+    NUDISPLAYSCENE *dlist;
+    int mtl_id;
+    NURNDRSTATE *state;
+    NUDISPLAYLISTITEM *mtl_item;
+    NUDISPLAYLISTITEM *first;
+    NUDISPLAYLISTITEM *mtl_last;
+    NUDISPLAYLISTITEM *dyn_geom;
+    unsigned int texture_slots;
+    int can_be_updated : 1;
+    int pad : 31;
+    NUDISPLAYLISTITEM *add_item;
+    NUDISPLAYLISTITEM *scene_first[2];
+    NUDISPLAYLISTITEM *scene_next;
+    int scene_buffer;
+    int nscene_items;
+    int expansion_5;
+    int expansion_6;
+} NUDISPLAYLIST;
+
+/* A sort priority's run of materials; the global list is ordered by sort_pri. */
+typedef struct nusortpri_s {
+    int sort_pri;
+    NUDISPLAYLISTITEM *items;
+    struct nusortpri_s *sys_next;
+    struct nusortpri_s *sys_last;
+    struct nusortpri_s *dlist_next;
+    int used : 1;
+    int rendered_this_frame : 1;
+    int pad : 30;
+    NUMTL *mtl;
+    NUDISPLAYSCENE *display_scene;
+    unsigned short nmtls;
+    unsigned short mtl_first;
+} NUSORTPRI;
 
 /* Clip object of a display list special: materials and items it covers. */
 typedef struct nuclipobject_s {
@@ -115,10 +166,10 @@ typedef struct nuspecialobject_s {
 } NUSPECIALOBJECT;
 
 /* Display list of a scene (PS2 layout). */
-typedef struct nudisplayscene_s {
+struct nudisplayscene_s {
     char *name;
     int nitems;
-    void *items;
+    NUDISPLAYLISTITEM *items;
     int CRC;
     int nclip_objects;
     NUCLIPOBJECT *clip_objects;
@@ -133,10 +184,10 @@ typedef struct nudisplayscene_s {
     char *visibility_flags;
     unsigned int nmtls;
     NUMTL **mtls;
-    void **dlist_mtls;
+    NUDISPLAYLIST **dlist_mtls;
     unsigned char *mtl_used[2];
     int nsort_pris;
-    void *sort_pris;
+    NUSORTPRI *sort_pris;
     unsigned int nstaticinstances;
     int nspecials;
     NUSPECIALOBJECT *specials;
@@ -157,7 +208,7 @@ typedef struct nudisplayscene_s {
     unsigned int NumInstances;
     unsigned char *SpecialFlags;
     void *mtl_anims;
-} NUDISPLAYSCENE;
+};
 
 /* Portals between rooms (layouts from the PS2 prototype). */
 typedef struct nuroom_s {
@@ -267,7 +318,8 @@ struct nugscn_s {
     NUSPECIAL *specials;
     int numsplines; /* PS2 has splinedata before these */
     NUGSPLINE *splines;
-    char unknown_030[0x44 - 0x30];
+    char unknown_030[0x40 - 0x30];
+    int multirender_current; /* cleared each frame */
     NUINSTANIM *instanimblock;
     NUMTX *prev_eval_mtx; /* one per instance animation */
     void *unknown_4c;

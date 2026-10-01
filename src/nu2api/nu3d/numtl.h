@@ -77,6 +77,8 @@ typedef struct nushadermtldesc_s {
     double unknown_150; /* something 8-byte aligned: users align their frames */
 } NUSHADERMTLDESC;
 
+extern int numtl_renderplane;
+
 /* Not decompiled yet (nu3d_stubs.c). */
 NUMTL *NuMtlCreate(int cnt);
 void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc);

@@ -1,4 +1,5 @@
 #include "nucamera.h"
+#include "nudlist.h"
 #include "numtl.h"
 #include "nuportal.h"
 #include "nuqfnt.h"
@@ -169,4 +170,15 @@ int NuTexHeight(int tid) {
 // STUB: BIONICLE 0x548d70
 void *NuGScnBufferAllocAligned(int size, int alignment) {
     return NULL;
+}
+
+// GLOBAL: BIONICLE 0x348c884
+int numtl_renderplane;
+
+// STUB: BIONICLE 0x5447c0
+void RndrStateClear(NURNDRSTATE *state) {
+}
+
+// STUB: BIONICLE 0x544c50
+void RndrStateResetSharedGlobalState(void) {
 }

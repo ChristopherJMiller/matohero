@@ -187,6 +187,14 @@ exact; `tools/permute.py` automates some of them.
   NuTexCreate(header[1]), …)` loaded the other arguments before `NuTexCreate` and popped
   its argument right away; `tid = NuTexCreate(header[1]);` first gave the original's
   deferred stack cleanup over three calls (`NuQFntInit` 68% → 100%).
+- **A local pointer to a global struct (`dlm = &global_dlist_manager`) is not just
+  style.** The PS2 locals of `NuDisplayListSwapBuffersBeginFrame` include `dlm`;
+  writing `dlm->dlists[j]` made MSVC walk the array with a pointer and a separate
+  counter as the original does, where `global_dlist_manager.dlists[j]` indexed it
+  (79% → 100%). When the PS2 lists such a pointer, use it.
+- **Toggling a 1-bit field.** `bf = !bf`, `bf ^= 1`, `bf = bf ^ 1` and `bf = bf == 0`
+  all give the original's `not`/`xor`/`and`/`xor` insert; `bf = ~bf` extracts the bit
+  first (`shr`/`shl`).
 - **A store common to both branches can be written in both.** `NuGScnGetSpecial` stores
   `spec->scene` after loading and testing `display_list`; one `spec->scene = gsc;` before
   the `if` stored it first (43%), the same statement at the top of each branch matched.

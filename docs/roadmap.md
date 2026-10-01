@@ -525,10 +525,25 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       (`0x44` on PS2), `numinstanceixs`/`instanceixs` `0x54`/`0x58`;
       `NuGScnBufferAllocAligned` (`0x548d70`) stubbed. Hook test: `NuGScnGetSpecial` 12k
       calls, `NuGScnNumSpecials` 4k, `ReadInstanceIDs` 4.
-- [ ] `nu3d/nudlist.c` (saga source; PC `0x553900`–`0x556120`: statics with register
-      arguments first, then `NuDisplayListUpdateSpecial` `0x554610`,
-      `NuDisplayListRndrSpecial` `0x554be0`, `DisplayListPrintItem`, …,
-      `NuDisplayListSwapBuffersEndFrame` `0x556030`).
+- [x] `nu3d/nudlist.c` part 1: `DisplayListBeforeFrame` (`0x553900`, static: ds in esi,
+      force_reset in ebx), `NuDisplayListSwapBuffersBeginFrame`, `NuDisplayListExecute`
+      and `NuDisplaySceneAddPS` (`0x55b8e0`, new `pc/nudlist_pc.c`) exact;
+      `NuDisplaySceneAdd` and `DisplayListAddSortPri` (`0x553c90`, static, name ours;
+      inlined on PS2) effective (one register). `NUDISPLAYLISTMANAGER` has the PS2 layout
+      (`global_dlist_manager` `0x34928c0`); PC display list items are type/id bytes then
+      `next`; `NUDISPLAYLIST` and `NUSORTPRI` as on PS2; PC `NUGSCN` gets
+      `multirender_current` at `0x40`. Stubs: `RndrStateClear` (`0x5447c0`),
+      `RndrStateResetSharedGlobalState` (`0x544c50`), `numtl_renderplane` (`0x348c884`).
+      Hook test: `NuDisplayListSwapBuffersBeginFrame` 3.5k calls.
+- [ ] `nudlist.c` part 2: `NuDisplayListDrawAll` (`0x555f80`) with
+      `NuDisplayListDrawRenderScene` (`0x555eb0`; pc_names said `CaptureSortPriority`, but
+      it takes a render scene index) and the HTML dump helpers (`0x5554a0` and
+      `DisplayListPrintItem` `0x555140`, nuhtml `0x55b910`…`0x55ba20`);
+      `NuDisplayListSwapBuffersEndFrame` (`0x556030`) with the statics `0x553e40` (1785
+      bytes), `0x554980`, `0x555520` (esi = ds; `DisplayListMaterialClipUpdate`?),
+      `0x5555e0`; the item builders `0x5539f0`, `0x553cf0`, `0x553d90`;
+      `NuDisplayListUpdateSpecial` (`0x554610`), `NuDisplayListRndrSpecial` (`0x554be0`),
+      `0x555880`, `0x555bc0`; and the rest of `pc/nudlist_pc.c` (`0x55b6c0`–`0x55b8e0`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at
