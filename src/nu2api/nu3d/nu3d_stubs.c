@@ -1,4 +1,15 @@
-/* nu3d functions the decompiled engine core calls, not decompiled yet. */
+#include "nurndr.h"
+
+/* nu3d functions and globals the decompiled code uses, not decompiled yet. */
+
+// GLOBAL: BIONICLE 0x348f754
+NUMTL *nurndr_forced_mtl;
+
+// GLOBAL: BIONICLE 0x348f758
+NUMTL **nurndr_forced_mtl_table;
+
+// GLOBAL: BIONICLE 0x348f75c
+int nurndr_nforced_mtls;
 
 // STUB: BIONICLE 0x53ef70
 void NuPortalInit(void) {

@@ -99,6 +99,10 @@ exact; `tools/permute.py` automates some of them.
   pointers in other registers (48% → 100%).
 - A byte parameter loaded with `movzx` was `unsigned char`; plain `char`/`int` gave
   `mov al, [esp+8]` (`NuMemSet128`'s fill value).
+- **`if (a) return x; else if (b) return y; else return NULL;` vs separate `if`s.** The
+  chained form put the second test in its own block that falls back on the zeroed
+  register for `NULL` (`NuSpecialGetPos` 67% → 100%); separate `if`s merged the two
+  returns and added a `xor eax, eax`.
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;

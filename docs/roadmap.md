@@ -305,6 +305,33 @@ Tooling backlog (pick up when near-misses pile up):
 
 After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`.
 
+### nu3d
+
+- [x] `nu3d/nuspecial.c` part 1: the accessors (`GetPos`, `GetDrawPos`, `GetMtx`,
+      `SetMtx`, `GetName`, `ExistsFn`, `MtlMap`, `ForceMtl`, `GetVisibilityFn`,
+      `GetDrawMtx`, `GetInstAnim`, `Compare`): 11 exact, `MtlMap` 67% (the original
+      splits `nuspecial_draw_state |= 4` into load/`or`/store around another store;
+      branch orders and statement orders tried). First nu3d types in `nu3d/nugscn.h`
+      (PS2 layouts: `NUHSPECIAL`, `NUSPECIAL`, `NUSPECIALOBJECT`, `NUINSTANCE`,
+      `NUINSTANIM`); `nurndr_gen` globals stubbed in `nu3d_stubs.c`. Hook test: 299
+      functions, `NuSpecialGetDrawMtx` 63k calls, input works.
+- [ ] `nu3d/nuspecial.c` part 2: `NuSpecialFind` (`0x53e450`), `DrawAt`,
+      `SetVisibility`, `NumMtls`, `GetMtl`, `GetBounds`, `GetRadius`, `SetDrawMtx`, and
+      the unnamed `0x53e4f0`, `0x53e590`, `0x53e680`, `0x53e700`, `0x53ea40`, `0x53eab0`,
+      `0x53eb20`, `0x53ee60` (needs `NUGSCN` laid out).
+
+Notes for later units:
+
+- `gameapi/gamelib/edbits.c` on PC (`0x51bb40–0x51c5de`, 11 functions):
+  `edbitsRegisterSaveFormat` (`0x51bb40`, six `NuStrCpy`s into the save path globals at
+  `0x6c82f0`+`0x100*i`), three 10-byte setters (`0x51bc00` `RegisterBaseScene`, then
+  `0x6c88f4`/`0x6c88f8`), `DrawCube`? (`0x51bc30`), `0x51c0d0`, `DrawOvalTilted`
+  (`0x51c1d0`: 10 segments, `NuVecRotateZ`/`Y`, lines through the empty folded
+  `0x5af030`, so editor debug drawing is a no-op on PC), `DrawCircleTilted` (`0x51c340`,
+  calls it with rx = rz), `DrawCross`? (`0x51c370`), `DrawBBox`? (`0x51c4d0`, 12 lines),
+  `edbitsLookupInstance` (`0x51c570`: `NuGScnNumSpecials`/`GetSpecial`,
+  `NuSpecialGetName`, `NuStrNICmp`).
+
 ## Needs from Chris
 
 - **DirectX SDK (April 2006)**, the release that shipped `d3dx9_30.dll`. The game uses
