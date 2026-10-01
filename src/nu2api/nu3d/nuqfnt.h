@@ -102,8 +102,11 @@ float NuQFntBaseline(NUQFNT *fv);
 void NuQFntSet(NUQFNT *fv);
 void NuQFntSetScale(NUQFNT *fv, float xs, float ys);
 void NuQFntSetColour(NUQFNT *fv, unsigned int abgr);
+void NuQFntDestroy(NUQFNT *fv);
+void NuQFntMove(NUQFNT *fv, float x, float y, float z);
 void NuQFntPrintW(NUQFNT *fv, NUWCHAR *txt);
 void NuQFntPrintU(NUQFNT *fv, char *txt);
+void NuQFntPrintEx(NUQFNT *fnt, int x, int y, int origin, char *fmt, ...);
 
 /* Not decompiled yet (nu3d_stubs.c). */
 void NuQFntPrintCharW(NUQFNT *fv, NUWCHAR *txt, NUQFNT_PRINTMODE mode);

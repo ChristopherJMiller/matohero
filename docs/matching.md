@@ -308,6 +308,14 @@ exact; `tools/permute.py` automates some of them.
   scope with a comment instead (`listman.c`, `nufile.c`).
 - Float constants in the original are only recognized via `build/orig-floats.csv`
   (`tools/floatconsts.py`), since the exe has no relocations.
+- **Uninitialised globals are commons, placed in the linker's own order; `= 0` keeps a
+  global in its object's `.bss`, in source order.** The original's far `.bss` range
+  (`0x36xxxxx`) holds the commons, the per-object `.bss` (`0x96xxxx`) the explicitly
+  initialised ones; the PS2's `.data` placement of a zero global is a hint that it had an
+  initialiser. It matters when code reads one global through another's address:
+  `NuQFntPrintEx`'s inlined pop reads `NuQFntModeStack - 4`, which the original labels
+  `NuQFntCSModeStack[15]`; with the `qfnt` scalars as commons ours put another global in
+  between (98.85%), with `= 0` on the scalars the two arrays became neighbours (100%).
 - A reference to `global - offset` (e.g. `NuTrigTable - 4` from a loop counting from 1)
   isn't mapped. The code is identical, but it shows as ~92% (`NuTrigInit`) or ~97%
   (`NuPow`, which writes its ring buffers through `pow_x - 4` etc.), ~95%

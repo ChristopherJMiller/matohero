@@ -1,7 +1,9 @@
 #include "nucamera.h"
+#include "numtl.h"
 #include "nuportal.h"
 #include "nuqfnt.h"
 #include "nurndr.h"
+#include "nutex.h"
 #include "nuvport.h"
 
 /* nu3d functions and globals the decompiled code uses, not decompiled yet. */
@@ -117,4 +119,12 @@ void NuRndrSphere(NUVEC *pos, float radius, unsigned int col, float yscale) {
 /* nuqfnt.c: the glyph renderer behind NuQFntPrintW/U (name from saga). */
 // STUB: BIONICLE 0x537bf0
 void NuQFntPrintCharW(NUQFNT *fv, NUWCHAR *txt, NUQFNT_PRINTMODE mode) {
+}
+
+// STUB: BIONICLE 0x542720
+void NuMtlDestroy(NUMTL *mtl) {
+}
+
+// STUB: BIONICLE 0x54b9c0
+void NuTexDestroy(int tid) {
 }

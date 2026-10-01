@@ -1,5 +1,11 @@
 #include "nuqfnt.h"
 
+#include "numtl.h"
+#include "nutex.h"
+
+#include <stdarg.h>
+#include <stdio.h>
+
 /* Quick fonts. Names, types and locals from the PS2 prototype (nu3d/nuqfnt.c); logic
  * checked against opensagadev/saga src/nu2api/nu3d/nuqfnt.cpp (GPL-3.0, a later engine).
  * Most functions accept NULL for the system font. In PC order. */
@@ -23,31 +29,31 @@ static float justify_squash = 1.0f;
 static float justify_stretch = 1.0f;
 
 // GLOBAL: BIONICLE 0x968b18
-float qfnt_offscale_x;
+float qfnt_offscale_x = 0.0f;
 
 // GLOBAL: BIONICLE 0x968b1c
-float qfnt_offscale_y;
+float qfnt_offscale_y = 0.0f;
 
 // GLOBAL: BIONICLE 0x968b20
-float nuqfnt_space_width;
+float nuqfnt_space_width = 0.0f;
 
 // GLOBAL: BIONICLE 0x968b24
-NUQFNT *system_qfont;
+NUQFNT *system_qfont = NULL;
 
 // GLOBAL: BIONICLE 0x968b28
-static int nuqfnt_init;
+static int nuqfnt_init = 0;
 
 // GLOBAL: BIONICLE 0x968b2c
-NUQFNT_CSMODE NuQFntCSMode;
+NUQFNT_CSMODE NuQFntCSMode = NUQFNT_CSMODE_UNINITIALISED;
 
 // GLOBAL: BIONICLE 0x968b30
-NUQFNT_PRINTMODE NuQFntMode;
+NUQFNT_PRINTMODE NuQFntMode = 0;
 
 // GLOBAL: BIONICLE 0x968b34
-int NuQFntCSModeStackIndex;
+int NuQFntCSModeStackIndex = 0;
 
 // GLOBAL: BIONICLE 0x968b38
-int NuQFntModeStackIndex;
+int NuQFntModeStackIndex = 0;
 
 // GLOBAL: BIONICLE 0x3607580
 NUQFNT_CSMODE NuQFntCSModeStack[16];
@@ -56,7 +62,7 @@ NUQFNT_CSMODE NuQFntCSModeStack[16];
 NUQFNT_PRINTMODE NuQFntModeStack[16];
 
 // FUNCTION: BIONICLE 0x536d70
-void NuQFntPushPrintMode(NUQFNT_PRINTMODE newmode) {
+__inline void NuQFntPushPrintMode(NUQFNT_PRINTMODE newmode) {
     if (NuQFntModeStackIndex < 16) {
         NuQFntModeStack[NuQFntModeStackIndex++] = NuQFntMode;
     }
@@ -64,9 +70,23 @@ void NuQFntPushPrintMode(NUQFNT_PRINTMODE newmode) {
 }
 
 // FUNCTION: BIONICLE 0x536db0
-void NuQFntPopPrintMode(void) {
+__inline void NuQFntPopPrintMode(void) {
     if (NuQFntModeStackIndex > 0) {
         NuQFntMode = NuQFntModeStack[--NuQFntModeStackIndex];
+    }
+}
+
+/* Frees the font's material, and its texture unless flag 1 says it is shared. */
+// FUNCTION: BIONICLE 0x536dd0
+void NuQFntDestroy(NUQFNT *fv) {
+    int tid;
+
+    if (fv != NULL) {
+        tid = ((VUFNT *)fv)->mtl->tid;
+        NuMtlDestroy(((VUFNT *)fv)->mtl);
+        if (!(((VUFNT *)fv)->flags & 1)) {
+            NuTexDestroy(tid);
+        }
     }
 }
 
@@ -393,6 +413,32 @@ void NuQFntSetColour(NUQFNT *fv, unsigned int abgr) {
     }
 }
 
+/* Positions the next print, converting from the current coordinate system (name from
+ * saga; the PS2 inlines it). The render stream isn't used on PC. */
+// FUNCTION: BIONICLE 0x5379f0
+void NuQFntMoveRS(RNDRSTREAM *rs, NUQFNT *fv, float x, float y, float z) {
+    if (NuQFntCSMode != NUQFNT_CSMODE_ABSOLUTE) {
+        x = qfnt_rezscale_w * x + qfnt_offscale_x;
+        y = qfnt_rezscale_h * y + qfnt_offscale_y - *((VUFNT *)fv)->scale_y * ((VUFNT *)fv)->baseline;
+    }
+    ((VUFNT_PC *)((VUFNT *)fv)->psdata)->x = x;
+    ((VUFNT_PC *)((VUFNT *)fv)->psdata)->y = y;
+    ((VUFNT_PC *)((VUFNT *)fv)->psdata)->z = z;
+}
+
+// FUNCTION: BIONICLE 0x538270
+__inline void NuQFntMove(NUQFNT *fv, float x, float y, float z) {
+    RNDRSTREAM *rs;
+
+    if (fv == NULL) {
+        fv = system_qfont;
+    }
+    if (fv != NULL) {
+        rs = (NuQFntMode & 2) ? NULL : (RNDRSTREAM *)((VUFNT *)fv)->mtl->rs;
+        NuQFntMoveRS(rs, fv, x, y, z);
+    }
+}
+
 // FUNCTION: BIONICLE 0x5382b0
 void NuQFntPrintW(NUQFNT *fv, NUWCHAR *txt) {
     if (fv == NULL) {
@@ -414,4 +460,36 @@ void NuQFntPrintU(NUQFNT *fv, char *txt) {
         NuQFntUTF8toQCode(fv, txt, wtxt);
         NuQFntPrintCharW(fv, wtxt, NuQFntMode);
     }
+}
+
+/* printf at (x, y); origin 1 right-aligns, 2 centres. */
+// FUNCTION: BIONICLE 0x538350
+void NuQFntPrintEx(NUQFNT *fnt, int x, int y, int origin, char *fmt, ...) {
+    int len;
+    char text[1024];
+    int newx;
+    va_list args;
+
+    NuQFntPushPrintMode(2);
+    va_start(args, fmt);
+    vsprintf(text, fmt, args);
+    len = (int)NuQFntPrintLenU(fnt, text);
+    va_end(args);
+    switch (origin) {
+    case 0:
+        newx = x;
+        break;
+    case 1:
+        newx = x - len;
+        break;
+    case 2:
+        newx = x - len / 2;
+        break;
+    default:
+        newx = x;
+        break;
+    }
+    NuQFntMove(fnt, newx, y, 0.0f);
+    NuQFntPrintU(fnt, text);
+    NuQFntPopPrintMode();
 }

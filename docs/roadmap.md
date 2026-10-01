@@ -487,12 +487,22 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `0x611d8c` (the non-zero ones), `.bss` `0x968b18`–`0x968b38`, the mode stacks at
       `0x3607580`/`0x36075c0`. Hook test: 404 functions; the menu text goes through them
       (`NuQFntPrintW` 47k calls, `NuQFntEncodeUnicodeChar` 75k).
-- [ ] `nuqfnt.c` part 2: `NuQFntDestroy` (`0x536dd0`; needs the PC `NUMTL`, whose `tid` is
-      a short at `0x78`), the glyph renderer `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
-      stubbed), `NuQFntMove` (`0x538270`) with its helper `0x5379f0`, `NuQFntSet2d`
-      (`0x538200`, creates the system font through `0x5373a0`), the font creation and
-      reading code `0x5373a0`/`0x5374f0`/`0x537650`/`0x537a50`, `NuQFntPrintEx`
-      (`0x538350`).
+- [x] `nuqfnt.c` part 2: `NuQFntDestroy`, `NuQFntMoveRS` (`0x5379f0`, name from saga;
+      ignores its stream), `NuQFntMove` and `NuQFntPrintEx` exact (4/4). `PrintEx` inlines
+      `Move` and the print-mode push/pop, so those are `__inline`; its `switch` needs
+      `case 0` and `default`; its inlined pop reads `NuQFntModeStack - 4`, which only
+      matched once `NuQFntCSModeStack` was the common right before it (see
+      matching.md). New `numtl.h` with the PC `NUMTL` fields seen so far (`attrib` at
+      `0x40` with the PS2 bit layout, `diffuse` `0x54`, `alpha` `0x74`, short `tid`
+      `0x78`, `sort_pri` `0x7a`) and `nutex.h`; `NuMtlDestroy` (`0x542720`) and
+      `NuTexDestroy` (`0x54b9c0`) stubbed. Hook test: `NuQFntMove` 41k calls.
+- [ ] `nuqfnt.c` part 3: the glyph renderer `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
+      stubbed); font creation: `0x5373a0` (material through `NuMtlCreate` `0x5418b0` and
+      a 0x158-byte shader description for `NuMtlSetShaderDescPS`? `0x5417a0`, then the
+      0x58-byte `psdata`), `0x5374f0` (loads a font's texture), `0x537650` (builds a
+      `VUFNT` from a `NUFNT`, `NuTexWidth`/`Height` `0x54baf0`/`0x54bb10`, `0x540f80`),
+      `0x537a50` (`NuQFntRead`?, "%s.qfn"), and `NuQFntSet2d` (`0x538200`, creates the
+      system font from `0x611d90` through `NuPtrBlockFix` and `NuTexCreate` `0x54b8b0`).
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nudlist` (14).
 
 Notes for later units:
