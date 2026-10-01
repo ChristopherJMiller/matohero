@@ -117,8 +117,6 @@ headless boot to title) → commit.
       `--time` limit; scratch variants live under `build/`. Solves the known nuvec case in
       ~20 variants but found nothing for the numtx near-misses (~300 variants each), so
       their differences lie outside these moves.
-- [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
-      `InvRSS`), `x * -y` ↔ `-(x * y)`, temporaries for repeated loads.
 - [x] `numath/nuquat.c`: 4/4 (3 exact, 1 effective). `NuMtxToQuat` (Shoemake) and
       `NuQuatSlerp` (older than saga's) written from the asm. Found the original
       `NuFdiv` (tests both operands for zero), which also lifted `NuMtxAlignZ` 63% → 94.5%.
@@ -128,6 +126,11 @@ headless boot to title) → commit.
 - [ ] `nucore/nufpar.c` (saga), ~21
 - [ ] `nucore/nufile.c` (saga), ~52
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
+
+Tooling backlog (pick up when near-misses pile up):
+
+- [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
+      `InvRSS`), `x * -y` ↔ `-(x * y)`, temporaries for repeated loads.
 
 After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`.
 
