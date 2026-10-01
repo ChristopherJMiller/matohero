@@ -47,9 +47,13 @@ portable platform layer for Linux.
       sanity checks and a cluster filter).
 - [x] **More naming coverage.** Global pairing + feature matching (strings, callees,
       callers, globals): 1,859/5,469 named (34%).
-- [ ] **Object regions.** Assign every PC function (named or not) to an original
-      object by region, since MSVC keeps objects contiguous; use it to reject sibling
-      confusions and to know file boundaries for splitting `src/`.
+- [x] **Object regions.** `orig/ps2proto/pc_objects.csv`: 3,202/4,843 game+engine
+      functions placed in an original source file; core-run filter cut propagated-pair
+      isolation to ~2–3%.
+- [ ] **Name the PC-only files.** The big gaps (`0x5717b0–0x57c8d0`, `0x5809e0–0x594060`,
+      …) sit where PS2 has `nups2`/`*/ps2` code: they're the `pc\` renderer/platform
+      files (`.\pc\nurndr.c`, `.\d3dCalls.cpp`, `.\pcapi.cpp`). Map them from PC
+      assert strings and saga's PC-side names.
 - [x] **Names into Ghidra.** `tools/ghidra names` applies the PS2 mapping (namespaces,
       plate comments); `tools/reccmp ghidra-import` applies matched functions' names and
       signatures (struct members come through empty, and unions aren't supported).

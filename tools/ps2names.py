@@ -12,8 +12,14 @@ Evidence, strongest first:
 
 Inputs: orig/Bionicle.exe, ghidra/export/functions.csv (ExportOverview.java),
 orig/ps2proto/BION~213.ELF and symbols.csv (tools/ps2map.py).
-Output: orig/ps2proto/pc_names.csv
-  pc_address,pc_size,name,object,signature,method,evidence
+Outputs:
+  orig/ps2proto/pc_names.csv    pc_address,pc_size,name,object,signature,method,evidence
+  orig/ps2proto/pc_objects.csv  pc_address,pc_size,object,status  for every PC function:
+      named (paired), inside (unpaired but within the object's core run), gap (between
+      two cores; object is "before|after"), overlap (inside several cores)
+
+Each object's core run comes from object_cores(); propagated pairs outside their
+object's core are banned, since MSVC emits an object's functions contiguously.
 
   tools/ps2names.py            write the mapping and print a summary
   tools/ps2names.py --check    also compare against reccmp-annotated functions in src/
@@ -38,8 +44,15 @@ PC_FUNCS = ROOT / "ghidra" / "export" / "functions.csv"
 PS2_ELF = ROOT / "orig" / "ps2proto" / "BION~213.ELF"
 PS2_SYMS = ROOT / "orig" / "ps2proto" / "symbols.csv"
 OUT = ROOT / "orig" / "ps2proto" / "pc_names.csv"
+OBJECTS_OUT = ROOT / "orig" / "ps2proto" / "pc_objects.csv"
 
 MIN_STRING = 4
+
+# Statically linked MSVC CRT and compiler funclets start here on PC (docs/binary-notes.md);
+# on PS2, objects from the Sony SDK and GCC runtime. Neither side's libraries are the
+# other's, so they never take part in pairing.
+PC_LIBRARY_START = 0x5B4A34
+PS2_LIBRARY_PREFIXES = ("h:/usr/", "F:/usr/", "Collect2")
 
 
 class Binary:
@@ -97,7 +110,7 @@ def load_pc():
 
     b = Binary()
     for row in csv.DictReader(open(PC_FUNCS)):
-        if row["thunk"] == "true":
+        if row["thunk"] == "true" or int(row["address"], 16) >= PC_LIBRARY_START:
             continue
         b.funcs[int(row["address"], 16)] = int(row["size"])
     starts = sorted(b.funcs)
@@ -154,6 +167,8 @@ def load_ps2():
     for row in csv.DictReader(open(PS2_SYMS)):
         a = int(row["address"], 16)
         if row["type"] == "FUNC" and row["section"] == ".text":
+            if row["object"].startswith(PS2_LIBRARY_PREFIXES):
+                continue
             b.funcs[a] = int(row["size"])
             b.info[a] = row
         elif row["section"] in (".data", ".bss", ".sdata", ".sbss", ".rodata", ".rdata") and int(row["size"] or 0):
@@ -235,6 +250,25 @@ def compatible(pc, ps2, p, q):
     if files and obj not in files:
         return False
     return True
+
+
+def object_cores(pairs, obj_of):
+    """Each object's most consistent run of PC addresses: the maximum-sum interval over
+    the address-sorted pairs, scoring +1 for its own names and -2 for any other's."""
+    ordered = sorted(pairs)
+    labels = [obj_of[pairs[p]] for p in ordered]
+    cores = {}
+    for obj in set(labels):
+        best, cur, start, span = 0, 0, 0, None
+        for i, label in enumerate(labels):
+            cur += 1 if label == obj else -2
+            if cur <= 0:
+                cur, start = 0, i + 1
+            elif cur > best:
+                best, span = cur, (start, i)
+        if span:
+            cores[obj] = (ordered[span[0]], ordered[span[1]])
+    return cores
 
 
 def pair_globals(pc, ps2, pairs):
@@ -418,11 +452,9 @@ def main():
     # functions of one other object is wrong. Ban it and propagate again until stable.
     def cluster_filter():
         while True:
-            ordered = sorted(pairs)
-            objs = [obj_of[pairs[p]] for p in ordered]
-            bad = [p for i, p in enumerate(ordered)
-                   if method[p] != "strings" and 0 < i < len(ordered) - 1
-                   and objs[i - 1] == objs[i + 1] != objs[i]]
+            cores = object_cores(pairs, obj_of)
+            bad = [p for p in pairs if method[p] != "strings"
+                   and not cores[obj_of[pairs[p]]][0] <= p <= cores[obj_of[pairs[p]]][1]]
             if not bad:
                 return
             for p in bad:
@@ -445,6 +477,27 @@ def main():
         if len(pairs) == before:
             break
 
+    # Object regions: every PC function inside exactly one object's core run.
+    cores = object_cores(pairs, obj_of)
+    regions = {}
+    for p in pc.starts:
+        hits = [o for o, (lo, hi) in cores.items() if lo <= p <= hi]
+        if p in pairs:
+            regions[p] = (obj_of[pairs[p]], "named")
+        elif len(hits) == 1:
+            regions[p] = (hits[0], "inside")
+        elif len(hits) > 1:
+            regions[p] = ("|".join(sorted(hits)), "overlap")
+        else:
+            prev = max((hi, o) for o, (lo, hi) in cores.items() if hi < p) if any(hi < p for _, hi in cores.values()) else (0, "")
+            nxt = min((lo, o) for o, (lo, hi) in cores.items() if lo > p) if any(lo > p for lo, _ in cores.values()) else (0, "")
+            regions[p] = (f"{prev[1]}|{nxt[1]}", "gap")
+    with open(OBJECTS_OUT, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["pc_address", "pc_size", "object", "status"])
+        for p in pc.starts:
+            w.writerow([f"0x{p:08x}", pc.funcs[p], *regions[p]])
+
     # Write the mapping.
     with open(OUT, "w", newline="") as f:
         w = csv.writer(f)
@@ -457,6 +510,9 @@ def main():
     total = len(pc.funcs)
     by = collections.Counter(method.values())
     print(f"paired {len(pairs)}/{total} PC functions -> {OUT.relative_to(ROOT)}")
+    st = collections.Counter(status for _, status in regions.values())
+    print(f"regions: {len(cores)} objects located; {st['named']} named + {st['inside']} inside a core, "
+          f"{st['gap']} in gaps, {st['overlap']} overlapping -> {OBJECTS_OUT.relative_to(ROOT)}")
     for m in ("strings", "calls", "order", "features"):
         print(f"  {m:8} {by[m]}")
 

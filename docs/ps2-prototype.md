@@ -42,27 +42,40 @@ reliability:
 
 | Method | How | Pairs | Isolated* |
 |--------|-----|------:|----------:|
-| `strings` | a literal referenced by exactly one function on each side | 307 | 3.6% |
-| `calls` | callees of a paired function, aligned by call order between already-paired callees | 645 | 5% |
-| `order` | equal-length unpaired runs between two pairs of one object | 101 | 0% |
-| `features` | mutual-best, rarity-weighted overlap of strings, paired callees, paired callers and paired globals | 806 | 6% |
+| `strings` | a literal referenced by exactly one function on each side | 306 | 3% |
+| `calls` | callees of a paired function, aligned by call order between already-paired callees | 724 | ~3% |
+| `order` | equal-length unpaired runs between two pairs of one object | 91 | 0% |
+| `features` | mutual-best, rarity-weighted overlap of strings, paired callees, paired callers and paired globals | 742 | ~2% |
 
 \* share of pairs whose PC neighbors both come from other objects, a rough upper bound on
-the error rate. Known weak spot: near-identical sibling files (the Rahkshi creature
-variants `Creature_Lehrak`/`Vorahk`/`Panrahk`) get confused.
+the error rate. Library code never takes part: the PC's statically linked MSVC CRT
+(from `0x5b4a34`) and the PS2's Sony SDK and GCC runtime objects.
 
 Globals pair when a PC data address and a PS2 data symbol keep co-occurring across
 paired functions (≥2 times, ≥60% of each one's uses, unambiguous). PS2 refs include
 `$gp`-relative small data.
 
 Propagated pairs have to pass sanity checks (size ratio, caller count, string sets,
-file-name hint). After each round, a cluster filter bans any pair sitting between two
-functions of another object, and propagation reruns. Per-file static helpers that recur
-under one name on PS2 (`NuError`, `NuDebugMsg`) are never propagated.
+file-name hint). Per-file static helpers that recur under one name on PS2 (`NuError`,
+`NuDebugMsg`) are never propagated.
 
-Current coverage: 1,877 of 5,469 PC functions (34%). Treat anything but `strings` as a
-strong hint until reccmp confirms a match. The `--check` flag compares against
-annotated `src/` (currently 5/5 correct where paired).
+### Object regions
+
+MSVC emits each object's functions contiguously. For every PS2 object, its *core* is
+the maximum-sum run over the address-sorted pairs, scoring +1 for its own names and −2
+for others'. After each round, propagated pairs outside their object's core are banned
+and propagation reruns. Every PC function then gets a region in
+`orig/ps2proto/pc_objects.csv`:
+
+| Status | Meaning |
+|--------|---------|
+| `named` | paired with a PS2 function |
+| `inside` | unpaired, but within one object's core, so very likely from that file |
+| `gap` | between two cores (`before|after`); often PC-only code (`pc\…`) or a file with no anchors yet |
+
+Current coverage (game + engine, 4,843 functions): **1,863 named (38%)**, 1,339 more
+placed inside a core, so **3,202 (66%) have a known source file**; 163 objects
+located. `--check` compares against annotated `src/` (5/5 correct where paired).
 
 ## Source tree
 
