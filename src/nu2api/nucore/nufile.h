@@ -80,6 +80,16 @@ typedef struct nudfnode_s {
     char *txt;
 } NUDFNODE;
 
+typedef struct nuiffhdr_s {
+    int blk;
+    int size;
+} NUIFFHDR;
+
+typedef struct blkinfo_s {
+    NUIFFHDR hdr;
+    int pos;
+} BLKINFO;
+
 typedef struct fileextinfo_s {
     char extension[13]; /* stored reversed */
     char type;
@@ -147,6 +157,15 @@ void NuMemFileClose(NUFILE fh);
 int NuMemFilePos(NUFILE fh);
 int NuMemFileSeek(NUFILE fh, int offset, int origin);
 int NuFilePos(NUFILE fh);
+void NuFileEndBlkRead(NUFILE fh);
+int NuFileAlign(NUFILE fh, int mask);
+int NuDatGetFileInfo(NUDATHDR *ndh, char *fname, int *start, int *len);
+int NuDatFileRead(NUFILE fh, void *data, int size);
+NUFILE NuDatFileOpen(NUDATHDR *ndh, char *fname, NUFILEMODE mode);
+int NuMemFileRead(NUFILE fh, void *data, int size);
+float NuFileReadFloat(NUFILE fh);
+int NuFileReadInt(NUFILE fh);
+short NuFileReadShort(NUFILE fh);
 NUDATHDR *NuDatSet(NUDATHDR *dh);
 NUDATHDR *NuDatGet(void);
 
@@ -174,7 +193,8 @@ int NuMcFolded();
 #define NuMcRead NuMcFolded
 #define NuMcSeek NuMcFolded
 #define NuMcClose NuMcFolded
-#define NuMcFileOpenSize NuMcFolded
+#define NuMcOpen NuMcFolded
+#define NuMcOpenSize NuMcFolded
 
 /* PC device setup (pc/nufile_pc.c); an empty function on PC, folded by the linker. */
 void NuPSFileInitDevices(int deviceid, int rebootiop, int eject);

@@ -176,12 +176,17 @@ headless boot to title) → commit.
       functions, 9 exact + `OpenSize` identical (reccmp `global - offset` limit);
       `ExtFind` 95%, `NuFileSeek` 85%. Memory-card names alias one folded stub
       (`NuMcFolded`). Hook test: 220 functions, title reached.
-- [ ] `nucore/nufile.c` part 2b: `NuFileEndBlkRead` (`0x566dd0`; inlines `NuFileSeek`,
-      `NuMemFileSeek`, `NuDatFileSeek`, which then become `__inline`), `NuFileAlign`,
-      `NuDatGetFileInfo` (`0x566fb0`), `0x567050`, `NuDatFileRead` (`0x567120`), then
-      `0x567270–0x567be0` (`NuFileOpen`, `Close`, `Size`, `Read` + `AquireFileBuffer`,
-      `NuFileRead*`), the extension table init (`0x5665c0` helper, `NuFileExtInit`
-      `0x566610`, ~40 strings). Then the unclaimed `0x567bf0–0x5687c6`.
+- [x] `nucore/nufile.c` part 2b: `AquireFileBuffer`, `NuFileEndBlkRead`, `Align`,
+      `NuDatGetFileInfo`, `NuDatFileRead`, `NuDatFileOpen`, `NuFileOpen`, `Close`,
+      `NuMemFileRead`, `NuFileSize`, `NuFileRead` and the five `NuFileRead<Type>`: 17
+      functions, 8 exact; near-misses (block layout / shrink-wrapping): `Align` 99%,
+      `DatFileOpen` 97%, `DatFileRead` 85%, `Close` 87%, `Open` 83%, `EndBlkRead` 82%,
+      `Read` 81%, `GetFileInfo` 61%. Hook test: 228 functions, title reached.
+- [ ] `nucore/nufile.c` part 2c: `NuDatFileLoadBufferLSN`? (`0x567050`, calls the RNC
+      unpacker `0x56d320`), the extension table init (`0x5665c0` static helper with a
+      register argument, `NuFileExtInit` `0x566610`, ~40 strings), then the unclaimed
+      `0x567bf0–0x5687c6` (nudatfile/nufilepak?) and another pass at the nufile
+      near-misses.
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
 
 Tooling backlog (pick up when near-misses pile up):

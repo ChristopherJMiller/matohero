@@ -37,6 +37,15 @@ exact; `tools/permute.py` automates some of them.
   compiles to two returns; `if (a || b) return 0;` shares one (`NuFParInterpretWord`).
   Likewise `if (x) {…return…} else { return 0; }` vs. a leading `if (!x) return 0;`
   decides where the zero return lands (`NuFParGetInt`).
+- **Registers pushed before an early `return 0` mean the source had no early return.**
+  MSVC shrink-wraps early returns (they leave before the pushes); the original's
+  functions often push first and jump to one shared `xor eax, eax` tail, which comes from
+  wrapping the body in `if (ok) { … }` and returning 0 at the end (`NuDatFileOpen` 69% →
+  97%). Two failure cases sharing one cleanup statement can be a single condition:
+  `if (f == -1 || (ix = Find(…)) < 0) datfiles[f].used = 0;`.
+- **A condition evaluated twice is a macro.** `NuDatFileRead` computes a clamp with
+  `sets/dec/and`, then re-tests the sign in the other branch: `MIN(size, MAX(0, rem))`
+  with function-like macros expanding their arguments twice.
 - **Branch order follows the `if`.** `test ah, 1; jne` comes from
   `if (x >= 0.0f) {…} else {…}`, while `if (x < 0.0f)` gives `test ah, 5; jp`
   (`NuASin`).

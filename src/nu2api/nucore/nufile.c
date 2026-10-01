@@ -37,6 +37,18 @@ static FILEINFO file_info[33];
 // GLOBAL: BIONICLE 0x34b7850
 static FILEEXTINFO extensions[64];
 
+// GLOBAL: BIONICLE 0x34b7c50
+static BLKINFO nufile_blkinfo[1024];
+
+// GLOBAL: BIONICLE 0x34bec84
+int nufile_buffering_enabled;
+
+// GLOBAL: BIONICLE 0x617218
+static int blkcnt = 1;
+
+// GLOBAL: BIONICLE 0x617228
+int nufile_lsn_allowed = 1;
+
 // GLOBAL: BIONICLE 0x3607b94
 int numdevices;
 
@@ -201,8 +213,7 @@ int NuFileFormatName(char *fullname, char *fname, int buffsize) {
     return default_device->FormatName(default_device, fullname, fname, buffsize);
 }
 
-/* 0x566000; marker added once its callers (NuFileRead etc.) are in, since an unused
- * static is dropped. */
+// FUNCTION: BIONICLE 0x566000
 static void AquireFileBuffer(FILEINFO *info) {
     int i;
     int n;
@@ -255,7 +266,7 @@ void *NuMemFileAddr(NUFILE fh) {
 }
 
 // FUNCTION: BIONICLE 0x566130
-int NuMemFileWrite(NUFILE fh, void *data, int size) {
+__inline int NuMemFileWrite(NUFILE fh, void *data, int size) {
     int left;
 
     fh -= 0x400;
@@ -337,7 +348,7 @@ int NuFileWriteStringV(NUFILE fh, char *fmt, ...) {
 }
 
 // FUNCTION: BIONICLE 0x566460
-int NuDatFileSeek(NUFILE fh, int offset, int origin) {
+__inline int NuDatFileSeek(NUFILE fh, int offset, int origin) {
     NUDATFILE *df = &datfiles[fh - 0x800];
     int pos;
 
@@ -518,7 +529,7 @@ int NuFileInitEx(int deviceid, int rebootiop, int eject) {
 // FUNCTION: BIONICLE 0x566b60
 int NuFileOpenSize(NUFILE fh) {
     if (fh >= 0x1000) {
-        return NuMcFileOpenSize(fh - 0x1000);
+        return NuMcOpenSize(fh - 0x1000);
     }
     if (fh >= 0x800) {
         return datfiles[fh - 0x800].len;
@@ -552,7 +563,7 @@ int NuMemFilePos(NUFILE fh) {
 }
 
 // FUNCTION: BIONICLE 0x566c40
-int NuMemFileSeek(NUFILE fh, int offset, int origin) {
+__inline int NuMemFileSeek(NUFILE fh, int offset, int origin) {
     if (fh >= 0x800) {
         return NuDatFileSeek(fh, offset, origin);
     }
@@ -595,7 +606,7 @@ int NuFilePos(NUFILE fh) {
 }
 
 // FUNCTION: BIONICLE 0x566d40
-int NuFileSeek(NUFILE fh, int offset, int origin) {
+__inline int NuFileSeek(NUFILE fh, int offset, int origin) {
     FILEINFO *info;
 
     if (fh >= 0x1000) {
@@ -620,4 +631,332 @@ int NuFileSeek(NUFILE fh, int offset, int origin) {
         }
     }
     return NuPSFileLSeek(fh, offset, origin);
+}
+
+// FUNCTION: BIONICLE 0x566dd0
+void NuFileEndBlkRead(NUFILE fh) {
+    int pos;
+
+    blkcnt--;
+    pos = NuFilePos(fh);
+    if (pos != nufile_blkinfo[blkcnt].pos + nufile_blkinfo[blkcnt].hdr.size) {
+        NuFileSeek(fh, nufile_blkinfo[blkcnt].pos + nufile_blkinfo[blkcnt].hdr.size, 0);
+    }
+}
+
+// FUNCTION: BIONICLE 0x566ec0
+int NuFileAlign(NUFILE fh, int mask) {
+    unsigned char pad;
+    int pos;
+    int cnt;
+
+    pad = 0xfe;
+    cnt = 0;
+    pos = NuFilePos(fh);
+    while (pos & mask) {
+        pos++;
+        cnt++;
+        NuFileWrite(fh, &pad, 1);
+    }
+    return cnt;
+}
+
+// FUNCTION: BIONICLE 0x566fb0
+int NuDatGetFileInfo(NUDATHDR *ndh, char *fname, int *start, int *len) {
+    int ix;
+
+    if (ndh != NULL) {
+        ix = NuDatFileFindTree(ndh, fname);
+        if (ix >= 0) {
+            if (nufile_lsn_allowed && ndh->start_lsn) {
+                if (start != NULL) {
+                    *start = ndh->finfo[ix].foffset / 2048 + ndh->start_lsn;
+                }
+            } else {
+                if (start != NULL) {
+                    *start = ndh->finfo[ix].foffset;
+                }
+            }
+            if (len != NULL) {
+                *len = ndh->finfo[ix].flen;
+            }
+            return ix;
+        }
+    }
+    return -1;
+}
+
+// FUNCTION: BIONICLE 0x567120
+int NuDatFileRead(NUFILE fh, void *data, int size) {
+    NUDATFILE *info;
+    int bytes;
+
+    NuThreadCriticalSectionBegin(file_criticalsection);
+    info = &datfiles[fh - 0x800];
+    if (info->pos != info->ndh->pos) {
+        NuFileSeek(info->ndh->fh, info->pos, 0);
+    }
+    bytes = info->len + info->start - info->pos;
+    size = size < (0 > bytes ? 0 : bytes) ? size : (0 > bytes ? 0 : bytes);
+    if (size != 0) {
+        bytes = NuFileRead(info->ndh->fh, data, size);
+        if (bytes >= 0) {
+            info->pos += bytes;
+        }
+        NuThreadCriticalSectionEnd(file_criticalsection);
+        return bytes;
+    }
+    NuThreadCriticalSectionEnd(file_criticalsection);
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x567270
+NUFILE NuDatFileOpen(NUDATHDR *ndh, char *fname, NUFILEMODE mode) {
+    int n;
+    int ix;
+    int f;
+    NUFILE fh;
+
+    if (mode == NUFILE_READ && ndh->dfhandle == 0) {
+        NuThreadCriticalSectionBegin(file_criticalsection);
+        f = -1;
+        for (n = 0; n < 20; n++) {
+            if (!datfiles[n].used) {
+                datfiles[n].used = 1;
+                f = n;
+                break;
+            }
+        }
+        NuThreadCriticalSectionEnd(file_criticalsection);
+        if (f == -1 || (ix = NuDatFileFindTree(ndh, fname)) < 0) {
+            datfiles[f].used = 0;
+        } else {
+            datfiles[f].ndh = ndh;
+            datfiles[f].start = datfiles[f].pos = ndh->finfo[ix].foffset;
+            datfiles[f].len = ndh->finfo[ix].flen;
+            if (datfiles[f].len == 0) {
+                datfiles[f].used = 0;
+                return 0;
+            }
+            datfiles[f].uplen = ndh->finfo[ix].uplen;
+            datfiles[f].ppack = ndh->finfo[ix].ppack;
+            while (NuFileSeek(ndh->fh, ndh->finfo[ix].foffset, 0) < 0) {
+            }
+            ndh->pos = datfiles[f].pos;
+            fh = f + 0x800;
+            ndh->dfhandle = fh;
+            return fh;
+        }
+    }
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x567470
+NUFILE NuFileOpen(char *file, NUFILEMODE mode) {
+    NUFILE_DEVICE *device;
+    int fp;
+    char lfile[256];
+    int rv;
+    int len;
+
+    device = NuFileGetDeviceFromPath(file);
+    if (device == NULL) {
+        if (curr_dat != NULL && mode != NUFILE_WRITE && mode != NUFILE_APPEND) {
+            return NuDatFileOpen(curr_dat, file, mode);
+        }
+        device = default_device;
+    }
+    device->FormatName(device, lfile, file, 256);
+    if (device->id == 2) {
+        // STRING: BIONICLE 0x5e0910
+        strcat(lfile, ";1");
+    }
+    if (device->id == 1) {
+        rv = NuMcOpen(lfile[2] - '0', lfile[3] - '0', lfile + device->namelen, mode, 0);
+        if (rv < 0) {
+            return 0;
+        }
+        return rv + 0x1000;
+    }
+    fp = NuPSFileOpen(lfile, mode);
+    if (fp < 0) {
+        return 0;
+    }
+    memset(&file_info[fp], 0, sizeof(FILEINFO));
+    file_info[fp].fh = fp;
+    file_info[fp].open_mode = mode;
+    if (mode == NUFILE_WRITE) {
+        file_info[fp].file_length = 0;
+    } else {
+        if (fp <= 0x10) {
+            while ((len = NuFileSeek(fp + 1, 0, 2)) < 0) {
+            }
+            file_info[fp].file_length = len;
+            while (NuFileSeek(fp + 1, 0, 0) < 0) {
+            }
+        }
+        if ((fp > 0x10 || mode != 3) && mode == NUFILE_READ) {
+            file_info[fp].use_buff = nufile_buffering_enabled;
+        }
+    }
+    return fp + 1;
+}
+
+// FUNCTION: BIONICLE 0x5677a0
+void NuFileClose(NUFILE fh) {
+    FILEINFO *info;
+
+    if (fh >= 0x1000) {
+        NuMcClose(fh - 0x1000, 0);
+        return;
+    }
+    if (fh >= 0x400) {
+        NuMemFileClose(fh);
+        return;
+    }
+    fh--;
+    while (NuPSFileClose(fh) < 0) {
+    }
+    info = &file_info[fh];
+    if (info->buff != NULL) {
+        info->buff->info = NULL;
+    }
+    memset(info, 0, sizeof(FILEINFO));
+}
+
+// FUNCTION: BIONICLE 0x567830
+int NuMemFileRead(NUFILE fh, void *data, int size) {
+    int left;
+
+    if (fh >= 0x800) {
+        return NuDatFileRead(fh, data, size);
+    }
+    fh -= 0x400;
+    left = memfiles[fh].end - memfiles[fh].curr + 1;
+    if (left < size) {
+        size = left;
+    }
+    if (size > 0) {
+        memcpy(data, memfiles[fh].curr, size);
+        memfiles[fh].curr += size;
+    }
+    return size;
+}
+
+// FUNCTION: BIONICLE 0x5678a0
+int NuFileSize(char *fname) {
+    NUFILE fh;
+    int rv;
+    int be;
+    int ix;
+
+    be = nufile_buffering_enabled;
+    nufile_buffering_enabled = 0;
+    if (curr_dat != NULL) {
+        ix = NuDatFileFindTree(curr_dat, fname);
+        if (ix != 0) {
+            return curr_dat->finfo[ix].uplen;
+        }
+    }
+    rv = -1;
+    if (fname != NULL && *fname != '\0') {
+        fh = NuFileOpen(fname, NUFILE_READ);
+        if (fh != 0) {
+            while (NuFileSeek(fh, 0, 2) < 0) {
+            }
+            rv = NuFilePos(fh);
+            NuFileClose(fh);
+        }
+    }
+    nufile_buffering_enabled = be;
+    return rv;
+}
+
+// FUNCTION: BIONICLE 0x5679f0
+int NuFileRead(NUFILE fh, void *data, int size) {
+    FILEINFO *info;
+    int bytes;
+    int blocksize;
+    char *datac;
+
+    if (fh >= 0x1000) {
+        return NuMcRead(fh - 0x1000, data, size, 0);
+    }
+    if (fh >= 0x400) {
+        return NuMemFileRead(fh, data, size);
+    }
+    fh--;
+    info = &file_info[fh];
+    if (!info->use_buff) {
+        return NuPSFileRead(fh, data, size);
+    }
+    if (info->buff == NULL) {
+        AquireFileBuffer(info);
+    }
+    datac = (char *)data;
+    bytes = 0;
+    while (size > 0 && info->read_pos < info->file_length) {
+        if (info->read_pos < info->buff_start || info->read_pos >= info->buff_start + info->buff_length) {
+            if (info->read_pos != info->file_pos) {
+                NuPSFileLSeek(info->fh, info->read_pos, 0);
+                info->file_pos = info->read_pos;
+            }
+            blocksize = NuPSFileRead(info->fh, info->buff->data, 0x400);
+            info->buff_start = info->file_pos;
+            info->buff_length = blocksize;
+            info->file_pos += blocksize;
+        }
+        blocksize = info->buff_length - info->read_pos + info->buff_start;
+        if (blocksize >= size) {
+            blocksize = size;
+        }
+        if (blocksize != 0) {
+            memcpy(datac, info->buff->data + info->read_pos - info->buff_start, blocksize);
+        }
+        datac += blocksize;
+        bytes += blocksize;
+        size -= blocksize;
+        info->read_pos += blocksize;
+    }
+    return bytes;
+}
+
+// FUNCTION: BIONICLE 0x567b40
+float NuFileReadFloat(NUFILE fh) {
+    float data;
+
+    NuFileRead(fh, &data, 4);
+    return data;
+}
+
+// FUNCTION: BIONICLE 0x567b60
+int NuFileReadInt(NUFILE fh) {
+    int data;
+
+    NuFileRead(fh, &data, 4);
+    return data;
+}
+
+// FUNCTION: BIONICLE 0x567b80
+short NuFileReadShort(NUFILE fh) {
+    short data;
+
+    NuFileRead(fh, &data, 2);
+    return data;
+}
+
+// FUNCTION: BIONICLE 0x567ba0
+char NuFileReadChar(NUFILE fh) {
+    char data = 0;
+
+    NuFileRead(fh, &data, 1);
+    return data;
+}
+
+// FUNCTION: BIONICLE 0x567bc0
+NUWCHAR NuFileReadWChar(NUFILE fh) {
+    NUWCHAR data = 0;
+
+    NuFileRead(fh, &data, 2);
+    return data;
 }
