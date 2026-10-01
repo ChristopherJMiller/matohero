@@ -420,8 +420,16 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       whose reccmp texts differ in one hex immediate (a store of `global + offset` into
       another global), with a 64 KB window. Hook test: 362 functions,
       `clipTestSphere` 237k calls.
-- [ ] `nuportal_gen.c` part 2: `NuPortalWhichRoom` (`0x53f690`, many game callers; uses
-      the static point-in-room test `0x53f600`, eax = room, ecx = point), `clipTestBox`?
+- [x] `nuportal_gen.c` part 2: `PointInRoom` (`0x53f600`, static, name ours; inlined on
+      PS2) exact once its tail reads `if (test_sign <= 0) return 1; return 0;`;
+      `NuPortalWhichRoom` 62%: the logic matches (including the original's overflow of
+      `short room_list[2]` when a third room contains the point), but the original keeps
+      `p->rooms` hoisted out of the loop in a stack slot (MSVC knows the static helper is
+      read-only; in isolation it hoists, but in this loop our indexed `room_list` store
+      plus the `break` stop it). Tried: spellings of the access, a cached local, `r++`,
+      `__inline`, store and type variants, declaration orders, the permuter (0.601 →
+      0.607). Hook test: 364 functions, `PointInRoom` 87k calls.
+- [ ] `nuportal_gen.c` part 3: `clipTestBox`?
       (`0x53f920`), `buildFrustrum` (`0x53fb80`), `createPortalFrustrum` (`0x53fd30`),
       `0x53efa0` (frustum copy, edx = source), the drawing helpers `0x53f040`–`0x53f420`
       (they call `NuCameraUnlock`/`Relock`), `0x53ffe0`, `0x540020`, the extents helper

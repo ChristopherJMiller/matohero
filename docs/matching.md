@@ -58,6 +58,11 @@ exact; `tools/permute.py` automates some of them.
 - **`_ftol2` doesn't clobber memory.** Globals loaded before a run of `(int)` conversions
   stay in callee-saved registers and are reused after them; which ones depends on the
   order of the later assignments (`h, w, x, y` in `NuVpUpdate`, found by permuting them).
+- **MSVC knows when a static callee is read-only.** A load like `p->rooms` in a loop that
+  calls a static function which only reads memory gets hoisted out of the loop (into a
+  spill slot if registers are short), and later uses reuse it. In `NuPortalWhichRoom` our
+  build stopped hoisting once the loop also had an indexed store into a local array and a
+  `break`; the original hoists anyway (unsolved).
 - **Repeated constant stores are grouped.** A float constant stored more than once goes
   into a register, and all its stores are emitted together where its group starts;
   single stores stay `mov [mem], imm32` in source order. Which register a constant gets
