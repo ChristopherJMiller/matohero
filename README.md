@@ -60,9 +60,12 @@ tools/reccmp reccmp --target BIONICLE --verbose 0x565550            # diff one f
 tools/progress.py                        # refresh docs/progress.md
 ```
 
-Source lives in `src/<library>/`, mirroring the original tree (`src/nu2/listman.c` was
-`.\listman.c` in the engine project). Annotate each decompiled function with its
-original address:
+Source lives in `src/`, mirroring the original tree recovered from the PS2 prototype:
+`nu2api/<module>/` (engine), `gameapi/` (TT's game framework) and `game/` (BIONICLE
+itself), with `pc/` where the PS2 tree has `ps2/`. Each original project compiled from
+its own directory, and assert strings embed `__FILE__` relative to it, so `tools/build.py`
+does the same (its `PROJECTS` table): `src/nu2api/gamelib/listman.c` compiles as
+`.\listman.c`. Annotate each decompiled function with its original address:
 
 ```c
 // FUNCTION: BIONICLE 0x565840

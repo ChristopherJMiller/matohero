@@ -28,9 +28,20 @@ MSVC = ROOT / "tools" / "msvc"
 COMMON_FLAGS = ["/nologo", "/c", "/O2", "/MT", "/W3", "/Z7"]
 CXX_FLAGS = ["/EHsc"]
 
-# Each top-level directory under src/ is one original project (its own include root).
-LIBRARIES = {
-    "nu2": {"flags": []},
+# Original PC projects: each was compiled from its own directory, which is what the
+# __FILE__ strings in asserts are relative to (".\\listman.c" from nu2api/gamelib,
+# ".\\pc\\nurndr.c" from nu2api/nu3d, ".\\charsys\\charbase.cpp" from gameapi). A source
+# belongs to the deepest project root containing it. Layout follows the PS2 prototype's
+# tree (docs/ps2-prototype.md), with pc/ where PS2 has ps2/.
+PROJECTS = {
+    "nu2api/nucore": {"flags": []},
+    "nu2api/numath": {"flags": []},
+    "nu2api/nu3d": {"flags": []},
+    "nu2api/nusound3": {"flags": []},
+    "nu2api/nufmv": {"flags": []},
+    "nu2api/gamelib": {"flags": []},
+    "gameapi": {"flags": []},
+    "gameapi/DynoSDK": {"flags": []},
     "game": {"flags": []},
 }
 
@@ -44,14 +55,19 @@ def winpath(p):
     return "Z:" + str(p).replace("/", "\\")
 
 
+def project_of(src):
+    rel = src.relative_to(SRC).as_posix()
+    roots = [p for p in PROJECTS if rel.startswith(p + "/")]
+    if not roots:
+        sys.exit(f"{src.relative_to(ROOT)} is not under any project root in tools/build.py")
+    return max(roots, key=len)
+
+
 def sources():
-    for lib, cfg in LIBRARIES.items():
-        root = SRC / lib
-        if not root.exists():
-            continue
-        for src in sorted(root.rglob("*")):
-            if src.suffix.lower() in (".c", ".cpp"):
-                yield lib, cfg, src
+    for src in sorted(SRC.rglob("*")):
+        if src.suffix.lower() in (".c", ".cpp"):
+            proj = project_of(src)
+            yield proj, PROJECTS[proj], src
 
 
 def headers_mtime():
@@ -68,7 +84,10 @@ def compile_one(lib, cfg, src, force):
     # Compile from the library root with a relative path, as the original build did
     # (asserts embed __FILE__ as e.g. ".\listman.c").
     rel = ".\\" + str(src.relative_to(SRC / lib)).replace("/", "\\")
-    cmd = [str(MSVC), "cl", *flags, f"/I{winpath(SRC / lib)}", f"/Fo{winpath(obj)}", rel]
+    # Every project root is on the include path, as the original builds pointed at the
+    # engine's directories.
+    includes = [f"/I{winpath(SRC / p)}" for p in [lib] + [p for p in PROJECTS if p != lib] if (SRC / p).exists()]
+    cmd = [str(MSVC), "cl", *flags, *includes, f"/Fo{winpath(obj)}", rel]
     res = subprocess.run(cmd, cwd=SRC / lib, capture_output=True, text=True)
     out = "\n".join(l for l in res.stdout.splitlines() if l.strip() and l.strip() != src.name)
     if res.returncode != 0:

@@ -66,8 +66,9 @@ portable platform layer for Linux.
       and runs our code. Smoke test passes: 10 functions redirected, title screen reached.
 - [x] **Hook trace mode.** `tools/hook.py --trace`: per-hook call counters in
       `run/game/bhhook-trace.txt`. Boot to title: `NuLstGetNext` ran 35,780 times.
-- [ ] **Re-layout `src/`** to mirror the original tree from the PS2 map
-      (`nu2api/gamelib/listman.c`, …), keeping PC-only files (`pc\…`) in place.
+- [x] **Re-layout `src/`.** `src/nu2api/{gamelib,nucore,…}`, `src/gameapi`, `src/game`;
+      `tools/build.py` compiles each file from its original project root (PC `__FILE__`
+      strings show the engine was one project per module directory).
 
 M1 polish (after the hook DLL works):
 
