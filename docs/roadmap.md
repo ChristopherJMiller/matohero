@@ -234,7 +234,14 @@ headless boot to title) → commit.
 - [ ] nufile near-miss pass (`GetFileInfo` 61%, `Read` 81%, `EndBlkRead` 82%, `Open`
       83%, `LoadBuffer` 83%, `Close` 87%, `DatFileRead` 85%, `FileSeek` 85%, `ExtFind`
       95%, `PSFileOpen` 81%, `DatFileLoadBuffer` 35%). Unblocked: the compile-order
-      question is answered (see the tooling backlog).
+      question is answered (see the tooling backlog). First round (no change, all
+      reverted): `ExtFind` loop shapes (`goto next`, `for(;;)` with early return,
+      combined condition, `do`/`while`): the original threads the inner loop's exit
+      straight to `return si`, ours re-tests `*fext`; `ExtInit` statement order of the
+      two zero stores (the original stores `ext_init_needed` as an immediate while `eax`
+      is 0); `DatFileOpen` splitting `start = pos = …` (worse; one remaining diff is reccmp
+      naming the end-of-`datfiles` address after different neighbours); `DatOpenEx` keeps
+      0 in `ebx` around the LSN code, so that part probably has more source than ours.
 - [x] `nucore/nustring.c` part 3: `NuStringTableLoadCSV` (`0x568ff0`, 1148 bytes) and
       `NuStringTableLoadTXT` (`0x569480`): both exact. `LoadCSV` inlines a copy of
       `NuAsciiToUnicode` that `NuSPrintfW` calls, so it uses a `static __inline` copy
