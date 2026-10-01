@@ -42,9 +42,13 @@ portable platform layer for Linux.
 - [x] **PS2 types.** ccc v2.1 packaged (`nix/ccc.nix`); `tools/ps2dump` writes types,
       functions (params/locals) and globals to `orig/ps2proto/stdump/`. `listman.c`
       renamed to the original identifiers, still 10/10.
-- [ ] **Name the PC exe from PS2 symbols.** Tool that pairs PC functions with PS2 ones
-      (shared string refs such as assert file names, call-graph shape, object
-      grouping/order), writing a mapping with confidence levels.
+- [x] **Name the PC exe from PS2 symbols.** `tools/ps2names.py` v1: 638/5,469 paired
+      (309 by unique strings, the rest propagated through calls/object order, with
+      sanity checks and a cluster filter).
+- [ ] **More naming coverage.** Pair globals (PS2 `.data`/`.bss` symbols ↔ PC data
+      refs) and use them as anchors; add caller-side propagation; assign unpaired PC
+      functions to objects by region (MSVC keeps objects contiguous) to get file
+      boundaries even where names are unknown.
 - [ ] **Names into Ghidra** (reccmp-ghidra-import or our own script from the mapping).
 - [ ] **Library code out of the score**: mark statically linked CRT/third-party code
       (`// LIBRARY:` or report ignores) so accuracy reflects game code.

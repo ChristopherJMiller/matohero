@@ -33,6 +33,27 @@ project. They differ from the names other decomps invented (saga calls `elcnt`
 `element_count`). Types matter for matching too: `elcnt` and friends are signed `short`,
 which is why the PC code uses `movsx`.
 
+## Naming PC functions
+
+`tools/ps2names.py` pairs PC functions with PS2 ones and writes
+`orig/ps2proto/pc_names.csv` (`pc_address,pc_size,name,object,signature,method,evidence`).
+It needs `ghidra/export/functions.csv` from `ExportOverview.java`. Methods, by
+reliability:
+
+| Method | How | Reliability |
+|--------|-----|-------------|
+| `strings` | a literal referenced by exactly one function on each side | high: 309 pairs, almost all sit among functions of the same object |
+| `calls` | callees of a paired function, aligned by call order between already-paired callees | medium: spot checks find occasional errors (e.g. a table-init function named `NuPow`) |
+| `order` | equal-length unpaired runs between two pairs of one object | medium |
+
+Propagated pairs have to pass sanity checks (size ratio, caller count, string sets,
+file-name hint). They also go through a cluster filter: a pair sitting between two
+functions of another object is banned and propagation reruns. Per-file static helpers
+that recur under one name on PS2 (`NuError`, `NuDebugMsg`) are never propagated.
+
+First run: 638 of 5,469 PC functions named. Treat `calls`/`order` names as hints until
+reccmp confirms a match.
+
 ## Source tree
 
 Objects live under `h:\Bionicle\Ps2\Source\`, in three projects:
