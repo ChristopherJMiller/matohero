@@ -182,9 +182,15 @@ headless boot to title) → commit.
       Found that reccmp drops markers on multi-line signatures. Hook test: 254
       functions, input works end to end through our pad code (title → menu → save
       prompt).
-- [ ] Rest of `0x56b760–0x56c6c0`: `nufilepak.c` (`0x56b760–0x56bbcf`, saga has it),
-      `nulang.c` (`NuLanguageGet`/`Set` `0x56c650`/`0x56c660`, `0x56c670`), `NuFrameBegin`
-      (`0x56c6a0`) / `NuFrameEnd` (`0x56c6c0`, need nu3d/PC callees stubbed).
+- [x] `nucore/nufilepak.c` (saga; `CalcChecksum`, `LoadKey` with inlined decryption,
+      `Load`, `Condense`, `GetItem`, `GetItemInfo`, `SetItemRequired`), `nucore/nulang.c`
+      (`NuLanguageGet`/`Set`), `NuAPIInit` (`0x56c670`) and the PC file helpers
+      `NuFileRename`/`NuFileCreateDir` (`0x56b760`/`0x56b7e0`, `pc/nufile_pc.c`): 12/12
+      exact. `0x565bf0` is the engine's byte-wise memmove, stubbed as `NuMemMove`
+      (`numem.c`, our name). Hook test: 266 functions, paks loaded through our code
+      (`NuFilePakGetItem` 448 calls), input works.
+- [ ] `NuFrameBegin` (`0x56c6a0`) / `NuFrameEnd` (`0x56c6c0`, need nu3d/PC callees
+      stubbed).
 - [x] `nucore/nufpar.c` (saga): all 24 PC functions exact (BH has one command stack,
       saga two). Stubs for the nufile callees, `NuFileExists` (`pc/nufile_pc.c`) and the
       expression evaluators `NuRDPI`/`NuRDPF`. Hook test: 183 functions, title reached,

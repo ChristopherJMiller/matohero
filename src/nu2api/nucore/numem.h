@@ -5,6 +5,9 @@
 
 void *NuMemAllocFn(int size, char *file, int line);
 
+/* Byte-wise memmove (the name is ours). */
+void NuMemMove(void *dest, void *src, int size);
+
 #define NuMemAlloc(size) NuMemAllocFn((size), __FILE__, __LINE__)
 
 /* NuMemAlloc as it was called from a given line of the original source file. Our files

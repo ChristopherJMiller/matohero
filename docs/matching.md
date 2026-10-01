@@ -76,6 +76,14 @@ exact; `tools/permute.py` automates some of them.
   next point).
 - `cmp eax, edi` with the loop counter in `eax` was `i == mapping.port`, not
   `mapping.port == i`: equality operands keep the source order too.
+- `dec edx; js` after `ihandle--` is `ihandle >= 0` (or `< 0`); `ihandle > -1` gives
+  `cmp eax, -1; jle` (`NuFilePakGetItemInfo`).
+- **Splitting a pointer computation into two assignments changes register allocation.**
+  `item = GetItems(hdr); item = &item[ihandle];` matched where
+  `item = &GetItems(hdr)[ihandle];` (same code, other registers) was 52%
+  (`NuFilePakGetItemInfo`, `NuFilePakSetItemRequired`).
+- Stores to a local struct follow the source order: `SECURITY_ATTRIBUTES` filled
+  `bInheritHandle` first in the original (`NuFileCreateDir`).
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;

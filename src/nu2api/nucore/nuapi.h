@@ -19,6 +19,7 @@ typedef struct nuapi_s {
 
 extern NUAPI nuapi;
 
+void NuAPIInit(void);
 void NuRegisterEndFrameCallBackFn(void (*fn)());
 
 #endif

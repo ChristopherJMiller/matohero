@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <windows.h>
 
 #include "nufile.h"
 
@@ -125,4 +126,25 @@ int NuPSFileLSeek(int fd, int offset, int where) {
         fseek(fhandles[fd], offset, SEEK_END);
     }
     return ftell(fhandles[fd]);
+}
+
+// FUNCTION: BIONICLE 0x56b760
+int NuFileRename(char *to, char *from) {
+    char lto[256];
+    char lfrom[256];
+
+    NuFileFormatName(lfrom, from, 0x100);
+    NuFileFormatName(lto, to, 0x100);
+    DeleteFileA(lto);
+    return MoveFileA(lfrom, lto);
+}
+
+// FUNCTION: BIONICLE 0x56b7e0
+int NuFileCreateDir(char *dir) {
+    SECURITY_ATTRIBUTES sa;
+
+    sa.bInheritHandle = TRUE;
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.lpSecurityDescriptor = NULL;
+    return CreateDirectoryA(dir, &sa);
 }

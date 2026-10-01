@@ -199,5 +199,7 @@ int NuPSFileClose(int fd);
 int NuPSFileRead(int fd, void *buf, int nbyte);
 int NuPSFileWrite(int fd, void *buf, int nbyte);
 int NuPSFileLSeek(int fd, int offset, int where);
+int NuFileRename(char *to, char *from);
+int NuFileCreateDir(char *dir);
 
 #endif
