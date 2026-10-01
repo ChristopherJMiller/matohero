@@ -261,10 +261,12 @@ exact; `tools/permute.py` automates some of them.
 - **`add reg, 0x10; jne` loops over a static array are `for (p = array; p != NULL; p++)`.**
   The pointer never becomes NULL, so the loop only ends via a match; the compiler keeps
   the useless test (the extension table in nufile).
-- **An `__inline` function with no out-of-line call in its own file isn't emitted.**
+- **An `__inline` function with no caller in its own file isn't emitted.**
   `NuFileSeek` is `__inline` in the original (it's inlined into `NuFileEndBlkRead`), but
   marking it so before its inlining callers exist dropped it from the object and left
-  other files' calls unresolved. Add the `__inline` together with those callers.
+  other files' calls unresolved. Add the `__inline` together with those callers. Once
+  it has callers, even only inlined ones, the out-of-line copy is emitted as well
+  (`NuQFntEncodeUnicodeChar`, inlined into `NuQFntUTF8toQCode` and `NuQFntPrintLenU`).
 - **A loop in an inlined helper isn't unrolled; the same loop written inline is.**
   `NuPSFileOpen`'s free-handle search became a 4× unrolled loop until moved into a
   `static __inline` helper (58% → 81%).

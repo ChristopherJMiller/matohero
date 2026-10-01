@@ -476,8 +476,24 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NUGSCN` gets the PS2's `NUVISIBILITY` at `0x1e0` (placed by `PortalVisiFlags` at
       `0x1fc`). Hook test: 384 functions; these run under the hooked
       `NuPortalVisibility` (1.9k calls).
-- [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nuqfnt` (30), `nudlist`
-      (14).
+- [x] `nu3d/nuqfnt.c` part 1: 20/20 exact on the first or second build: print-mode and
+      coordinate-system stacks, `NuQFntSetCoordinateSystem`, `UnicodeToIndexFast` (binary
+      search), `NuQFntEncodeUnicodeChar` (`__inline`: inlined into `NuQFntUTF8toQCode`,
+      still emitted), `EncodeUnicodeString`, `UTF8toQCode`, `PrintLenW`/`U` (a `switch`
+      with `'0'`…`'9'` cases), `Height`, `Baseline`, `Set`, `SetScale`, `SetColour`,
+      `SetICGap` (name from saga), `SetSpaceWidth`, `PrintW`, `PrintU`. `VUFNT` has the
+      PS2 layout; on PC `psdata` points to a 0x58-byte block (saga's `VUFNT_ANDROID`
+      layout) that `abgr`/`scale_x`/`scale_y` point into. Globals: `.data` `0x611d78`–
+      `0x611d8c` (the non-zero ones), `.bss` `0x968b18`–`0x968b38`, the mode stacks at
+      `0x3607580`/`0x36075c0`. Hook test: 404 functions; the menu text goes through them
+      (`NuQFntPrintW` 47k calls, `NuQFntEncodeUnicodeChar` 75k).
+- [ ] `nuqfnt.c` part 2: `NuQFntDestroy` (`0x536dd0`; needs the PC `NUMTL`, whose `tid` is
+      a short at `0x78`), the glyph renderer `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
+      stubbed), `NuQFntMove` (`0x538270`) with its helper `0x5379f0`, `NuQFntSet2d`
+      (`0x538200`, creates the system font through `0x5373a0`), the font creation and
+      reading code `0x5373a0`/`0x5374f0`/`0x537650`/`0x537a50`, `NuQFntPrintEx`
+      (`0x538350`).
+- [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nudlist` (14).
 
 Notes for later units:
 

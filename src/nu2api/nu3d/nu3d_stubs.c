@@ -1,5 +1,6 @@
 #include "nucamera.h"
 #include "nuportal.h"
+#include "nuqfnt.h"
 #include "nurndr.h"
 #include "nuvport.h"
 
@@ -111,4 +112,9 @@ int NuRndrLineStrip2d(NUVTX_TLTC1 *vtx, NUMTL *mtl, int cnt) {
 
 // STUB: BIONICLE 0x54f7a0
 void NuRndrSphere(NUVEC *pos, float radius, unsigned int col, float yscale) {
+}
+
+/* nuqfnt.c: the glyph renderer behind NuQFntPrintW/U (name from saga). */
+// STUB: BIONICLE 0x537bf0
+void NuQFntPrintCharW(NUQFNT *fv, NUWCHAR *txt, NUQFNT_PRINTMODE mode) {
 }
