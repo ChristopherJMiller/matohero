@@ -450,12 +450,24 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       (`NUBOUNDS`) at `0x194`; `nuvec_one`/`nuvec_minus_one` are numath data at
       `0x617530`/`0x61753c`. Hook test: 371 functions, `NuPortalVisibility` 2.4k calls,
       `checkPortalVisibility` 38k.
-- [ ] `nuportal_gen.c` part 5: the remaining statics, which `roomRecursive` needs before
-      it can match: `buildFrustrum` `0x53fd30` (cdecl, 3 args), `transposeClipPlanes`
-      `0x53fb80`, `clipPortal` `0x540430` (with the extents helper `0x540280`, ebx/esi/edi,
-      and the rectangle clip `0x540370`), `createPortalFrustrum` `0x540640` (portal in
-      eax), the debug drawing `drawPortal` `0x53f040`, `drawSquare` `0x53f1d0`,
-      `drawViewFrustrum` `0x53f300`, `drawClippedPortal` `0x53f420`.
+- [x] `nuportal_gen.c` part 5: the remaining statics. Exact: `roomRecursive` (needed
+      all the statics below as real statics, a `switch` on `clipPortal`'s result, and
+      `if (left_room != roomid)`; the PS2's `pvis` local), `transposeClipPlanes`,
+      `computePortalExtents` (`0x540280`), `clipExtents` (`0x540370`, output-first
+      parameters), and the debug draws `drawPortal`, `drawViewFrustrum`,
+      `drawClippedPortal` (`draw_portals` `0x337c8b0`, never set on PC). Near:
+      `createPortalFrustrum` (effective), `buildFrustrum` 96% (written out without a loop,
+      as the PS2's missing `i` shows; the rest is x87 operand order in two `w` sums, and
+      the odd `f[1]` store order is the permuter's), `clipPortal` 93% (the original
+      shares one `return 0` block and keeps `&max` in `esi`), `drawSquare` 84% (integer
+      stores scheduled one slot apart; no field or statement order changes it).
+      `NuRndrLineStrip2d` (`0x542e00`, PS2 name from its `drawSquare`) is stubbed;
+      `NuRndrLine3dDbg` is folded into `NuEmptyFolded`. Hook test: 379 functions; the
+      exe's `clipPortal` calls `clipExtents`/`drawClippedPortal` 7.9k times.
+- [ ] The portal code's platform half (PS2 `ps2/nuportal_ps2.c`), stubbed so far:
+      `Initialise_PS` `0x55b470`, `FlagRoomInstancesAsVisible` `0x55b480`,
+      `SetAllInstancesVisible` `0x55b500`, `SetAllInstancesHidden` `0x55b550`,
+      `clipRoomAgainstFrustrum` `0x55b5a0`.
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nuqfnt` (30), `nudlist`
       (14).
 

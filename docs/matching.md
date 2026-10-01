@@ -175,6 +175,21 @@ exact; `tools/permute.py` automates some of them.
   was written: `v >= 128 ? 128 : 1` vs `v < 128 ? 1 : 128` (`NuPower2`).
 - `if/else` assignments of floats compile to integer moves; `?:` doesn't
   (`NuVecMax`/`Min`).
+- **A pointer temporary inside an unrolled loop gives a second induction variable.**
+  `clipPortal`'s 4× unrolled dot loop reads `x` through one pointer and `y`/`z` through
+  another; `p = &portal->points[i]; … p->x …` reproduced that, `portal->points[i].x`
+  didn't (48% → 92%).
+- **`dec eax; je` / `sub eax, 3; jne` on a call's result is a `switch`, and MSVC lays the
+  case bodies out in reverse source order.** `roomRecursive`'s outer switch puts
+  `default`, then `case 2`, then `case 1` after the dispatch; its inner `if (clip == 1)
+  … else if (clip == 4)` had to be `switch (clip) { case 1: … case 4: … }`.
+- **`xor reg, reg; mov reg16, [mem]` on the first of two short loads.** `next_room =
+  left; if (next_room == roomid) next_room = right;` folded the address and loaded with a
+  bare `mov si`; `if (left != roomid) next_room = left; else next_room = right;` gave the
+  original's `xor`/`mov` pair (`roomRecursive` 96% → 100%).
+- **A PS2 local list without a loop counter means no loop.** `buildFrustrum`'s four
+  transform-and-`w` steps are written out (PS2 has no `i`); as a loop MSVC kept it rolled,
+  since it calls a function (54% → 94%).
 
 ## Structure
 
@@ -256,6 +271,19 @@ exact; `tools/permute.py` automates some of them.
 - **`static` functions get register arguments, and ours match.** `NuFileExtAdd` takes its
   string in `edi` and `AquireFileBuffer` its `FILEINFO *` in `edi`; writing them as plain
   `static` functions reproduced that without help.
+- **Which parameters of a static get registers depends on their order.** `clipExtents`
+  takes four of its six pointers in registers; declared `(mina, maxa, minc, maxc, min,
+  max)`, MSVC put `maxa`…`min` in registers and `mina` on the stack, while the original
+  has the four inputs in registers. Output-first, `(min, max, mina, maxa, minc, maxc)`,
+  matched exactly. When a static's register set is off by one parameter, try another
+  parameter order.
+- **A static's register arguments only match once its callees are real statics too.**
+  With a plain `cdecl` stub for `drawClippedPortal`, `clipPortal` allocated registers
+  differently, and `clipExtents` (called from `clipPortal`) got another convention.
+- **A folded empty function called with floats needs a prototype.** `NuRndrLine3dDbg`
+  is ICF-folded into the unprototyped `NuEmptyFolded`; calling it directly would promote
+  the floats to `double`. `folded.h` defines it as a call through a cast function
+  pointer, which MSVC still emits as a direct `call`.
 - **A global re-read after its own store is `volatile`.** `NuThreadCreateCriticalSection`
   compares the counter in memory, loads it, increments, stores, and loads it again for each
   use; a plain `static int` keeps it in `eax` (35% → identical).

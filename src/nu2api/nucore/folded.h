@@ -21,6 +21,8 @@ void NuEmptyFolded();
 #define NuPSFileInitDevices NuEmptyFolded
 #define NuVideoSetSwapModePS NuEmptyFolded
 #define FaceYDirStream NuEmptyFolded
+/* Called through a prototype so the floats aren't promoted to double. */
+#define NuRndrLine3dDbg ((void (*)(float, float, float, float, float, float, unsigned int))NuEmptyFolded)
 
 /* `return 0` in optimized code, folded into a game function at 0x4b44a0: the PS2's VU1
  * stream setup (nu3d/ps2/nustream.c), which has no PC counterpart. */

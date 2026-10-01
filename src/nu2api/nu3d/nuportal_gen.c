@@ -1,7 +1,15 @@
 #include "nuportal.h"
 
+#include "folded.h"
 #include "nucamera.h"
+#include "nuplane.h"
+#include "nurndr.h"
+#include "nutrig.h"
 #include "nuvec.h"
+#include "nuvec4.h"
+#include "nuvu0.h"
+
+#include <float.h>
 
 /* Portal visibility: rooms joined by portals, walked from the camera's room through the
  * portals in view, narrowing a frustum at each step. Names, types and locals from the PS2
@@ -31,6 +39,9 @@ static short camera_roomid;
 
 // GLOBAL: BIONICLE 0x337a468
 static NUCAMERA *cam;
+
+// GLOBAL: BIONICLE 0x337c8b0
+static int draw_portals;
 
 // GLOBAL: BIONICLE 0x3604fd0
 NUVEC4 cam_plane;
@@ -83,7 +94,6 @@ void NuPortalInit(void) {
     fstack_limit.s8 = fstackmem + sizeof(fstackmem);
 }
 
-/* 1 if the point is inside all the room's planes (name ours; inlined on PS2). */
 /* Copies a frustum onto the stack (name from saga; inlined on PS2). The struct copy
  * overwrites the new planes pointer, so the plane loop copies the planes onto themselves. */
 // FUNCTION: BIONICLE 0x53efa0
@@ -99,6 +109,167 @@ static NUFRUSTRUM *copyFrustrum(NUFRUSTRUM *from) {
     return to;
 }
 
+/* Debug drawing, on when draw_portals is set (nothing sets it on PC). PS2 passes the
+ * colours in; PC uses constants. */
+
+/* The portal's outline, and a line from each corner back to the room wall the camera ray
+ * through it hits first. */
+// FUNCTION: BIONICLE 0x53f040
+static void drawPortal(NUPORTAL *p, NUROOM *room) {
+    int i;
+    int j;
+    NUVEC v;
+    NUVEC *s;
+    NUVEC *e;
+    NUVEC ip;
+    NUVEC min_ip;
+    float min_dist;
+    float dist;
+
+    if (draw_portals == 0) {
+        return;
+    }
+    NuCameraUnlock();
+    for (i = 0; i < p->npoints; i++) {
+        s = &p->points[i];
+        e = &p->points[(i + 1) % p->npoints];
+        NuVecSub(&v, s, e);
+        NuRndrLine3dDbg(s->x, s->y, s->z, e->x, e->y, e->z, 0xffff00ff);
+    }
+    for (i = 0; i < p->npoints; i++) {
+        NuVecSub(&v, &p->points[i], &world_campos);
+        NuVecNorm(&v, &v);
+        min_dist = FLT_MAX;
+        for (j = 0; j < room->nplanes; j++) {
+            dist = NuPlnLine3((NUPLANE *)&room->plane_eqns[j], &p->points[i], &v, &ip);
+            if (dist > 0.0f && dist < min_dist) {
+                min_dist = dist;
+                min_ip = ip;
+            }
+        }
+        NuRndrLine3dDbg(min_ip.x, min_ip.y, min_ip.z, p->points[i].x, p->points[i].y, p->points[i].z, 0xffff00ff);
+    }
+    NuCameraRelock();
+}
+
+/* A screen-space rectangle, min/max in clip space (-1..1). */
+// FUNCTION: BIONICLE 0x53f1d0
+static void drawSquare(NUVEC *min, NUVEC *max, unsigned int colour) {
+    NUVTX_TLTC1 v[8];
+
+    v[0].pnt.x = (min->x + 1.0f) * 0.5f;
+    v[0].pnt.y = 0.5f - min->y * 0.5f;
+    v[0].pnt.z = 1.0f;
+    v[0].diffuse = colour;
+    v[1].pnt.x = (min->x + 1.0f) * 0.5f;
+    v[1].pnt.y = 0.5f - max->y * 0.5f;
+    v[1].pnt.z = 1.0f;
+    v[1].diffuse = colour;
+    v[2].pnt.x = (min->x + 1.0f) * 0.5f;
+    v[2].pnt.y = 0.5f - max->y * 0.5f;
+    v[2].pnt.z = 1.0f;
+    v[2].diffuse = colour;
+    v[3].pnt.x = (max->x + 1.0f) * 0.5f;
+    v[3].pnt.y = 0.5f - max->y * 0.5f;
+    v[3].pnt.z = 1.0f;
+    v[3].diffuse = colour;
+    v[4].pnt.x = (max->x + 1.0f) * 0.5f;
+    v[4].pnt.y = 0.5f - max->y * 0.5f;
+    v[4].pnt.z = 1.0f;
+    v[4].diffuse = colour;
+    v[5].pnt.x = (max->x + 1.0f) * 0.5f;
+    v[5].pnt.y = 0.5f - min->y * 0.5f;
+    v[5].pnt.z = 1.0f;
+    v[5].diffuse = colour;
+    v[6].pnt.x = (max->x + 1.0f) * 0.5f;
+    v[6].pnt.y = 0.5f - min->y * 0.5f;
+    v[6].pnt.z = 1.0f;
+    v[6].diffuse = colour;
+    v[7].pnt.x = (min->x + 1.0f) * 0.5f;
+    v[7].pnt.y = 0.5f - min->y * 0.5f;
+    v[7].pnt.z = 1.0f;
+    v[7].diffuse = colour;
+    NuRndrLineStrip2d(v, NULL, 8);
+}
+
+/* The view frustum's edges, 0.2 units out from the camera. */
+// FUNCTION: BIONICLE 0x53f300
+static void drawViewFrustrum(void) {
+    NUVEC c[4];
+    NUVEC *a;
+    NUVEC *b;
+    NUVEC p[4];
+    int i;
+
+    if (draw_portals == 0) {
+        return;
+    }
+    NuCameraRayCast(&c[0], -1.0f, -1.0f);
+    NuCameraRayCast(&c[1], -1.0f, 1.0f);
+    NuCameraRayCast(&c[2], 1.0f, 1.0f);
+    NuCameraRayCast(&c[3], 1.0f, -1.0f);
+    for (i = 0; i < 4; i++) {
+        NuVecScale(&p[i], &c[i], 0.2f);
+        NuVecAdd(&p[i], &p[i], &world_campos);
+    }
+    NuCameraUnlock();
+    for (i = 0; i < 4; i++) {
+        a = &p[i];
+        b = &p[(i + 1) % 4];
+        NuRndrLine3dDbg(world_campos.x, world_campos.y, world_campos.z, a->x, a->y, a->z, 0xffffffff);
+        NuRndrLine3dDbg(a->x, a->y, a->z, b->x, b->y, b->z, 0xffff0000);
+    }
+    NuCameraRelock();
+}
+
+/* The portal clipped to the frustum: on screen, on the portal's plane, and the room walls
+ * behind it. */
+// FUNCTION: BIONICLE 0x53f420
+static void drawClippedPortal(NUPORTAL *portal, NUROOM *room, NUVEC *min, NUVEC *max) {
+    NUVEC c[4];
+    NUVEC s[4];
+    NUVEC ip;
+    NUVEC min_ip;
+    NUVEC *a;
+    NUVEC *b;
+    int i;
+    int j;
+    float min_dist;
+    float dist;
+
+    if (draw_portals == 0) {
+        return;
+    }
+    NuCameraRayCast(&c[0], min->x, min->y);
+    NuCameraRayCast(&c[1], min->x, max->y);
+    NuCameraRayCast(&c[2], max->x, max->y);
+    NuCameraRayCast(&c[3], max->x, min->y);
+    for (i = 0; i < 4; i++) {
+        NuPlnLine3((NUPLANE *)&portal->plane_eqn, &world_campos, &c[i], &s[i]);
+    }
+    NuCameraUnlock();
+    drawSquare(min, max, 0xff00);
+    for (i = 0; i < 4; i++) {
+        a = &s[i];
+        b = &s[(i + 1) % 4];
+        NuRndrLine3dDbg(a->x, a->y, a->z, b->x, b->y, b->z, 0xff0000ff);
+    }
+    for (i = 0; i < 4; i++) {
+        NuVecNorm(&c[i], &c[i]);
+        min_dist = FLT_MAX;
+        for (j = 0; j < room->nplanes; j++) {
+            dist = NuPlnLine3((NUPLANE *)&room->plane_eqns[j], &s[i], &c[i], &ip);
+            if (dist > 0.0f && dist < min_dist) {
+                min_dist = dist;
+                min_ip = ip;
+            }
+        }
+        NuRndrLine3dDbg(min_ip.x, min_ip.y, min_ip.z, s[i].x, s[i].y, s[i].z, 0xff0000ff);
+    }
+    NuCameraRelock();
+}
+
+/* 1 if the point is inside all the room's planes (name ours; inlined on PS2). */
 // FUNCTION: BIONICLE 0x53f600
 static short PointInRoom(NUROOM *r, NUVEC *campos) {
     short j;
@@ -274,6 +445,144 @@ int clipTestBox(NUVEC4 *min, NUVEC4 *max, NUVEC4 *frust, int nplanes) {
     return inside == nplanes * 8 ? 1 : 2;
 }
 
+/* Writes the planes into the frustum's transposed form, four per matrix, padding the
+ * unused slots with the camera plane. */
+// FUNCTION: BIONICLE 0x53fb80
+static void transposeClipPlanes(NUFRUSTRUM *f) {
+    f->clip_planes[0]._03 = cam_plane.x;
+    f->clip_planes[0]._13 = cam_plane.y;
+    f->clip_planes[0]._23 = cam_plane.z;
+    f->clip_planes[0]._33 = cam_plane.w;
+    f->clip_planes[1]._00 = cam_plane.x;
+    f->clip_planes[1]._10 = cam_plane.y;
+    f->clip_planes[1]._20 = cam_plane.z;
+    f->clip_planes[1]._30 = cam_plane.w;
+    f->clip_planes[1]._01 = cam_plane.x;
+    f->clip_planes[1]._11 = cam_plane.y;
+    f->clip_planes[1]._21 = cam_plane.z;
+    f->clip_planes[1]._31 = cam_plane.w;
+    f->clip_planes[1]._02 = cam_plane.x;
+    f->clip_planes[1]._12 = cam_plane.y;
+    f->clip_planes[1]._22 = cam_plane.z;
+    f->clip_planes[1]._32 = cam_plane.w;
+    f->clip_planes[1]._03 = cam_plane.x;
+    f->clip_planes[1]._13 = cam_plane.y;
+    f->clip_planes[1]._23 = cam_plane.z;
+    f->clip_planes[1]._33 = cam_plane.w;
+    f->clip_planes[0]._00 = f->planes[0].x;
+    f->clip_planes[0]._10 = f->planes[0].y;
+    f->clip_planes[0]._20 = f->planes[0].z;
+    f->clip_planes[0]._30 = f->planes[0].w;
+    f->clip_planes[0]._01 = f->planes[1].x;
+    f->clip_planes[0]._11 = f->planes[1].y;
+    f->clip_planes[0]._21 = f->planes[1].z;
+    f->clip_planes[0]._31 = f->planes[1].w;
+    f->clip_planes[0]._02 = f->planes[2].x;
+    f->clip_planes[0]._12 = f->planes[2].y;
+    f->clip_planes[0]._22 = f->planes[2].z;
+    f->clip_planes[0]._32 = f->planes[2].w;
+    if (f->nplanes < 4) {
+        return;
+    }
+    f->clip_planes[0]._03 = f->planes[3].x;
+    f->clip_planes[0]._13 = f->planes[3].y;
+    f->clip_planes[0]._23 = f->planes[3].z;
+    f->clip_planes[0]._33 = f->planes[3].w;
+    if (f->nplanes < 5) {
+        return;
+    }
+    f->clip_planes[1]._00 = f->planes[4].x;
+    f->clip_planes[1]._10 = f->planes[4].y;
+    f->clip_planes[1]._20 = f->planes[4].z;
+    f->clip_planes[1]._30 = f->planes[4].w;
+    if (f->nplanes < 6) {
+        return;
+    }
+    f->clip_planes[1]._01 = f->planes[5].x;
+    f->clip_planes[1]._11 = f->planes[5].y;
+    f->clip_planes[1]._21 = f->planes[5].z;
+    f->clip_planes[1]._31 = f->planes[5].w;
+    if (f->nplanes < 7) {
+        return;
+    }
+    f->clip_planes[1]._02 = f->planes[6].x;
+    f->clip_planes[1]._12 = f->planes[6].y;
+    f->clip_planes[1]._22 = f->planes[6].z;
+    f->clip_planes[1]._32 = f->planes[6].w;
+    if (f->nplanes < 8) {
+        return;
+    }
+    f->clip_planes[1]._03 = f->planes[7].x;
+    f->clip_planes[1]._13 = f->planes[7].y;
+    f->clip_planes[1]._23 = f->planes[7].z;
+    f->clip_planes[1]._33 = f->planes[7].w;
+}
+
+/* The view frustum through a screen rectangle (min/max in clip space). */
+// FUNCTION: BIONICLE 0x53fd30
+static NUFRUSTRUM *buildFrustrum(NUVEC *min, NUVEC *max, short camera_roomid) {
+    int ang;
+    float zx;
+    float zy;
+    float l;
+    float v;
+    NUVEC4 p;
+    NUVEC4 *f;
+    NUFRUSTRUM *frust;
+
+    frust = NuFrustrumAllocate(4);
+    frust->min = *min;
+    frust->max = *max;
+    frust->roomid = camera_roomid;
+    f = frust->planes;
+    ang = (int)((cam->fov * 0.5f) * 10430.378f);
+    zy = NU_SIN_LUT(ang) / NU_COS_LUT(ang);
+    zx = zy / cam->aspect;
+
+    v = zy * min->y;
+    l = 1.0f / NuFsqrt(v * v + 1.0f);
+    f[2].x = 0.0f;
+    f[2].y = l;
+    f[2].z = -(l * v);
+    f[2].w = 0.0f;
+
+    v = zy * max->y;
+    l = 1.0f / NuFsqrt(v * v + 1.0f);
+    f[3].x = 0.0f;
+    f[3].y = -l;
+    f[3].z = l * v;
+    f[3].w = 0.0f;
+
+    v = zx * max->x;
+    l = 1.0f / NuFsqrt(v * v + 1.0f);
+    f[0].x = -l;
+    f[0].z = l * v;
+    f[0].y = 0.0f;
+    f[0].w = 0.0f;
+
+    v = zx * min->x;
+    l = 1.0f / NuFsqrt(v * v + 1.0f);
+    f[1].y = 0.0f;
+    f[1].x = l;
+    f[1].w = 0.0f;
+    f[1].z = -(l * v);
+
+    /* Into world space. */
+    p.x = local_inv_view_mtx._30;
+    p.y = local_inv_view_mtx._31;
+    p.z = local_inv_view_mtx._32;
+    NuVec4MtxTransformH(&f[0], &f[0], &local_inv_view_mtx);
+    f[0].w = -(p.x * f[0].x + p.y * f[0].y + p.z * f[0].z);
+    NuVec4MtxTransformH(&f[1], &f[1], &local_inv_view_mtx);
+    f[1].w = -(p.x * f[1].x + p.y * f[1].y + p.z * f[1].z);
+    NuVec4MtxTransformH(&f[2], &f[2], &local_inv_view_mtx);
+    f[2].w = -(p.x * f[2].x + p.y * f[2].y + p.z * f[2].z);
+    NuVec4MtxTransformH(&f[3], &f[3], &local_inv_view_mtx);
+    f[3].w = -(p.x * f[3].x + p.y * f[3].y + p.z * f[3].z);
+    transposeClipPlanes(frust);
+    return frust;
+}
+
 /* Debug: draws the bounding sphere of instance i (inlined on PS2; name ours). */
 // FUNCTION: BIONICLE 0x53ffe0
 static void drawInstanceSphere(int i, NUGSCN *gsc) {
@@ -322,6 +631,134 @@ static int checkPortalVisibility(NUPORTAL *portal, NUFRUSTRUM *frust, NUGSCN *gs
         }
     }
     return inside == frust->nplanes * portal->npoints ? 1 : 2;
+}
+
+/* The portal's bounding rectangle in clip space, clamped to the screen (name from saga;
+ * inlined on PS2). */
+// FUNCTION: BIONICLE 0x540280
+static void computePortalExtents(NUPORTAL *portal, NUVEC *min, NUVEC *max) {
+    // GLOBAL: BIONICLE 0x337a470
+    static NUMTX inv_clip_mtx;
+    // GLOBAL: BIONICLE 0x337a420
+    static NUMTX clip;
+    int i;
+    NUVEC p;
+
+    NuCameraGetClipMtx(&clip, NULL);
+    NuMtxInvH(&inv_clip_mtx, &clip);
+    NuVecMtxTransformH(max, &portal->points[0], &clip);
+    *min = *max;
+    for (i = 1; i < portal->npoints; i++) {
+        NuVecMtxTransformH(&p, &portal->points[i], &clip);
+        NuVecMax(max, max, &p);
+        NuVecMin(min, min, &p);
+    }
+    NuVecMin(max, max, &nuvec_one);
+    NuVecMax(max, max, &nuvec_minus_one);
+    NuVecMin(min, min, &nuvec_one);
+    NuVecMax(min, min, &nuvec_minus_one);
+}
+
+/* Intersects the rectangle mina..maxa with minc..maxc into min..max; 0 if they don't
+ * overlap (name ours; inlined on PS2). */
+// FUNCTION: BIONICLE 0x540370
+static int clipExtents(NUVEC *min, NUVEC *max, NUVEC *mina, NUVEC *maxa, NUVEC *minc, NUVEC *maxc) {
+    if (maxa->x <= minc->x || maxa->y <= minc->y || mina->x >= maxc->x || mina->y >= maxc->y) {
+        return 0;
+    }
+    if (mina->x > minc->x) {
+        min->x = mina->x;
+    } else {
+        min->x = minc->x;
+    }
+    if (mina->y > minc->y) {
+        min->y = mina->y;
+    } else {
+        min->y = minc->y;
+    }
+    if (maxa->x < maxc->x) {
+        max->x = maxa->x;
+    } else {
+        max->x = maxc->x;
+    }
+    if (maxa->y < maxc->y) {
+        max->y = maxa->y;
+    } else {
+        max->y = maxc->y;
+    }
+    return 1;
+}
+
+/* 0: behind the camera; 4: crossing the camera plane (keep the frustum); 1: clipped to
+ * the rectangle it covers, with a new frustum in *newfrust. */
+// FUNCTION: BIONICLE 0x540430
+static int clipPortal(NUPORTAL *portal, NUROOM *room, int roomid, NUFRUSTRUM *frust, NUFRUSTRUM **newfrust) {
+    NUVEC max;
+    NUVEC min;
+    int i;
+    int inside;
+    float dot;
+    NUVEC *p;
+
+    inside = 0;
+    for (i = 0; i < portal->npoints; i++) {
+        p = &portal->points[i];
+        dot = cam_plane.x * p->x + cam_plane.y * p->y + cam_plane.z * p->z + cam_plane.w;
+        if (dot > 0.0f) {
+            inside++;
+        }
+    }
+    if (inside == 0) {
+        return 0;
+    }
+    if (inside != portal->npoints) {
+        return 4;
+    }
+    computePortalExtents(portal, &min, &max);
+    if (!clipExtents(&min, &max, &min, &max, &frust->min, &frust->max)) {
+        return 0;
+    }
+    drawClippedPortal(portal, room, &min, &max);
+    *newfrust = buildFrustrum(&min, &max, roomid);
+    return 1;
+}
+
+/* A frustum through the portal's edges from the camera (all of the portal in view). */
+// FUNCTION: BIONICLE 0x540640
+static NUFRUSTRUM *createPortalFrustrum(NUPORTAL *portal, int room_id) {
+    NUVEC p;
+    NUVEC ex;
+    NUVEC ey;
+    int i;
+    float d;
+    NUFRUSTRUM *frustrum;
+
+    frustrum = NuFrustrumAllocate(portal->npoints);
+    frustrum->roomid = room_id;
+    p.x = local_inv_view_mtx._30;
+    p.y = local_inv_view_mtx._31;
+    p.z = local_inv_view_mtx._32;
+    d = portal->plane_eqn.x * p.x + portal->plane_eqn.y * p.y + portal->plane_eqn.z * p.z + portal->plane_eqn.w;
+    for (i = 0; i < portal->npoints; i++) {
+        NuVecSub(&ex, &p, &portal->points[i]);
+        NuVecSub(&ey, &p, &portal->points[(i + 1) % portal->npoints]);
+        NuVecCross(&ex, &ex, &ey);
+        NuVecNorm(&ex, &ex);
+        if (d < 0.0f) {
+            frustrum->planes[i].x = ex.x;
+            frustrum->planes[i].y = ex.y;
+            frustrum->planes[i].z = ex.z;
+            frustrum->planes[i].w = -(ex.x * p.x + ex.y * p.y + ex.z * p.z);
+        } else {
+            frustrum->planes[i].x = -ex.x;
+            frustrum->planes[i].y = -ex.y;
+            frustrum->planes[i].z = -ex.z;
+            frustrum->planes[i].w = ex.x * p.x + ex.y * p.y + ex.z * p.z;
+        }
+    }
+    computePortalExtents(portal, &frustrum->min, &frustrum->max);
+    transposeClipPlanes(frustrum);
+    return frustrum;
 }
 
 // FUNCTION: BIONICLE 0x540840
@@ -376,6 +813,7 @@ static void roomRecursive(NUGSCN *gsc, NUFRUSTRUM *frustrum, short roomid, short
     NUPORTAL *new_portal;
     NUROOM *room;
     unsigned int i;
+    unsigned int pvis;
     int j;
     int clip;
     short next_room;
@@ -402,14 +840,20 @@ static void roomRecursive(NUGSCN *gsc, NUFRUSTRUM *frustrum, short roomid, short
     }
     for (i = 0; i < room->nportals; i++) {
         new_portal = &gsc->portalinfo.portals[room->portals[i]];
-        next_room = new_portal->left_room;
-        if (next_room == roomid) {
+        if (new_portal->left_room != roomid) {
+            next_room = new_portal->left_room;
+        } else {
             next_room = new_portal->right_room;
         }
         if (next_room == prev_room) {
             continue;
         }
-        switch (new_portal->flags & 1 ? checkPortalVisibility(new_portal, frustrum, gsc, roomid, next_room) : 0) {
+        if (new_portal->flags & 1) {
+            pvis = checkPortalVisibility(new_portal, frustrum, gsc, roomid, next_room);
+        } else {
+            pvis = 0;
+        }
+        switch (pvis) {
         case 0:
             break;
         case 1:
@@ -419,12 +863,15 @@ static void roomRecursive(NUGSCN *gsc, NUFRUSTRUM *frustrum, short roomid, short
             break;
         case 2:
             clip = clipPortal(new_portal, &gsc->portalinfo.rooms[next_room], next_room, frustrum, &new_frustrum);
-            if (clip == 1) {
+            switch (clip) {
+            case 1:
                 roomRecursive(gsc, new_frustrum, next_room, roomid, depth + 1);
-            } else if (clip == 4) {
+                break;
+            case 4:
                 new_frustrum = copyFrustrum(frustrum);
                 new_frustrum->roomid = next_room;
                 roomRecursive(gsc, new_frustrum, next_room, roomid, depth + 1);
+                break;
             }
             break;
         default:

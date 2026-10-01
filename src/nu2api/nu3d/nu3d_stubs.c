@@ -104,30 +104,13 @@ int NuRndrStateUpdateCameraState(void) {
     return 0;
 }
 
-/* nuportal_gen.c statics not decompiled yet, stubbed as plain functions for now. */
-
-// STUB: BIONICLE 0x53f040
-void drawPortal(NUPORTAL *p, NUROOM *room) {
-}
-
-// STUB: BIONICLE 0x53f300
-void drawViewFrustrum(void) {
-}
-
-// STUB: BIONICLE 0x53fd30
-NUFRUSTRUM *buildFrustrum(NUVEC *min, NUVEC *max, short camera_roomid) {
-    return NULL;
-}
-
-// STUB: BIONICLE 0x540430
-int clipPortal(NUPORTAL *portal, NUROOM *room, int roomid, NUFRUSTRUM *frust, NUFRUSTRUM **newfrust) {
+// STUB: BIONICLE 0x542e00
+int NuRndrLineStrip2d(NUVTX_TLTC1 *vtx, NUMTL *mtl, int cnt) {
     return 0;
 }
 
-// STUB: BIONICLE 0x540640
-NUFRUSTRUM *createPortalFrustrum(NUPORTAL *portal, int room_id) {
-    return NULL;
-}
+
+
 
 /* PS2: nu3d/ps2/nuportal_ps2.c; PC file name unknown. */
 

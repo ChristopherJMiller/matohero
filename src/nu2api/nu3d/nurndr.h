@@ -54,6 +54,17 @@ typedef struct nucolour4_s {
     float a;
 } NUCOLOUR4;
 
+/* Transformed, lit vertex with one texture coordinate (screen space). */
+typedef struct nuvtx_tltc1_s {
+    NUVEC pnt;
+    float rhw;
+    unsigned int diffuse;
+    float tc[2];
+} NUVTX_TLTC1;
+
+/* PS2: nu3d/ps2/nurndr.c, not decompiled yet. */
+int NuRndrLineStrip2d(NUVTX_TLTC1 *vtx, NUMTL *mtl, int cnt);
+
 /* PS2: nu3d/ps2/nustream.c and nurndrstat.c, not decompiled yet. */
 int NuRndrSetSpecularLight(NUVEC *dir, NUCOLOUR4 *intensity);
 int NuRndrStateUpdateCameraState(void);
