@@ -59,6 +59,7 @@ tools/reccmp reccmp --target BIONICLE    # per-function similarity report
 tools/reccmp reccmp --target BIONICLE --verbose 0x565550            # diff one function
 tools/progress.py                        # refresh docs/progress.md
 tools/objinfo.py numath/nuvec --asm      # what's known about an object before decompiling it
+tools/permute.py NuVecRotateX            # search source variants of a near-miss (--apply)
 ```
 
 Source lives in `src/`, mirroring the original tree recovered from the PS2 prototype:

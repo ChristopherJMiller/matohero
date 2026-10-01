@@ -74,15 +74,14 @@ def headers_mtime():
     return max((h.stat().st_mtime for h in SRC.rglob("*.h")), default=0)
 
 
-def compile_one(lib, cfg, src, force):
-    obj = BUILD / "obj" / src.relative_to(SRC).with_suffix(".obj")
-    newest_input = max(src.stat().st_mtime, headers_mtime())
-    if not force and obj.exists() and obj.stat().st_mtime >= newest_input:
-        return obj, None
+def compile_source(src, obj):
+    """Compile one source to obj as the original build would. Returns (ok, compiler output)."""
+    lib = project_of(src)
+    cfg = PROJECTS[lib]
     obj.parent.mkdir(parents=True, exist_ok=True)
     flags = COMMON_FLAGS + cfg["flags"] + (CXX_FLAGS if src.suffix.lower() == ".cpp" else [])
     # Compile from the library root with a relative path, as the original build did
-    # (asserts embed __FILE__ as e.g. ".\listman.c").
+    # (asserts embed __FILE__ as e.g. ".\\listman.c").
     rel = ".\\" + str(src.relative_to(SRC / lib)).replace("/", "\\")
     # Every project root is on the include path, as the original builds pointed at the
     # engine's directories.
@@ -90,7 +89,30 @@ def compile_one(lib, cfg, src, force):
     cmd = [str(MSVC), "cl", *flags, *includes, f"/Fo{winpath(obj)}", rel]
     res = subprocess.run(cmd, cwd=SRC / lib, capture_output=True, text=True)
     out = "\n".join(l for l in res.stdout.splitlines() if l.strip() and l.strip() != src.name)
-    if res.returncode != 0:
+    return res.returncode == 0, out
+
+
+def compile_many(srcs, outdir):
+    """Compile several sources of one project in a single cl run (Wine startup dominates
+    a compile, so batching matters). Objects land in outdir as <stem>.obj. Returns the
+    compiler output."""
+    lib = project_of(srcs[0])
+    cfg = PROJECTS[lib]
+    outdir.mkdir(parents=True, exist_ok=True)
+    flags = COMMON_FLAGS + cfg["flags"] + (CXX_FLAGS if srcs[0].suffix.lower() == ".cpp" else [])
+    rels = [".\\" + str(s.relative_to(SRC / lib)).replace("/", "\\") for s in srcs]
+    includes = [f"/I{winpath(SRC / p)}" for p in [lib] + [p for p in PROJECTS if p != lib] if (SRC / p).exists()]
+    cmd = [str(MSVC), "cl", *flags, *includes, f"/Fo{winpath(outdir)}\\", *rels]
+    return subprocess.run(cmd, cwd=SRC / lib, capture_output=True, text=True).stdout
+
+
+def compile_one(lib, cfg, src, force):
+    obj = BUILD / "obj" / src.relative_to(SRC).with_suffix(".obj")
+    newest_input = max(src.stat().st_mtime, headers_mtime())
+    if not force and obj.exists() and obj.stat().st_mtime >= newest_input:
+        return obj, None
+    ok, out = compile_source(src, obj)
+    if not ok:
         return None, f"{src.relative_to(ROOT)}:\n{out}"
     return obj, (out or None)
 

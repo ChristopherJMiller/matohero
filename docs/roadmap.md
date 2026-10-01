@@ -98,9 +98,10 @@ headless boot to title) → commit.
       Lesson: MSVC canonicalizes the order of `+` terms, but each product's operand order
       shows (`m0->_01 * v0->x` vs `v0->x * m0->_01`). Hook test: 39 functions in-game,
       `NuVecNorm` 93,840 calls during boot.
-- [ ] **Permuter.** Generalize the ad-hoc scripts used on nuvec (operand-order flips,
-      term permutations, temporaries, statement order) into `tools/permute.py <function>`
-      that tries source variants and reports the best reccmp score.
+- [x] **Permuter.** `tools/permute.py <function> [--apply]`: product operand order,
+      comparison direction, independent declaration order; batches of 40 variants per
+      `cl` run (~1 s/variant). Recovers the known InvMtxRotate fix. Future dimensions:
+      safe statement reordering, temporaries, if/else vs ?:.
 - [ ] `numath/nutrig.c` (saga), ~`0x570c10–0x571220`, ~10
 - [ ] `numath/numtx.c` (saga), ~`0x56e250–0x56fc50`, ~30
 - [ ] `numath/nuquat.c` (saga), ~`0x56fd60–0x570060`, ~4
