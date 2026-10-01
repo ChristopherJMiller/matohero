@@ -85,6 +85,12 @@ void NuRndrUpdateCameraPlane(void);
 void NuRndrGetSpecularMtx(NUMTX *out, NUMTL *mtl);
 void NuRndrSetSpecularMtx(NUMTX *m);
 
+/* nurndr_gen.c */
+extern float global_windscale;
+extern float global_windspeed;
+extern unsigned int global_frame_count;
+void WindShear(NUMTX *windmtx, NUMTX *instmtx, int wind_scale, int wind_speed);
+
 /* nudlist.c */
 void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec);
 int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, DEFORMERWEIGHTSARRAY *blend_vals);
@@ -105,6 +111,5 @@ typedef struct nudynamiclight_s {
  * (nu3d_stubs.c). */
 extern NUDYNAMICLIGHT *NuRndr_shadowLight;
 extern int nurndr_force_lod;
-void WindShear(NUMTX *windmtx, NUMTX *instmtx, int wind_scale, int wind_speed);
 
 #endif

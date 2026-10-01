@@ -651,11 +651,25 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
         `__forceinline`; the fog one builds nothing on PC.
       - New `NUMTL` fields: `power` (`0x60`) and `context`/`fxid` (`0x9c`/`0x9d`).
       - Hook test: save prompt reached, `NuRndrGetSpecularMtx` 389k calls.
+- [x] `nurndr_gen.c` part 1 (new file; PS2 `nu3d/nurndr_gen.c`): `WindShear`
+      (`0x54fe40`, was stubbed) and the static `WindDirection` (`0x54fcc0`) are exact.
+      The direction is a sum of sine and cosine waves over the frame count, read from
+      `NuTrigTable`; the PC computes the cosine index as `0x4000 - (int)(x * -10430.378f)`.
+      New globals: `global_windscale`/`global_windspeed` (`0x616d68`/`0x616d6c`, 1.0) and
+      `global_frame_count` (`0x348f76c`).
+- [ ] `nurndr_gen.c` part 2: the PC functions around the wind code, all unnamed so far.
+      - `0x54fc00`: returns `0x348f774`.
+      - `0x54fc10`/`0x54fc20`: set and clear `0x348f778`; called from `0x54b4e0`.
+      - `0x54fc30` and `0x54fc60`: store parameters for `MainRenderFx`.
+      - `0x54fcb0`: sets `0x348f744`.
+      - `0x54f9d0` (543 bytes) and `0x54fed0` (701 bytes).
+      Match them against the PS2 file's short hooks (`NuRndrStartShadowReceiveRender`,
+      `NuRndrSetWind`, …).
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%), and
-      the small stubbed callees `WindShear` (`0x54fe40`) and `NuMtlGetForcedVariant`
-      (`0x5425e0`).
+      the stubbed `NuMtlGetForcedVariant` (`0x5425e0`; needs the list helper `0x565860`
+      and `0x542510`/`0x5424c0`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

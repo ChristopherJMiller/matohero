@@ -87,10 +87,6 @@ void NuHGobjEval(NUHGOBJ *hgobj, int njanims, NUJOINTANIM *janim, NUMTX *mtx_arr
 void d3dSetTransform(int state, NUMTX *m) {
 }
 
-// STUB: BIONICLE 0x54fe40
-void WindShear(NUMTX *windmtx, NUMTX *instmtx, int wind_scale, int wind_speed) {
-}
-
 // STUB: BIONICLE 0x53da80
 int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, int clip_to_screen) {
     return 0;
