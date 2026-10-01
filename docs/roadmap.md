@@ -385,11 +385,22 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NuRndrGScnObjClipFlag`), `NuHGobjRndr` (static `mtx_array[256]`) and the PC
       `NuCameraSet`: 4/4 exact. Hook test: 353 functions, `NuRndrGScnObj` 922k calls,
       input works.
-- [ ] `pc/nurndr.c` part 2: name the rest of the file against PS2 `ps2/nurndr.o`
-      (`NuRndrEndScene` `0x53d230` inlines `0x53aab0`, a buffer reset; `0x53ade0` is the
-      swap behind `NuRndrSwapScreenEx` `0x53ae40`; `0x53ae60`/`0x53ae80`/`0x53aeb0` set
-      render states `0x22`/`0x1c` (fog); `0x53d6a0` copies `vmtx` out; the big ones are
-      `NuRndrGScnObjClipFlag` `0x53b5a0` and `NuHGobjRndrMtxDwa` `0x53cdc0`).
+- [x] `pc/nurndr.c` part 2: `NuRndrShadowDirCol` (PS2 `curlight`/`curlightcol`/
+      `curlightfade`/`curlightfadefar`), `NuSpecialDrawAtAlpha` (sets a global alpha,
+      `0x617118`, name ours, around `NuSpecialDrawAt`) and `NuCameraSetProjectionMtx`
+      (`0x53e350`, put in `pc/nucamera.c` after PS2 `ps2/nucamera.c`): 3/3 exact.
+- [ ] `pc/nurndr.c` part 3. Names from callers and PS2 signatures:
+      `NuRndrBeginScene(hRT)` `0x53acd0` (stores `hRT - 1`, calls PC-layer `0x57ba50`;
+      `0x53aca0` is a variant), `NuRndrClear` `0x53ad10` (called by `MainRender3d` and the
+      loading screens), `NuRndrCreateBlendShapeDeformerWeightsArray` `0x53af10` and
+      `…DWAPointers` `0x53af60` (PC pools: the first indexes a 0x208-byte-element array
+      by a byte count, the second tests the wrong counter, both apparently original
+      bugs), `NuRndrInit` `0x53cda0` + `0x53b4c0`, the per-frame pool reset `0x53aab0`
+      (also inlined into `NuRndrEndScene` `0x53d230`), `NuRndrFlush`? `0x53b590`
+      (`jmp 0x542390`), `NuRndrEndSceneEx`? `0x53d2b0` (`jmp NuRndrEndScene`), the
+      `NuHGobjRndrMtxDwa` helpers `0x53bf10`/`0x53c1e0`, burst-object functions
+      `0x53b040`/`0x53c6b0`/`0x53ccb0` (callers `0x563a40`/`0x564aa0`), `NuRndrGobj`?
+      `0x53da80` (2252 bytes, many callers) with `0x53d6c0`/`0x53d8b0`.
 - [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
       `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
 

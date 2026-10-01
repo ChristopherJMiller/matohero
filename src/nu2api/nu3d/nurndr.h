@@ -13,7 +13,14 @@ typedef struct nujointanim_s NUJOINTANIM;
 typedef struct deformerweightsarray_s DEFORMERWEIGHTSARRAY;
 
 /* pc/nurndr.c */
+extern NUVEC curlight;
+extern unsigned int curlightcol;
+extern float curlightfade;
+extern float curlightfadefar;
 extern int nurndr_shadowson;
+extern float nurndr_alpha;
+void NuRndrShadowDirCol(NUVEC *lightdir, unsigned int col, float fadedist, float fadefar);
+int NuSpecialDrawAtAlpha(NUHSPECIAL *Gfx, NUMTX *Mtx, float AlphaF);
 void NuRndrShadowOnOff(int flag);
 int NuRndrGScnObj(NUGOBJ *gobj, NUMTX *wm);
 int NuRndrGScnObjClipFlag(NUGOBJ *gobj, NUMTX *wm, int outcode);

@@ -102,10 +102,6 @@ int NuRndrSetSpecularLight(NUVEC *dir, NUCOLOUR4 *intensity) {
     return 0;
 }
 
-// STUB: BIONICLE 0x53e350
-void NuCameraSetProjectionMtx(NUMTX *mtx, float fFOV, float fAspect, float fNearPlane, float fFarPlane) {
-}
-
 // STUB: BIONICLE 0x544960
 int NuRndrStateUpdateCameraState(void) {
     return 0;

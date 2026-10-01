@@ -1,13 +1,46 @@
 #include "nucamera.h"
 #include "nurndr.h"
+#include "nuspecial.h"
 #include "nuvport.h"
 
 /* The PC renderer front end (PS2: nu3d/ps2/nurndr.c), which drives Direct3D through the
  * PC layer's wrappers. Names and locals from the PS2 prototype. PC moved NuCameraSet here
  * from nucamera_gen.c, to hand the view and projection to Direct3D. */
 
+// GLOBAL: BIONICLE 0x337a2f4
+NUVEC curlight;
+
+// GLOBAL: BIONICLE 0x337a300
+unsigned int curlightcol;
+
+// GLOBAL: BIONICLE 0x3492e54
+float curlightfade;
+
+// GLOBAL: BIONICLE 0x3492e58
+float curlightfadefar;
+
 // GLOBAL: BIONICLE 0x337a39c
 int nurndr_shadowson;
+
+/* Alpha for the next draw, or -1 for the material's own (name ours). */
+// GLOBAL: BIONICLE 0x617118
+float nurndr_alpha = -1.0f;
+
+// FUNCTION: BIONICLE 0x53ac50
+void NuRndrShadowDirCol(NUVEC *lightdir, unsigned int col, float fadedist, float fadefar) {
+    curlight = *lightdir;
+    curlightcol = ((col >> 1) & 0x7f7f7f) + ((col >> 24) << 25);
+    curlightfade = fadedist;
+    curlightfadefar = fadefar;
+}
+
+// FUNCTION: BIONICLE 0x53b480
+int NuSpecialDrawAtAlpha(NUHSPECIAL *Gfx, NUMTX *Mtx, float AlphaF) {
+    nurndr_alpha = AlphaF;
+    NuSpecialDrawAt(Gfx, Mtx);
+    nurndr_alpha = -1.0f;
+    return 0;
+}
 
 // FUNCTION: BIONICLE 0x53b4b0
 void NuRndrShadowOnOff(int flag) {
