@@ -496,13 +496,28 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `0x40` with the PS2 bit layout, `diffuse` `0x54`, `alpha` `0x74`, short `tid`
       `0x78`, `sort_pri` `0x7a`) and `nutex.h`; `NuMtlDestroy` (`0x542720`) and
       `NuTexDestroy` (`0x54b9c0`) stubbed. Hook test: `NuQFntMove` 41k calls.
-- [ ] `nuqfnt.c` part 3: the glyph renderer `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
-      stubbed); font creation: `0x5373a0` (material through `NuMtlCreate` `0x5418b0` and
-      a 0x158-byte shader description for `NuMtlSetShaderDescPS`? `0x5417a0`, then the
-      0x58-byte `psdata`), `0x5374f0` (loads a font's texture), `0x537650` (builds a
-      `VUFNT` from a `NUFNT`, `NuTexWidth`/`Height` `0x54baf0`/`0x54bb10`, `0x540f80`),
-      `0x537a50` (`NuQFntRead`?, "%s.qfn"), and `NuQFntSet2d` (`0x538200`, creates the
-      system font from `0x611d90` through `NuPtrBlockFix` and `NuTexCreate` `0x54b8b0`).
+- [x] `nuqfnt.c` part 3, font loading, 4/4 exact: `NuQFntReadPS` (`0x5373a0`, name from
+      saga: the font's material plus a 0x158-byte `NUSHADERMTLDESC` for
+      `NuMtlSetShaderDescPS`, then `psdata`), `NuQFntRead` (`0x5374f0`, with
+      `NuQFntReadBuffer` inlined; the linker dropped its own copy), `NuQFntLoadPtr`
+      (`0x537a50`, falls back to "%s.qfn"; `RemapAddr` inlined) and `NuQFntInit`
+      (`0x538200`; pc_names had guessed `NuQFntSet2d`). Fixes: a `tid` temporary before
+      `NuQFntReadPS` (the call's stack cleanup is deferred over three calls), `int`
+      padding in `NUSHADERMTLDESC` (char padding turned on /GS), `STRING` markers on
+      split argument lines, `sprintf` in `library.h`, the `scale_x`, `scale_y`, `abgr`
+      store order. `sysfont` (`0x611d90`, 18736 bytes, a pointer block with the built-in
+      font) is a zero placeholder: its data has to come from the original exe for a
+      standalone build. New stubs: `NuMtlCreate`, `NuMtlSetShaderDescPS`, `NuMtlUpdate`,
+      `NuTexCreate`, `NuTexRead`. Hook test: the game's fonts load through
+      `NuQFntLoadPtr` (2 calls) and `NuQFntInit`.
+- [ ] `nuqfnt.c` part 4: `0x537650` (915 bytes, builds a `VUFNT` from an old-style
+      `NUFNT`; saga's `NuQFntCreate`; `NuTexWidth`/`Height` `0x54baf0`/`0x54bb10` and
+      `0x540f80`) and the glyph renderer `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes). The
+      renderer writes straight into the PC immediate-mode renderer's vertex buffer
+      (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at
+      `0x348f860`, calls `0x550d00`/`0x5509f0`/`0x550950`/`0x550ac0`/`0x542780`/`0x536d10`)
+      with those helpers inlined, so it is best done with that renderer (PS2 `nurndr2d.c`
+      territory).
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nudlist` (14).
 
 Notes for later units:

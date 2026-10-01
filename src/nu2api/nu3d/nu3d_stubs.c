@@ -128,3 +128,26 @@ void NuMtlDestroy(NUMTL *mtl) {
 // STUB: BIONICLE 0x54b9c0
 void NuTexDestroy(int tid) {
 }
+
+// STUB: BIONICLE 0x5418b0
+NUMTL *NuMtlCreate(int cnt) {
+    return NULL;
+}
+
+// STUB: BIONICLE 0x5417a0
+void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc) {
+}
+
+// STUB: BIONICLE 0x5418d0
+void NuMtlUpdate(NUMTL *mtl) {
+}
+
+// STUB: BIONICLE 0x54b8b0
+int NuTexCreate(NUTEX *tex) {
+    return 0;
+}
+
+// STUB: BIONICLE 0x54c2a0
+int NuTexRead(char *fname, VARIPTR *buff, VARIPTR buffend) {
+    return 0;
+}

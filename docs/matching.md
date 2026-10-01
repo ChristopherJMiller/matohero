@@ -175,6 +175,18 @@ exact; `tools/permute.py` automates some of them.
   was written: `v >= 128 ? 128 : 1` vs `v < 128 ? 1 : 128` (`NuPower2`).
 - `if/else` assignments of floats compile to integer moves; `?:` doesn't
   (`NuVecMax`/`Min`).
+- **A `char` array anywhere in a local turns on the /GS cookie.** `NuQFntReadPS` gained
+  `__security_cookie` code because a placeholder struct (`NUSHADERMTLDESC`) padded its
+  unknown fields with `unsigned char` arrays; with `int` arrays it matched. Pad
+  placeholder structs with `int`s unless the asm shows a cookie.
+- **`add [mem], reg` is a read-modify-write through a pointer.** `NuQFntLoadPtr` rebases
+  two pointers in place; `fv->chars = (VUCHAR *)((char *)fv->chars + (int)fv)` compiled
+  to load/add/store, the PS2's inline `RemapAddr` (`*(int *)vptr += (int)vto -
+  (int)vfrom`) to the single `add`.
+- **A call nested in an argument list vs a temporary.** `NuQFntReadPS(rv,
+  NuTexCreate(header[1]), …)` loaded the other arguments before `NuTexCreate` and popped
+  its argument right away; `tid = NuTexCreate(header[1]);` first gave the original's
+  deferred stack cleanup over three calls (`NuQFntInit` 68% → 100%).
 - **A pointer temporary inside an unrolled loop gives a second induction variable.**
   `clipPortal`'s 4× unrolled dot loop reads `x` through one pointer and `y`/`z` through
   another; `p = &portal->points[i]; … p->x …` reproduced that, `portal->points[i].x`

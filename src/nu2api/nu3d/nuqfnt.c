@@ -1,10 +1,13 @@
 #include "nuqfnt.h"
 
 #include "numtl.h"
+#include "nufile.h"
+#include "nuptrblock.h"
 #include "nutex.h"
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 /* Quick fonts. Names, types and locals from the PS2 prototype (nu3d/nuqfnt.c); logic
  * checked against opensagadev/saga src/nu2api/nu3d/nuqfnt.cpp (GPL-3.0, a later engine).
@@ -27,6 +30,11 @@ static float justify_squash = 1.0f;
 
 // GLOBAL: BIONICLE 0x611d8c
 static float justify_stretch = 1.0f;
+
+/* The built-in font: a pointer block (NuPtrBlockFix) holding a VUFNT and its texture.
+ * The original's 18736 bytes of font data aren't reproduced here (game data). */
+// GLOBAL: BIONICLE 0x611d90
+unsigned char sysfont[18736] = {0};
 
 // GLOBAL: BIONICLE 0x968b18
 float qfnt_offscale_x = 0.0f;
@@ -92,7 +100,7 @@ void NuQFntDestroy(NUQFNT *fv) {
 
 /* Name from saga (not in the PS2 prototype). */
 // FUNCTION: BIONICLE 0x536e00
-void NuQFntSetICGap(NUQFNT *fv, float icgap) {
+__inline void NuQFntSetICGap(NUQFNT *fv, float icgap) {
     if (fv == NULL) {
         fv = system_qfont;
     }
@@ -381,8 +389,80 @@ float NuQFntBaseline(NUQFNT *fv) {
     return *((VUFNT *)fv)->scale_y * ((VUFNT *)fv)->baseline * qfnt_height_scale;
 }
 
+/* PC setup of a loaded font: its material, and the render state block psdata points to
+ * (name from saga). flags and renderplane aren't used on PC. */
+// FUNCTION: BIONICLE 0x5373a0
+int NuQFntReadPS(VUFNT *fv, int tid, int flags, int renderplane, VARIPTR *ptr, VARIPTR buffend) {
+    NUSHADERMTLDESC desc;
+
+    fv->mtl = NuMtlCreate(1);
+    fv->mtl->diffuse.r = 1.0f;
+    fv->mtl->diffuse.g = 1.0f;
+    fv->mtl->diffuse.b = 1.0f;
+    fv->mtl->attrib.cull = 2;
+    fv->mtl->attrib.zmode = 3;
+    fv->mtl->alpha = 1.0f;
+    fv->mtl->attrib.alpha = 1;
+    fv->mtl->attrib.colour = 1;
+    fv->mtl->tid = tid;
+    fv->mtl->attrib.utc = 1;
+    fv->mtl->attrib.vtc = 1;
+    memset(&desc, 0, sizeof(desc));
+    desc.flags = 0x1000;
+    desc.unknown_004 = 1;
+    desc.unknown_014 = 0xffffffff;
+    desc.unknown_024 = 1.0f;
+    desc.unknown_034 = 1.0f;
+    desc.unknown_100 = (desc.unknown_100 & ~0x3000) | 0x40901;
+    NuMtlSetShaderDescPS(fv->mtl, &desc);
+    NuMtlUpdate(fv->mtl);
+    fv->psdata = (void *)((ptr->intaddr + 15) & ~15);
+    ptr->intaddr = ((ptr->intaddr + 15) & ~15) + sizeof(VUFNT_PC);
+    fv->scale_x = &((VUFNT_PC *)fv->psdata)->scale_x;
+    fv->scale_y = &((VUFNT_PC *)fv->psdata)->scale_y;
+    fv->abgr = &((VUFNT_PC *)fv->psdata)->abgr;
+    fv->header.voidptr = NULL;
+    return 0;
+}
+
+/* A font saved as a pointer block: fixes it up, creates its texture and sets it up.
+ * Inlined everywhere, so the linker dropped it from the PC executable. */
+__inline NUQFNT *NuQFntReadBuffer(VARIPTR *font, VARIPTR *ptr, VARIPTR buffend) {
+    void **header;
+    VUFNT *rv;
+    int tid;
+
+    if (font->voidptr == NULL) {
+        return NULL;
+    }
+    header = NuPtrBlockFix(font->voidptr);
+    rv = header[0];
+    tid = NuTexCreate(header[1]);
+    NuQFntReadPS(rv, tid, 4, 0, ptr, buffend);
+    return rv;
+}
+
+/* Loads "<fname>.fnt" (the PC variant of the name) into the buffer. */
+// FUNCTION: BIONICLE 0x5374f0
+NUQFNT *NuQFntRead(char *fname, VARIPTR *ptr, VARIPTR buffend) {
+    char filename[1204];
+    VARIPTR font;
+
+    NuStrFixExtPlatform(filename, fname,
+                        // STRING: BIONICLE 0x5e00ac
+                        "fnt", 1024,
+                        // STRING: BIONICLE 0x5e00b0
+                        "pc");
+    font.intaddr = (ptr->intaddr + 31) & ~31;
+    *ptr = font;
+    if (NuFileLoadBufferVP(filename, ptr, &buffend) == 0) {
+        return NULL;
+    }
+    return NuQFntReadBuffer(&font, ptr, buffend);
+}
+
 // FUNCTION: BIONICLE 0x5375d0
-void NuQFntSet(NUQFNT *fv) {
+__inline void NuQFntSet(NUQFNT *fv) {
     if (fv == NULL) {
         fv = system_qfont;
     }
@@ -424,6 +504,87 @@ void NuQFntMoveRS(RNDRSTREAM *rs, NUQFNT *fv, float x, float y, float z) {
     ((VUFNT_PC *)((VUFNT *)fv)->psdata)->x = x;
     ((VUFNT_PC *)((VUFNT *)fv)->psdata)->y = y;
     ((VUFNT_PC *)((VUFNT *)fv)->psdata)->z = z;
+}
+
+/* Rebases a pointer in a block moved from vfrom to vto (inlined everywhere; dropped from
+ * the PC executable). */
+__inline void RemapAddr(void *vto, void *vfrom, void *vptr) {
+    *(int *)vptr += (int)vto - (int)vfrom;
+}
+
+/* Loads a font: the pointer-block format, else "<name>.qfn" with the texture <texname>
+ * (or <name>). The two ints aren't used. Name from saga. */
+// FUNCTION: BIONICLE 0x537a50
+NUQFNT *NuQFntLoadPtr(char *name, char *texname, int unknown3, int unknown4, VARIPTR *ptr, VARIPTR *end) {
+    VUFNT *fv;
+    VARIPTR oldptr;
+    char filename[1024];
+    int size;
+    int tid;
+
+    fv = NuQFntRead(name, ptr, *end);
+    if (fv != NULL) {
+        return fv;
+    }
+    oldptr = *ptr;
+    ptr->intaddr = (ptr->intaddr + 15) & ~15;
+    // STRING: BIONICLE 0x5e00b4
+    sprintf(filename, "%s.qfn", name);
+    size = NuFileLoadBuffer(filename, ptr->voidptr, end->intaddr - ptr->intaddr);
+    if (size != 0) {
+        fv = ptr->voidptr;
+        RemapAddr(fv, NULL, &fv->chars);
+        RemapAddr(fv, NULL, &fv->index_table);
+        ptr->intaddr = (ptr->intaddr + size + 15) & ~15;
+        fv->psdata = ptr->voidptr;
+        ptr->intaddr += sizeof(VUFNT_PC);
+        fv->scale_x = &((VUFNT_PC *)fv->psdata)->scale_x;
+        fv->scale_y = &((VUFNT_PC *)fv->psdata)->scale_y;
+        fv->abgr = &((VUFNT_PC *)fv->psdata)->abgr;
+        if (texname == NULL) {
+            // STRING: BIONICLE 0x5c72e0
+            sprintf(filename, "%s", name);
+        } else {
+            sprintf(filename, "%s", texname);
+        }
+        tid = NuTexRead(filename, ptr, *end);
+        if (tid != 0) {
+            fv->mtl = NuMtlCreate(1);
+            if (fv->mtl != NULL) {
+                fv->mtl->diffuse.r = 1.0f;
+                fv->mtl->diffuse.g = 1.0f;
+                fv->mtl->diffuse.b = 1.0f;
+                fv->mtl->attrib.cull = 2;
+                fv->mtl->attrib.zmode = 3;
+                fv->mtl->alpha = 1.0f;
+                fv->mtl->attrib.alpha = 1;
+                fv->mtl->attrib.colour = 1;
+                fv->mtl->tid = tid;
+                NuMtlUpdate(fv->mtl);
+                return fv;
+            }
+            NuTexDestroy(tid);
+        }
+    }
+    *ptr = oldptr;
+    return NULL;
+}
+
+/* Loads the built-in font as the system font, once. Its slot in the PC name list
+ * (NuQFntSet2d) was a guess; it takes the PS2 NuQFntInit's arguments and does its job. */
+// FUNCTION: BIONICLE 0x538200
+void NuQFntInit(VARIPTR *buff, VARIPTR buffend) {
+    VARIPTR font;
+
+    if (nuqfnt_init == 0) {
+        nuqfnt_init = 1;
+        font.voidptr = sysfont;
+        system_qfont = NuQFntReadBuffer(&font, buff, buffend);
+        if (system_qfont != NULL) {
+            NuQFntSetICGap(system_qfont, 1.0f);
+            NuQFntSet(system_qfont);
+        }
+    }
 }
 
 // FUNCTION: BIONICLE 0x538270

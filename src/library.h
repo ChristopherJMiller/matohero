@@ -13,6 +13,9 @@
 // LIBRARY: BIONICLE 0x5b4daf
 // vsprintf
 
+// LIBRARY: BIONICLE 0x5b4c0e
+// sprintf
+
 // GLOBAL: BIONICLE 0x639088
 extern unsigned int __security_cookie;
 

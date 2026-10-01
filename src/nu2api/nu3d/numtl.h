@@ -59,7 +59,27 @@ struct numtl_s {
     short sort_pri;
 };
 
+/* The PC's shader description (0x158 bytes; differs from saga's). Only the fields the
+ * font code sets are placed, by offset. */
+typedef struct nushadermtldesc_s {
+    unsigned int flags;
+    int unknown_004;
+    int unknown_008[3];
+    unsigned int unknown_014;
+    int unknown_018[3];
+    float unknown_024;
+    int unknown_028[3];
+    float unknown_034;
+    int unknown_038[(0x100 - 0x38) / 4]; /* not chars: /GS would guard the frame */
+    unsigned int unknown_100; /* bits */
+    int unknown_104[(0x150 - 0x104) / 4];
+    double unknown_150; /* something 8-byte aligned: users align their frames */
+} NUSHADERMTLDESC;
+
 /* Not decompiled yet (nu3d_stubs.c). */
+NUMTL *NuMtlCreate(int cnt);
+void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc);
+void NuMtlUpdate(NUMTL *mtl);
 void NuMtlDestroy(NUMTL *mtl);
 
 #endif
