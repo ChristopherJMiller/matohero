@@ -365,10 +365,15 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       the radii), but the original evaluates the `x` product before `y` everywhere, which
       in our build only happens when `->y` is referenced earlier in the function (see
       matching.md), and the argument pushes are scheduled differently.
-- [ ] `nu3d/nucamera_gen.c` part 4: `0x538cf0` (2451 bytes, called from `0x597f50` and
-      `0x59c7a4`; `NuCameraClipTestExtentsGeneric`?). Then the rest of `nuvport_gen`
-      (`0x53a140`–`0x53a4d0`, `NuVpUpdate` `0x53a6a0`) and the PC `NuCameraSet`
-      (`0x53d640`).
+- [x] `nu3d/nucamera_gen.c` part 4: `NuCameraClipTestExtentsGeneric` (`0x538cf0`, 2451
+      bytes) exact: the 8 box corners transformed by 8 calls, a frustum outcode loop
+      (with `min_z`) and a scissor loop that MSVC unrolled. 98.4% until both "inside"
+      exits shared one final `return 1`. nucamera_gen is done on PC apart from the
+      `BuildClipPlanes` and `ClipTestExtentsAxisAligned` near-misses: 29 functions, 27
+      exact.
+- [ ] Rest of `nuvport_gen` (`0x53a140`–`0x53a4d0`: `NuVpSetSize`-like setters at
+      `0x53a140`/`0x53a170`, `0x53a1f0`, `0x53a350`, `0x53a420`), `NuVpUpdate`
+      (`0x53a6a0`, PS2 `ps2/nuvport.c`), and the PC `NuCameraSet` (`0x53d640`).
 - [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
       `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
 

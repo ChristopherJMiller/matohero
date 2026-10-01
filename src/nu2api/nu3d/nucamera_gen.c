@@ -307,6 +307,131 @@ void NuCameraBuildClipPlanes(void) {
     ClipPlanes.AbsScissorPlanes.m._33 = 0.0f;
 }
 
+/* Outcodes of a point against the frustum (or the scissor region) in view space. */
+#define NUCAMERA_OUT_LEFT 0x01
+#define NUCAMERA_OUT_RIGHT 0x02
+#define NUCAMERA_OUT_BOTTOM 0x04
+#define NUCAMERA_OUT_TOP 0x08
+#define NUCAMERA_OUT_FAR 0x10
+#define NUCAMERA_OUT_NEAR 0x20
+
+// FUNCTION: BIONICLE 0x538cf0
+int NuCameraClipTestExtentsGeneric(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, int flags, float *min_z) {
+    NUVEC src[8];
+    NUVEC dest[8];
+    unsigned char oc[8];
+    unsigned int *erase_outcode;
+    NUMTX mtx;
+    int i;
+
+    if (farclip == 0.0f) {
+        farclip = global_camera.farclip;
+    }
+    if (wm != NULL && wm != &numtx_identity) {
+        NuMtxMul(&mtx, wm, &vmtx);
+    } else {
+        mtx = vmtx;
+    }
+
+    src[0].x = min->x;
+    src[0].y = min->y;
+    src[0].z = min->z;
+    src[1].x = max->x;
+    src[1].y = max->y;
+    src[1].z = max->z;
+    src[2].x = min->x;
+    src[2].y = min->y;
+    src[2].z = max->z;
+    src[3].x = max->x;
+    src[3].y = max->y;
+    src[3].z = min->z;
+    src[4].x = min->x;
+    src[4].y = max->y;
+    src[4].z = min->z;
+    src[5].x = min->x;
+    src[5].y = max->y;
+    src[5].z = max->z;
+    src[6].x = max->x;
+    src[6].y = min->y;
+    src[6].z = min->z;
+    src[7].x = max->x;
+    src[7].y = min->y;
+    src[7].z = max->z;
+    NuVecMtxTransform(&dest[0], &src[0], &mtx);
+    NuVecMtxTransform(&dest[1], &src[1], &mtx);
+    NuVecMtxTransform(&dest[2], &src[2], &mtx);
+    NuVecMtxTransform(&dest[3], &src[3], &mtx);
+    NuVecMtxTransform(&dest[4], &src[4], &mtx);
+    NuVecMtxTransform(&dest[5], &src[5], &mtx);
+    NuVecMtxTransform(&dest[6], &src[6], &mtx);
+    NuVecMtxTransform(&dest[7], &src[7], &mtx);
+
+    erase_outcode = (unsigned int *)oc;
+    erase_outcode[0] = 0;
+    erase_outcode[1] = 0;
+    *min_z = 3.402823466e+38f;
+    for (i = 0; i < 8; i++) {
+        if (dest[i].z < *min_z) {
+            *min_z = dest[i].z;
+        }
+        if (dest[i].z < global_camera.nearclip && !(flags & 2)) {
+            oc[i] |= NUCAMERA_OUT_NEAR;
+        }
+        if (dest[i].z > farclip) {
+            oc[i] |= NUCAMERA_OUT_FAR;
+        }
+        if (dest[i].x < -(zx * dest[i].z)) {
+            oc[i] |= NUCAMERA_OUT_LEFT;
+        }
+        if (dest[i].x > zx * dest[i].z) {
+            oc[i] |= NUCAMERA_OUT_RIGHT;
+        }
+        if (dest[i].y < -(zy * dest[i].z)) {
+            oc[i] |= NUCAMERA_OUT_TOP;
+        }
+        if (dest[i].y > zy * dest[i].z) {
+            oc[i] |= NUCAMERA_OUT_BOTTOM;
+        }
+    }
+    if (oc[0] & oc[1] & oc[2] & oc[3] & oc[4] & oc[5] & oc[6] & oc[7]) {
+        return 0;
+    }
+    if (oc[0] | oc[1] | oc[2] | oc[3] | oc[4] | oc[5] | oc[6] | oc[7]) {
+        if (flags & 1) {
+            return 2;
+        }
+
+        /* Partly outside the frustum: test against the scissor region. */
+        erase_outcode[0] = 0;
+        erase_outcode[1] = 0;
+        for (i = 0; i < 8; i++) {
+            if (dest[i].z < global_camera.nearclip && !(flags & 2)) {
+                oc[i] |= NUCAMERA_OUT_NEAR;
+            }
+            if (dest[i].z > farclip) {
+                oc[i] |= NUCAMERA_OUT_FAR;
+            }
+            if (dest[i].x < -(dest[i].z * zxs)) {
+                oc[i] |= NUCAMERA_OUT_LEFT;
+            }
+            if (dest[i].x > dest[i].z * zxs) {
+                oc[i] |= NUCAMERA_OUT_RIGHT;
+            }
+            if (dest[i].y < -(dest[i].z * zys)) {
+                oc[i] |= NUCAMERA_OUT_TOP;
+            }
+            if (dest[i].y > dest[i].z * zys) {
+                oc[i] |= NUCAMERA_OUT_BOTTOM;
+            }
+        }
+        if (!(oc[0] & oc[1] & oc[2] & oc[3] & oc[4] & oc[5] & oc[6] & oc[7]) &&
+            (oc[0] | oc[1] | oc[2] | oc[3] | oc[4] | oc[5] | oc[6] | oc[7])) {
+            return 2;
+        }
+    }
+    return 1;
+}
+
 // FUNCTION: BIONICLE 0x539690
 void NuCameraGet(NUCAMERA *camera) {
     *camera = global_camera;

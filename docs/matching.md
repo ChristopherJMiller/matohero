@@ -42,6 +42,15 @@ exact; `tools/permute.py` automates some of them.
   were first referenced in the function: a statement reading `p->y` beforehand puts the
   `x` product first. Parentheses, product operand order, array or union access and
   `__inline` helpers don't change it (tested in `msvctest` files).
+- **Several "return 1" exits share one tail only if the source has one.** With
+  `if (!(or)) return 1; … if (or2) return 2; return 1;` MSVC gave the early exit its own
+  epilogue and turned the end into `setne al; inc eax`; the original's
+  `mov eax, 2; jnz end; mov eax, 1` came from nesting the second half in
+  `if (or) { … if (!and2 && or2) return 2; } return 1;` (`NuCameraClipTestExtentsGeneric`).
+- **MSVC unrolls some constant-count loops.** Of two 8-iteration outcode loops in one
+  function, the one with a store through a pointer (`*min_z`) stayed a loop; the other
+  was fully unrolled (the PS2 build has both as loops). The first unrolled iteration
+  turned `oc[0] |= 0x20` into a plain store, since `oc` had just been zeroed.
 - **Repeated constant stores are grouped.** A float constant stored more than once goes
   into a register, and all its stores are emitted together where its group starts;
   single stores stay `mov [mem], imm32` in source order. Which register a constant gets
