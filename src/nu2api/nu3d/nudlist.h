@@ -54,9 +54,16 @@ void NuDisplayListExecute(NUDISPLAYLISTITEM *item, NUDISPLAYLISTITEMFN *fntable)
 void DisplayListPrintItem(NUDISPLAYLISTITEM *item, int id, int nfilter, int *filter, NUFILE fh);
 void NuDisplayListDrawRenderScene(int scene_id);
 void NuDisplayListDrawAll(void);
+void NuDisplayListSwapBuffersEndFrame(void);
 
 /* Not decompiled yet (nu3d_stubs.c). */
 int NuDisplayListAddRenderScene(void);
+void DisplayListLinkDynamicMtls(void);
+void DisplayListFixMaterials(void);
+
+/* nutimebar.c, not decompiled yet. */
+void _NuTimeBarSlotBegin(int tbh, int slotix, char *txt);
+int _NuTimeBarSlotEnd(int tbh, int slotix);
 
 /* pc/nudlist_pc.c (PS2: ps2/nudlistPS2.c). */
 void NuDisplaySceneAddPS(NUDISPLAYSCENE *ds);

@@ -548,12 +548,21 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NuHtmlFlush` whose test is `(txt > flush) | force`). `DisplayListPrintItemPS` and
       `NuDisplayListDebugToFile` are folded empty functions on PC. Hook test:
       `NuDisplayListDrawAll` 2.9k calls draw every frame through our code.
-- [ ] `nudlist.c` part 3: `NuDisplayListSwapBuffersEndFrame` (`0x556030`) with the statics
-      `0x553e40` (1785 bytes), `0x554980`, `0x555520` (esi = ds;
-      `DisplayListMaterialClipUpdate`?), `0x5555e0`; the item builders `0x5539f0`,
-      `0x553cf0`, `0x553d90`; `NuDisplayListUpdateSpecial` (`0x554610`),
-      `NuDisplayListRndrSpecial` (`0x554be0`), `0x555880`, `NuDisplayListAddRenderScene`
-      (`0x555bc0`, stubbed); and the rest of `pc/nudlist_pc.c` (`0x55b6c0`–`0x55b8e0`).
+- [x] `nudlist.c` part 3, the end of the frame: `NuDisplayListSwapBuffersEndFrame` and
+      `DisplayListClipUpdate` (`0x554980`, static, ds in esi; two bits per clip object;
+      exact after the permuter moved two assignments) exact,
+      `DisplayListMaterialClipUpdate` (`0x555520`, static) effective.
+      `DisplayListSwapBuffersPS` is a folded empty function; stubs for the no-argument
+      statics `DisplayListLinkDynamicMtls` (`0x553e40`) and `DisplayListFixMaterials`
+      (`0x5555e0`), and `_NuTimeBarSlotBegin`/`End` (`0x550250`/`0x550290`). Hook test:
+      `NuDisplayListSwapBuffersEndFrame` 3.6k calls.
+- [ ] `nudlist.c` part 4: `DisplayListFixMaterials` (`0x5555e0`, 573 bytes, a local
+      `NURNDRSTATE`; calls `0x544cb0`, `0x544bf0`), `DisplayListLinkDynamicMtls`
+      (`0x553e40`, 1785 bytes); the item builders `0x5539f0`, `0x553cf0` (writes items
+      `0x85`/`0x8b`/`0x84` through `0x55b720`/`0x55b730`), `0x553d90`;
+      `NuDisplayListUpdateSpecial` (`0x554610`), `NuDisplayListRndrSpecial` (`0x554be0`),
+      `0x555880`, `NuDisplayListAddRenderScene` (`0x555bc0`, stubbed); and the rest of
+      `pc/nudlist_pc.c` (`0x55b6c0`–`0x55b8e0`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

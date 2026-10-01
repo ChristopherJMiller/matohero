@@ -187,3 +187,22 @@ void RndrStateResetSharedGlobalState(void) {
 int NuDisplayListAddRenderScene(void) {
     return 0;
 }
+
+/* nudlist.c statics without arguments, stubbed as plain functions for now. */
+
+// STUB: BIONICLE 0x553e40
+void DisplayListLinkDynamicMtls(void) {
+}
+
+// STUB: BIONICLE 0x5555e0
+void DisplayListFixMaterials(void) {
+}
+
+// STUB: BIONICLE 0x550250
+void _NuTimeBarSlotBegin(int tbh, int slotix, char *txt) {
+}
+
+// STUB: BIONICLE 0x550290
+int _NuTimeBarSlotEnd(int tbh, int slotix) {
+    return 0;
+}

@@ -117,6 +117,68 @@ void NuDisplaySceneAdd(NUDISPLAYSCENE *ds) {
     NuThreadCriticalSectionEnd(global_dlist_manager.loading_critical_section);
 }
 
+/* Sets the items of clip objects whose visibility changed since the other buffer: two
+ * bits per clip object, sixteen to a word. Items of hidden objects (outcode 0) are
+ * skipped, the others run (the PS2 inlines a helper per case that sets the item and the
+ * tag before it). */
+// FUNCTION: BIONICLE 0x554980
+static void DisplayListClipUpdate(NUDISPLAYSCENE *ds) {
+    unsigned int *buffer[2];
+    int c;
+    int i;
+    int j;
+    int k;
+    int cidx;
+    int outcode;
+    unsigned short *nclip_items;
+    int *clip_obj_items;
+    unsigned char clipbuffer;
+    int ntests;
+    NUDISPLAYLISTITEM *item;
+
+    buffer[0] = (unsigned int *)ds->clip_used[ds->buffer];
+    nclip_items = ds->nclip_items;
+    buffer[1] = (unsigned int *)ds->clip_used[!ds->buffer];
+    cidx = 0;
+    ntests = (ds->nclip_objects + 15) / 16;
+    for (i = 0; i < ntests; i++) {
+        if (buffer[0][i] == buffer[1][i]) {
+            cidx += 16;
+            continue;
+        }
+        for (k = 0; k < 4; k++) {
+            clipbuffer = ((unsigned char *)&buffer[0][i])[k];
+            for (c = 0; c < 8; c += 2) {
+                clip_obj_items = ds->clip_objects[cidx].items;
+                outcode = (clipbuffer >> c) & 3;
+                if (outcode == 0) {
+                    for (j = 0; j < nclip_items[cidx]; j++) {
+                        item = &ds->items[clip_obj_items[j]];
+                        item->id = 0;
+                        (item - 1)->id = 0;
+                    }
+                } else if (outcode == 1) {
+                    for (j = 0; j < nclip_items[cidx]; j++) {
+                        item = &ds->items[clip_obj_items[j]];
+                        item->id = 3;
+                        (item - 1)->id = 3;
+                    }
+                } else {
+                    for (j = 0; j < nclip_items[cidx]; j++) {
+                        item = &ds->items[clip_obj_items[j]];
+                        item->id = 3;
+                        (item - 1)->id = 3;
+                    }
+                }
+                cidx++;
+                if (cidx >= ds->nclip_objects) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
 /* Flips every scene to its other buffer for the new frame. */
 // FUNCTION: BIONICLE 0x554b20
 void NuDisplayListSwapBuffersBeginFrame(void) {
@@ -331,6 +393,48 @@ static void DisplayListPrintItems(NUDISPLAYLISTITEM *item, int flags, int nfilte
     DisplayListPrintItem(item, id, nfilter, filter, fh);
 }
 
+/* Skips (id 1) or runs (id 0) each material's list by its used bit, for the bytes that
+ * changed since the other buffer. */
+// FUNCTION: BIONICLE 0x555520
+static void DisplayListMaterialClipUpdate(NUDISPLAYSCENE *ds) {
+    unsigned char *buffer[2];
+    unsigned char usedbuffer;
+    int i;
+    int k;
+    int c;
+    NUDISPLAYLIST **dlist_mtls;
+    int mtl_used;
+    int ntests;
+
+    if (ds->mtls[0] == NULL) {
+        return;
+    }
+    dlist_mtls = ds->dlist_mtls;
+    buffer[0] = ds->mtl_used[ds->buffer];
+    buffer[1] = ds->mtl_used[!ds->buffer];
+    ntests = (ds->nmtls + 7) >> 3;
+    k = 0;
+    for (i = 0; i < ntests; i++) {
+        usedbuffer = buffer[0][i];
+        if (usedbuffer == buffer[1][i]) {
+            k += 8;
+            continue;
+        }
+        for (c = 0; c < 8; c++) {
+            mtl_used = (usedbuffer >> c) & 1;
+            if (mtl_used) {
+                dlist_mtls[k]->mtl_item->id = 0;
+            } else {
+                dlist_mtls[k]->mtl_item->id = 1;
+            }
+            k++;
+            if (k >= (int)ds->nmtls) {
+                return;
+            }
+        }
+    }
+}
+
 /* Runs a display list: id 0 steps to the next item, 1 jumps, 3 calls the handler for
  * the item's type with its data, 4 ends. */
 // FUNCTION: BIONICLE 0x555820
@@ -416,4 +520,33 @@ void NuDisplayListDrawAll(void) {
         NuFileClose(capture_fh);
         do_capture = 0;
     }
+}
+
+/* Finishes the frame's lists: links the dynamic materials, updates the clip and
+ * material states of the scenes used this frame, and fixes up the material chains. */
+// FUNCTION: BIONICLE 0x556030
+void NuDisplayListSwapBuffersEndFrame(void) {
+    int j;
+    NUDISPLAYLISTMANAGER *dlm;
+    NUDISPLAYSCENE *ds;
+
+    dlm = &global_dlist_manager;
+    // STRING: BIONICLE 0x5e061c
+    _NuTimeBarSlotBegin(-1, 2, "DLFIXUP");
+    NuThreadCriticalSectionBegin(dlm->loading_critical_section);
+    DisplayListLinkDynamicMtls();
+    DisplayListSwapBuffersPS();
+    DisplayListMaterialClipUpdate(&dlm->dyn_mtl_dlist);
+    for (j = 0; j < dlm->ndisplay_lists; j++) {
+        ds = dlm->dlists[j];
+        if (ds->scene_used_this_frame) {
+            DisplayListClipUpdate(ds);
+        }
+        if (ds->dynamic_used_this_frame || ds->scene_used_this_frame) {
+            DisplayListMaterialClipUpdate(ds);
+        }
+    }
+    DisplayListFixMaterials();
+    NuThreadCriticalSectionEnd(dlm->loading_critical_section);
+    _NuTimeBarSlotEnd(-1, 2);
 }
