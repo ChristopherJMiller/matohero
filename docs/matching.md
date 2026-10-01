@@ -187,6 +187,14 @@ exact; `tools/permute.py` automates some of them.
   NuTexCreate(header[1]), …)` loaded the other arguments before `NuTexCreate` and popped
   its argument right away; `tid = NuTexCreate(header[1]);` first gave the original's
   deferred stack cleanup over three calls (`NuQFntInit` 68% → 100%).
+- **A store common to both branches can be written in both.** `NuGScnGetSpecial` stores
+  `spec->scene` after loading and testing `display_list`; one `spec->scene = gsc;` before
+  the `if` stored it first (43%), the same statement at the top of each branch matched.
+- **`a = b->f = call()` keeps the result in a register for the rest of the function.**
+  `ReadInstAnimBlockDlist` indexes the block it just read through a register while
+  storing into other structs; reading `gscene->instanimblock` again reloaded it after
+  every store, `instanim = gscene->instanimblock = NuMemFileAddr(fh)` matched (the
+  opposite chain order and a separate statement were 85%, the original 100%).
 - **A pointer temporary inside an unrolled loop gives a second induction variable.**
   `clipPortal`'s 4× unrolled dot loop reads `x` through one pointer and `y`/`z` through
   another; `p = &portal->points[i]; … p->x …` reproduced that, `portal->points[i].x`

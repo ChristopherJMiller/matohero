@@ -517,7 +517,18 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       The third argument packs the sort priority above the render plane. New stubs:
       `NuMtlSetRenderPlane` (`0x540f80`), `NuTexWidth`, `NuTexHeight`. `nuqfnt.c` is
       complete on PC except the glyph renderer (below).
-- [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nudlist` (14).
+- [x] `nu3d/nugscn_gen.c`: all five PC functions exact: `ReadInstAnimBlockDlist`
+      (`0x5536a0`), `ReadInstanceIDs`, `ReadInstAnimBlock`, `NuGScnNumSpecials`,
+      `NuGScnGetSpecial` (the PS2's video memory hooks, `SetForceScenePlayBack`,
+      `NuGScnFixupTID` and `NuGScnMtlLayerMask` aren't in the PC exe). PC `NUGSCN` gets
+      `instanimblock` `0x44`, `prev_eval_mtx` `0x48`, the short `ninstanims` at `0x50`
+      (`0x44` on PS2), `numinstanceixs`/`instanceixs` `0x54`/`0x58`;
+      `NuGScnBufferAllocAligned` (`0x548d70`) stubbed. Hook test: `NuGScnGetSpecial` 12k
+      calls, `NuGScnNumSpecials` 4k, `ReadInstanceIDs` 4.
+- [ ] `nu3d/nudlist.c` (saga source; PC `0x553900`–`0x556120`: statics with register
+      arguments first, then `NuDisplayListUpdateSpecial` `0x554610`,
+      `NuDisplayListRndrSpecial` `0x554be0`, `DisplayListPrintItem`, …,
+      `NuDisplayListSwapBuffersEndFrame` `0x556030`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

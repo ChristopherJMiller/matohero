@@ -267,7 +267,15 @@ struct nugscn_s {
     NUSPECIAL *specials;
     int numsplines; /* PS2 has splinedata before these */
     NUGSPLINE *splines;
-    char unknown_030[0x9c - 0x30];
+    char unknown_030[0x44 - 0x30];
+    NUINSTANIM *instanimblock;
+    NUMTX *prev_eval_mtx; /* one per instance animation */
+    void *unknown_4c;
+    short ninstanims; /* at 0x44 on PS2 */
+    short unknown_52;
+    int numinstanceixs;
+    short *instanceixs;
+    char unknown_05c[0x9c - 0x5c];
     NUPORTALINFO portalinfo;
     char unknown_11c[0x194 - 0x11c];
     NUBOUNDS bounds;
@@ -283,5 +291,12 @@ typedef struct nuhspecial_s {
     NUSPECIAL *special;
     NUSPECIALOBJECT *special_obj;
 } NUHSPECIAL;
+
+/* nugscn_gen.c */
+int NuGScnNumSpecials(NUGSCN *gsc);
+void NuGScnGetSpecial(NUHSPECIAL *spec, NUGSCN *gsc, int i);
+
+/* PS2: nu3d/ps2/nugscn.c, not decompiled yet. */
+void *NuGScnBufferAllocAligned(int size, int alignment);
 
 #endif

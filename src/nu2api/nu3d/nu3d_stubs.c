@@ -165,3 +165,8 @@ int NuTexWidth(int tid) {
 int NuTexHeight(int tid) {
     return 0;
 }
+
+// STUB: BIONICLE 0x548d70
+void *NuGScnBufferAllocAligned(int size, int alignment) {
+    return NULL;
+}
