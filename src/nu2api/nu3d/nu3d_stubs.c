@@ -206,3 +206,7 @@ void _NuTimeBarSlotBegin(int tbh, int slotix, char *txt) {
 int _NuTimeBarSlotEnd(int tbh, int slotix) {
     return 0;
 }
+
+// STUB: BIONICLE 0x555880
+void DisplayListCreateDynMtlList(VARIPTR *buff, VARIPTR buffend) {
+}

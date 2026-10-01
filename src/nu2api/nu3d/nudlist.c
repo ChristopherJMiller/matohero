@@ -19,6 +19,9 @@ static int capture_dlist;
 // GLOBAL: BIONICLE 0x34928c0
 NUDISPLAYLISTMANAGER global_dlist_manager;
 
+// GLOBAL: BIONICLE 0x616eb4
+static int items_per_mtl = 8;
+
 // GLOBAL: BIONICLE 0x616eb0
 int nudlist_debug_level = 2;
 
@@ -27,6 +30,30 @@ int do_capture;
 
 // GLOBAL: BIONICLE 0x35bba74
 NUFILE capture_fh;
+
+/* A material's list: a clip header that jumps past the list when the material is
+ * clipped, the state items, a jump to the dynamic geometry and the end. The item argument
+ * isn't used on PC: the list is taken from the buffer. */
+// FUNCTION: BIONICLE 0x553cf0
+NUDISPLAYLISTITEM *NuDisplayListCreateMtlDlist(NUDISPLAYLISTITEM *item, NUMTL *mtl, VARIPTR *buff, VARIPTR buffend) {
+    item = buff->item;
+    buff->intaddr += 8 * sizeof(NUDISPLAYLISTITEM);
+    item[0].type = 0x85;
+    item[0].next = &item[items_per_mtl - 1];
+    item[0].id = 1;
+    NuDisplayListAddClut(&item[1], mtl->tid);
+    NuDisplayListAddTexture(&item[2], mtl->tid);
+    NuDisplayListAddMaterialState(&item[3], mtl);
+    NuDisplayListAddMicrocode(&item[4], mtl);
+    NuDisplayListAddLightState(&item[5], mtl);
+    item[6].next = &item[items_per_mtl - 1];
+    item[6].type = 0x8b;
+    item[6].id = 1;
+    item[7].type = 0x84;
+    item[7].next = NULL;
+    item[7].id = 4;
+    return item;
+}
 
 /* Starts a scene's frame: clears the used-material and used-clip-object bits of the
  * buffer being filled, and rewinds every material list. force_reset also marks all clip

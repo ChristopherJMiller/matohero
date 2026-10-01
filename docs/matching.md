@@ -187,6 +187,11 @@ exact; `tools/permute.py` automates some of them.
   NuTexCreate(header[1]), …)` loaded the other arguments before `NuTexCreate` and popped
   its argument right away; `tid = NuTexCreate(header[1]);` first gave the original's
   deferred stack cleanup over three calls (`NuQFntInit` 68% → 100%).
+- **A global pointer read once, then used through a register, was copied to a local.**
+  `NuDisplayListLinkItem` loads `display_list_buffer` once after aligning through it and
+  keeps it in `eax` across byte stores that could alias it; writing
+  `display_list_buffer->item->…` reloaded the global for every access (18%), a local
+  `buff = display_list_buffer;` after the alignment matched.
 - **A local pointer to a global struct (`dlm = &global_dlist_manager`) is not just
   style.** The PS2 locals of `NuDisplayListSwapBuffersBeginFrame` include `dlm`;
   writing `dlm->dlists[j]` made MSVC walk the array with a pointer and a separate

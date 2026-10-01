@@ -54,11 +54,13 @@ void NuDisplayListExecute(NUDISPLAYLISTITEM *item, NUDISPLAYLISTITEMFN *fntable)
 void DisplayListPrintItem(NUDISPLAYLISTITEM *item, int id, int nfilter, int *filter, NUFILE fh);
 void NuDisplayListDrawRenderScene(int scene_id);
 void NuDisplayListDrawAll(void);
+NUDISPLAYLISTITEM *NuDisplayListCreateMtlDlist(NUDISPLAYLISTITEM *item, NUMTL *mtl, VARIPTR *buff, VARIPTR buffend);
 void NuDisplayListSwapBuffersEndFrame(void);
 
 /* Not decompiled yet (nu3d_stubs.c). */
 int NuDisplayListAddRenderScene(void);
 void DisplayListLinkDynamicMtls(void);
+void DisplayListCreateDynMtlList(VARIPTR *buff, VARIPTR buffend);
 void DisplayListFixMaterials(void);
 
 /* nutimebar.c, not decompiled yet. */
@@ -68,6 +70,18 @@ int _NuTimeBarSlotEnd(int tbh, int slotix);
 /* pc/nudlist_pc.c (PS2: ps2/nudlistPS2.c). */
 void NuDisplaySceneAddPS(NUDISPLAYSCENE *ds);
 void DisplayListExecutePS(NUDISPLAYLISTITEM *item);
+void NuDisplayListInit(VARIPTR *buff, VARIPTR buffend);
+void NuDisplayListAddClut(NUDISPLAYLISTITEM *item, int tid);
+void NuDisplayListAddMaterialState(NUDISPLAYLISTITEM *item, NUMTL *mtl);
+VARIPTR *NuDisplayListLinkItem(NUDISPLAYLIST *dl, unsigned char type, void *call_addr);
+VARIPTR *NuDisplayListLinkItems(NUDISPLAYLIST *dlist, int n);
+void *DisplayListCreateRigidSkinTransformPS(VARIPTR *buff, NUMTX *mtx);
+
+/* PC has nothing to upload or set for these; the identical bodies were folded into
+ * NuDisplayListAddClut. */
+#define NuDisplayListAddTexture NuDisplayListAddClut
+#define NuDisplayListAddMicrocode(item, mtl) NuDisplayListAddClut((item), (int)(mtl))
+#define NuDisplayListAddLightState(item, mtl) NuDisplayListAddClut((item), (int)(mtl))
 
 /* PS2: nu3d/ps2/nurndrstat.c, not decompiled yet. */
 void RndrStateClear(NURNDRSTATE *state);

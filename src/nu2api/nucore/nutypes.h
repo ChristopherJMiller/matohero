@@ -19,6 +19,9 @@ typedef union variptr_u {
     unsigned int *u32;
     int *s32;
     float *f32;
+    struct numtx_s *mtx44;
+    struct numtl_s *mtl;
+    struct nudisplaylistitem_s *item;
     unsigned int intaddr;
 } VARIPTR;
 
