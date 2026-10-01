@@ -22,8 +22,9 @@ portable platform layer for Linux.
 
 1. Read this file and `docs/progress.md`; take the first unchecked task in the queue
    (or the next file in the current milestone). Keep it to one focused unit of work.
-2. Build and compare before committing: `tools/build.py && tools/reccmp reccmp --target BIONICLE`.
-   Nothing that matched 100% may regress.
+2. Build and compare before committing: `tools/build.py && tools/reccmp reccmp --target BIONICLE
+   --json build/report.json`, then `tools/regress.py <previous report> build/report.json`.
+   Nothing that matched 100% may regress, and no other function may drop either.
 3. Commit locally with a descriptive message. Never push, never rewrite pushed history.
 4. Update the queue below (check off, add follow-ups), run `tools/progress.py` to
    refresh `docs/progress.md`, and update docs for anything learned.
@@ -252,8 +253,18 @@ headless boot to title) → commit.
       order and macro-vs-inline accessors don't change it), `Free` 80% (the original
       reloads `block->size` around `SetSize`). No `NuHeapCreate` on PC, so the engine
       heap is unused there. Hook test: 273 functions, input works.
+- [x] `nucore/numemblk.c` (`NuMemBlkCreateEx`, `Size`, `Alloc`, `Free`; 3 exact,
+      `CreateEx` 65%: the original decrements `cnt` in place for its chain loop) and the PC
+      background loader `pc/bgproc_pc.c` (`bgPostRequest`, `bgThreadMain`, `bgProcInit`,
+      `bgProcAbortAll`, `NuFrameEndBgLoadPS`; Win32 thread + event + critical section; 4
+      exact, `AbortAll` 83%, `edi` saved at entry in the original). Found that the active
+      request pointer is `volatile BGPROCINFO *` (double field loads). Added
+      `tools/regress.py`, which also flags drops below 100% (the old check only compared
+      exact sets). Hook test: 280 functions, our loader thread runs, input works.
 - [ ] Leftovers around numem: `0x565c40` (fills `count * 16` bytes), `0x565930` (index
-      lookup in 0x50-byte records; maybe gamelib's glutils).
+      lookup in 0x50-byte records; maybe gamelib's glutils); `0x56b490` (initializes a
+      critical section at `0x34c56f8` just before `fhandles`; its flag at `0x34c5790` lies
+      inside `fhandles[64]`, though `NuPSFileOpen` scans 64 entries).
 
 Tooling backlog (pick up when near-misses pile up):
 

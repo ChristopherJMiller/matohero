@@ -3,6 +3,7 @@
 #include <string.h>
 #include <windows.h>
 
+#include "bgproc.h"
 #include "nupad.h"
 
 /* Engine frame loop and setup. Names from the PS2 prototype. On PC NuFrameEnd also runs
@@ -17,7 +18,6 @@ void NuMtlAnimate(float timestep);
 void NuTexAnimProcess(float frametime);
 void NuTimeBarSetRender(int tbh);
 int NuRndrSwapScreenEx(int hRT, void (*fn)());
-int NuFrameEndBgLoadPS(int min_delay);
 extern int pc_app_active;
 void PCFrameLock(void);
 void PCFrameUnlock(void);

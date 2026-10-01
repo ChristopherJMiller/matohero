@@ -88,6 +88,12 @@ exact; `tools/permute.py` automates some of them.
   `NuMemAllocFn` computes the tail pointer once (`tail = …`) before copying the head mark;
   writing it after the head copy, or inline twice, gave other registers (87% → 100%).
   `NuMemFreeFn`'s `totalloc -= size` came after the `succ`/`prev = NULL` stores.
+- `test edx, edx; jbe` on a pointer is a relational test, `if (ptr > NULL)`; `ptr != NULL`
+  gives `je` (`NuMemBlkAlloc`).
+- **A struct field read twice in a row (`cmp [eax], 0` then `mov edx, [eax]`) and a
+  bitfield set as load/`or`/store means a `volatile` pointee.** The background loader's
+  `volatile BGPROCINFO *bg_active` took `bgThreadMain` and `NuFrameEndBgLoadPS` from
+  74–84% to exact.
 - Compare against the constant the asm shows: `cmp eax, 0x8000; jl` is
   `if (a >= 0x8000)`, not `if (a > 0x7fff)` (`NuAngAdd`).
 - `test eax, eax; jns` on a float's bits is `if (*(unsigned int *)&f & 0x80000000)`;
@@ -200,6 +206,10 @@ exact; `tools/permute.py` automates some of them.
   these don't count as matched and aren't hooked.
 
 ## Open questions
+
+- **`NuUTF8ToUnicode` (33%)**: identical code with `ecx`/`edx` swapped for the source
+  pointer and the byte temporary. The permuter's moves and hand variants (loop forms,
+  check order, post-increments) don't change it; it was never exact (not a regression).
 
 - **`nuheap.c`'s swapped registers.** `NuHeapAllocAlignedNamed` keeps `reqsize` in `eax`
   and the loop's block in `ecx`; ours swaps them, and the register-argument static
