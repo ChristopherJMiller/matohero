@@ -159,6 +159,62 @@ typedef struct nudisplayscene_s {
     void *mtl_anims;
 } NUDISPLAYSCENE;
 
+/* Portals between rooms (layouts from the PS2 prototype). */
+typedef struct nuroom_s {
+    short *instances;
+    NUVEC4 *plane_eqns;
+    short *portals;
+    short ninstances;
+    unsigned char nplanes;
+    unsigned char nportals;
+    unsigned int contains_room : 1;
+    unsigned int is_nested : 1;
+    unsigned int is_visible : 1;
+    unsigned int padbits : 29;
+    unsigned char depth;
+    unsigned char pad[3];
+} NUROOM;
+
+typedef struct nuportal_s {
+    NUVEC4 plane_eqn;
+    NUVEC *points;
+    short npoints;
+    short left_room;
+    short right_room;
+    char id;
+    char pad;
+    unsigned int flags;
+} NUPORTAL;
+
+typedef struct nufrustrum_s {
+    NUMTX clip_planes[2]; /* the planes transposed, four per matrix */
+    NUVEC4 *planes;
+    NUVEC min;
+    NUVEC max;
+    short nplanes;
+    short roomid;
+} NUFRUSTRUM;
+
+typedef struct nuportalinfo_s {
+    int nportals;
+    NUPORTAL *portals;
+    int nrooms;
+    NUROOM *rooms;
+    int ninstances;
+    short *instances;
+    int nplanes;
+    NUVEC4 *planes;
+    int npoints;
+    NUVEC *points;
+    int nportal_index;
+    short *portal_index;
+    NUFRUSTRUM *frustra[16];
+    int nfrustra;
+    int camera_roomid;
+    int max_depth;
+    int version;
+} NUPORTALINFO;
+
 /* A named path of points. */
 typedef struct nugspline_s {
     short len;
@@ -182,7 +238,9 @@ struct nugscn_s {
     NUSPECIAL *specials;
     int numsplines; /* PS2 has splinedata before these */
     NUGSPLINE *splines;
-    char unknown_030[0x1b4 - 0x30];
+    char unknown_030[0x9c - 0x30];
+    NUPORTALINFO portalinfo; /* PS2 keeps a pointer to it in the visibility data */
+    char unknown_11c[0x1b4 - 0x11c];
     NUDISPLAYSCENE *display_list;
 };
 

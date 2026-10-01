@@ -37,10 +37,6 @@ int PS2_SREZ_W = 4096;
 // GLOBAL: BIONICLE 0x616be4
 int PS2_SREZ_H = 4096;
 
-// STUB: BIONICLE 0x53ef70
-void NuPortalInit(void) {
-}
-
 // STUB: BIONICLE 0x54c450
 void NuWaterReset(void) {
 }

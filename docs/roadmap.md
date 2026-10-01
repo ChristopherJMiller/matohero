@@ -411,13 +411,23 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       3/3 exact (`sp++, n++` order, as in saga). PC `NUGSCN` has `numsplines`/`splines` at
       `0x28`/`0x2c` (PS2 has `splinedata` before them). Hook test: 359 functions,
       `NuSplineFind` 180 calls in the menus.
-- [ ] `nu3d/nuportal_gen.c` (`0x53ef50`–`0x540430`, ~17 functions): the PC version differs
-      from both the PS2 one (types in stdump: `NUPORTAL`, `NUROOM`, `NUFRUSTRUM`,
-      `NUPORTALINFO`) and saga's `nuportal.cpp` (frustum stack `fstack`, which PC has:
-      `NuPortalInit` `0x53ef70` aligns a buffer at `0x337a4bf`); its statics take
-      register arguments (`0x53efa0` edx, `0x53f600` eax/ecx, `0x53ffe0` eax/ecx).
-      `0x53ef60` swaps a global (`NuPortalSetOverride`?), `clipTestSphere` is named at
-      `0x53f860`.
+- [x] `nu3d/nuportal_gen.c` part 1: `NuPortalEnabled` (`0x53ef60`, swaps
+      `portals_enabled`), `NuPortalInit` (frustum stack `fstackmem[9182]`; effective, the
+      limit is `fstackmem + 0x23de`), `NuPortalNumRooms`, `clipTestSphere` (its two
+      `return 0` exits share one block only with `if (!(dot < -r)) { … } return 0;`):
+      3 exact + 1 effective. The PC scene embeds the PS2's `NUPORTALINFO` at `0x9c`;
+      portal types in `nugscn.h`. `tools/offsetmatch.py` now also accepts an instruction
+      whose reccmp texts differ in one hex immediate (a store of `global + offset` into
+      another global), with a 64 KB window. Hook test: 362 functions,
+      `clipTestSphere` 237k calls.
+- [ ] `nuportal_gen.c` part 2: `NuPortalWhichRoom` (`0x53f690`, many game callers; uses
+      the static point-in-room test `0x53f600`, eax = room, ecx = point), `clipTestBox`?
+      (`0x53f920`), `buildFrustrum` (`0x53fb80`), `createPortalFrustrum` (`0x53fd30`),
+      `0x53efa0` (frustum copy, edx = source), the drawing helpers `0x53f040`–`0x53f420`
+      (they call `NuCameraUnlock`/`Relock`), `0x53ffe0`, `0x540020`, the extents helper
+      `0x540280` (ebx/esi/edi) and rectangle clip `0x540370`, then `roomRecursive` and
+      `NuPortalVisibility` among `0x540430`–`0x540b40`. `0x53ef50` (zeroes a `NUVEC`,
+      game callers) sits before them.
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nuqfnt` (30), `nudlist`
       (14).
 
