@@ -371,9 +371,16 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       exits shared one final `return 1`. nucamera_gen is done on PC apart from the
       `BuildClipPlanes` and `ClipTestExtentsAxisAligned` near-misses: 29 functions, 27
       exact.
-- [ ] Rest of `nuvport_gen` (`0x53a140`–`0x53a4d0`: `NuVpSetSize`-like setters at
-      `0x53a140`/`0x53a170`, `0x53a1f0`, `0x53a350`, `0x53a420`), `NuVpUpdate`
-      (`0x53a6a0`, PS2 `ps2/nuvport.c`), and the PC `NuCameraSet` (`0x53d640`).
+- [x] `nu3d/nuvport_gen.c`: complete on PC, 12/12 exact (`SetSize`, `SetPosition2`,
+      `GetPosition2`, `SetCurrent2`/`GetCurrent2` with `Size2` inlined, the getters,
+      `Restore`, `SetScalingMtx`, the PC `NuVpUpdate` (clips the viewport to the render
+      target and sets the hi-res dump scale/offset), `Init`). The PC layer's
+      `d3dGetViewport`/`d3dSetViewport` (`0x581070`/`0x581540`) are stubbed; `NUVIEWPORT`
+      starts like `D3DVIEWPORT9` (`NUPCVIEWPORT` here). `0x348f764`/`68` are
+      `nurndr_pixel_width`/`height` (renamed from `PS2_REZ_W`/`H`). Hook test: 349
+      functions, `NuVpUpdate` 23k calls, input works.
+- [ ] The PC `NuCameraSet` (`0x53d640`) and what sits around it (`0x53d6a0`, `0x53d6c0`):
+      probably pc/nurndr. `NuCameraSetProjectionMtx` at `0x53e350`.
 - [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
       `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
 

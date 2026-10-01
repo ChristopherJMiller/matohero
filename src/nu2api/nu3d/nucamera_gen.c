@@ -669,8 +669,8 @@ void NuCameraSetEx(NUCAMERA *camera, int fast) {
         clip_planes._20 = la * l;
         clip_planes._01 = l;
         clip_planes._21 = la * l;
-        zxs = PS2_SREZ_W * zx / PS2_REZ_W;
-        zys = PS2_SREZ_H * zy / PS2_REZ_H;
+        zxs = PS2_SREZ_W * zx / nurndr_pixel_width;
+        zys = PS2_SREZ_H * zy / nurndr_pixel_height;
     }
     NuRndrSetViewMtx(&vpsmtx, &vpc_vport_mtx, &vpc_sci_mtx);
     NuRndrSetSpecularLight(NULL, NULL);

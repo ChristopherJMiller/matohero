@@ -14,10 +14,22 @@ NUMTL **nurndr_forced_mtl_table;
 int nurndr_nforced_mtls;
 
 // GLOBAL: BIONICLE 0x348f764
-int PS2_REZ_W;
+int nurndr_pixel_width;
 
 // GLOBAL: BIONICLE 0x348f768
-int PS2_REZ_H;
+int nurndr_pixel_height;
+
+// GLOBAL: BIONICLE 0x617110
+int PS2_VCNTR_X = 320;
+
+// GLOBAL: BIONICLE 0x617114
+int PS2_VCNTR_Y = 240;
+
+// GLOBAL: BIONICLE 0x616bd8
+int PS2_VREZ_W = 640;
+
+// GLOBAL: BIONICLE 0x616bdc
+int PS2_VREZ_H = 224;
 
 // GLOBAL: BIONICLE 0x616be0
 int PS2_SREZ_W = 4096;
@@ -68,8 +80,12 @@ int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX
 void NuCameraSet(NUCAMERA *camera) {
 }
 
-// STUB: BIONICLE 0x53a6a0
-void NuVpUpdate(void) {
+// STUB: BIONICLE 0x581070
+void d3dGetViewport(NUVIEWPORT *vp) {
+}
+
+// STUB: BIONICLE 0x581540
+void d3dSetViewport(NUPCVIEWPORT *vp) {
 }
 
 // STUB: BIONICLE 0x53b090

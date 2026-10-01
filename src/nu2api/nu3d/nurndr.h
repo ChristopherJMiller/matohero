@@ -10,9 +10,16 @@ extern int nurndr_nforced_mtls;
 
 int NuRndrGScnObj(NUGOBJ *gobj, NUMTX *wm);
 
-/* Screen and scissor resolution (PS2: nups2/ps2video.c; PC file unknown). */
-extern int PS2_REZ_W;
-extern int PS2_REZ_H;
+/* Render target size in pixels (nurndr_gen.c). */
+extern int nurndr_pixel_width;
+extern int nurndr_pixel_height;
+
+/* Virtual screen centre and size, and scissor resolution (PS2: nups2/ps2video.c; PC file
+ * unknown). */
+extern int PS2_VCNTR_X;
+extern int PS2_VCNTR_Y;
+extern int PS2_VREZ_W;
+extern int PS2_VREZ_H;
 extern int PS2_SREZ_W;
 extern int PS2_SREZ_H;
 

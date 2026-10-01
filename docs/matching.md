@@ -51,6 +51,13 @@ exact; `tools/permute.py` automates some of them.
   function, the one with a store through a pointer (`*min_z`) stayed a loop; the other
   was fully unrolled (the PS2 build has both as loops). The first unrolled iteration
   turned `oc[0] |= 0x20` into a plain store, since `oc` had just been zeroed.
+- **A struct copy keeps stores that field assignments lose.** `NuVpUpdate` fills a local
+  viewport, overwrites its first four fields later, and passes it on; the original keeps
+  all six initial stores, which only `vp = *(NUPCVIEWPORT *)&vpCurrent;` reproduced
+  (field-by-field assignments were dead-store-eliminated, 40% → 89%).
+- **`_ftol2` doesn't clobber memory.** Globals loaded before a run of `(int)` conversions
+  stay in callee-saved registers and are reused after them; which ones depends on the
+  order of the later assignments (`h, w, x, y` in `NuVpUpdate`, found by permuting them).
 - **Repeated constant stores are grouped.** A float constant stored more than once goes
   into a register, and all its stores are emitted together where its group starts;
   single stores stay `mov [mem], imm32` in source order. Which register a constant gets
