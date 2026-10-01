@@ -45,10 +45,11 @@ portable platform layer for Linux.
 - [x] **Name the PC exe from PS2 symbols.** `tools/ps2names.py` v1: 638/5,469 paired
       (309 by unique strings, the rest propagated through calls/object order, with
       sanity checks and a cluster filter).
-- [ ] **More naming coverage.** Pair globals (PS2 `.data`/`.bss` symbols ↔ PC data
-      refs) and use them as anchors; add caller-side propagation; assign unpaired PC
-      functions to objects by region (MSVC keeps objects contiguous) to get file
-      boundaries even where names are unknown.
+- [x] **More naming coverage.** Global pairing + feature matching (strings, callees,
+      callers, globals): 1,859/5,469 named (34%).
+- [ ] **Object regions.** Assign every PC function (named or not) to an original
+      object by region, since MSVC keeps objects contiguous; use it to reject sibling
+      confusions and to know file boundaries for splitting `src/`.
 - [x] **Names into Ghidra.** `tools/ghidra names` applies the PS2 mapping (namespaces,
       plate comments); `tools/reccmp ghidra-import` applies matched functions' names and
       signatures (struct members come through empty, and unions aren't supported).

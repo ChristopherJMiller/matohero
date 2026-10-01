@@ -40,19 +40,29 @@ which is why the PC code uses `movsx`.
 It needs `ghidra/export/functions.csv` from `ExportOverview.java`. Methods, by
 reliability:
 
-| Method | How | Reliability |
-|--------|-----|-------------|
-| `strings` | a literal referenced by exactly one function on each side | high: 309 pairs, almost all sit among functions of the same object |
-| `calls` | callees of a paired function, aligned by call order between already-paired callees | medium: spot checks find occasional errors (e.g. a table-init function named `NuPow`) |
-| `order` | equal-length unpaired runs between two pairs of one object | medium |
+| Method | How | Pairs | Isolated* |
+|--------|-----|------:|----------:|
+| `strings` | a literal referenced by exactly one function on each side | 307 | 3.6% |
+| `calls` | callees of a paired function, aligned by call order between already-paired callees | 645 | 5% |
+| `order` | equal-length unpaired runs between two pairs of one object | 101 | 0% |
+| `features` | mutual-best, rarity-weighted overlap of strings, paired callees, paired callers and paired globals | 806 | 6% |
+
+\* share of pairs whose PC neighbors both come from other objects, a rough upper bound on
+the error rate. Known weak spot: near-identical sibling files (the Rahkshi creature
+variants `Creature_Lehrak`/`Vorahk`/`Panrahk`) get confused.
+
+Globals pair when a PC data address and a PS2 data symbol keep co-occurring across
+paired functions (≥2 times, ≥60% of each one's uses, unambiguous). PS2 refs include
+`$gp`-relative small data.
 
 Propagated pairs have to pass sanity checks (size ratio, caller count, string sets,
-file-name hint). They also go through a cluster filter: a pair sitting between two
-functions of another object is banned and propagation reruns. Per-file static helpers
-that recur under one name on PS2 (`NuError`, `NuDebugMsg`) are never propagated.
+file-name hint). After each round, a cluster filter bans any pair sitting between two
+functions of another object, and propagation reruns. Per-file static helpers that recur
+under one name on PS2 (`NuError`, `NuDebugMsg`) are never propagated.
 
-First run: 638 of 5,469 PC functions named. Treat `calls`/`order` names as hints until
-reccmp confirms a match.
+Current coverage: 1,859 of 5,469 PC functions (34%). Treat anything but `strings` as a
+strong hint until reccmp confirms a match. The `--check` flag compares against
+annotated `src/` (currently 5/5 correct where paired).
 
 ## Source tree
 

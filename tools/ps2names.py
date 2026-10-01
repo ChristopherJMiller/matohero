@@ -6,6 +6,9 @@ Evidence, strongest first:
   calls    callees of an already-paired function, aligned by call order
   order    MSVC keeps each object's functions together and in source order, as the PS2
            map does, so unpaired runs between two pairs of the same object line up
+  features rarity-weighted overlap of everything already translatable between the two
+           binaries: strings, paired callees, paired callers and paired globals (globals
+           pair when they co-occur across paired functions)
 
 Inputs: orig/Bionicle.exe, ghidra/export/functions.csv (ExportOverview.java),
 orig/ps2proto/BION~213.ELF and symbols.csv (tools/ps2map.py).
@@ -19,6 +22,7 @@ import argparse
 import bisect
 import collections
 import csv
+import math
 import re
 import struct
 import sys
@@ -45,6 +49,7 @@ class Binary:
         self.funcs = {}       # start -> size
         self.calls = {}       # start -> [callee starts, in order, deduplicated]
         self.strings = {}     # start -> set(str)
+        self.globs = {}       # start -> set(global data addresses, excluding strings)
         self.callers = collections.defaultdict(set)
 
     def finish(self):
@@ -101,7 +106,7 @@ def load_pc():
     for i, f in enumerate(starts):
         end = min(f + b.funcs[f], starts[i + 1] if i + 1 < len(starts) else f + b.funcs[f])
         code = data_at(f, end - f)
-        calls, strs = [], set()
+        calls, strs, globs = [], set(), set()
         for insn in md.disasm(code, f):
             for op in insn.operands:
                 val = None
@@ -118,8 +123,11 @@ def load_pc():
                     s = read_cstring(data_at, val)
                     if s:
                         strs.add(normalize(s))
+                    else:
+                        globs.add(val)
         b.calls[f] = calls
         b.strings[f] = strs
+        b.globs[f] = globs
     b.finish()
     return b
 
@@ -142,15 +150,26 @@ def load_ps2():
 
     b = Binary()
     b.info = {}
+    data_syms = []
     for row in csv.DictReader(open(PS2_SYMS)):
+        a = int(row["address"], 16)
         if row["type"] == "FUNC" and row["section"] == ".text":
-            a = int(row["address"], 16)
             b.funcs[a] = int(row["size"])
             b.info[a] = row
+        elif row["section"] in (".data", ".bss", ".sdata", ".sbss", ".rodata", ".rdata") and int(row["size"] or 0):
+            data_syms.append((a, a + int(row["size"])))
+    data_syms.sort()
+    data_starts = [d[0] for d in data_syms]
+
+    def data_symbol(addr):
+        i = bisect.bisect_right(data_starts, addr) - 1
+        return data_syms[i][0] if i >= 0 and addr < data_syms[i][1] else None
+
+    gp = next(s.value for s in elf.symbols if s.name == "_gp")
     for f, size in b.funcs.items():
         code = data_at(f, size)
         hi = {}
-        calls, strs = [], set()
+        calls, strs, globs = [], set(), set()
         for off in range(0, len(code) - 3, 4):
             w = struct.unpack_from("<I", code, off)[0]
             op, rs, rt, imm = w >> 26, (w >> 21) & 31, (w >> 16) & 31, w & 0xFFFF
@@ -165,19 +184,27 @@ def load_ps2():
                 hi[rt] = imm << 16
                 continue
             addr = None
-            if op == 0x09 and rs in hi:  # addiu
+            if rs == 28 and (op == 0x09 or 0x20 <= op <= 0x3F):  # $gp-relative small data
+                addr = (gp + simm) & 0xFFFFFFFF
+            elif op == 0x09 and rs in hi:  # addiu
                 addr = (hi[rs] + simm) & 0xFFFFFFFF
                 hi[rt] = addr if rt != rs else hi.get(rt)
             elif op == 0x0D and rs in hi:  # ori
                 addr = hi[rs] | imm
             elif 0x20 <= op <= 0x3F and rs in hi:  # loads/stores off a lui base
                 addr = (hi[rs] + simm) & 0xFFFFFFFF
-            if addr is not None and any(lo <= addr < hi_ for lo, hi_ in rodata):
+            if addr is None:
+                continue
+            sym = data_symbol(addr)
+            if sym is not None:
+                globs.add(sym)
+            elif any(lo <= addr < hi_ for lo, hi_ in rodata):
                 s = read_cstring(data_at, addr)
                 if s:
                     strs.add(normalize(s))
         b.calls[f] = calls
         b.strings[f] = strs
+        b.globs[f] = globs
     b.name_count = collections.Counter(r["name"] for r in b.info.values())
     b.finish()
     return b
@@ -208,6 +235,102 @@ def compatible(pc, ps2, p, q):
     if files and obj not in files:
         return False
     return True
+
+
+def pair_globals(pc, ps2, pairs):
+    """Pair PC data addresses with PS2 data symbols that keep co-occurring in paired functions."""
+    co, n_pc, n_ps2 = collections.Counter(), collections.Counter(), collections.Counter()
+    for p, q in pairs.items():
+        for g in pc.globs[p]:
+            n_pc[g] += 1
+        for h in ps2.globs[q]:
+            n_ps2[h] += 1
+        for g in pc.globs[p]:
+            for h in ps2.globs[q]:
+                co[(g, h)] += 1
+    ranked_g, ranked_h = collections.defaultdict(list), collections.defaultdict(list)
+    for (g, h), c in co.items():
+        ranked_g[g].append((c, h))
+        ranked_h[h].append((c, g))
+
+    def best(lst):
+        lst.sort(reverse=True)
+        return lst[0] if len(lst) == 1 or lst[0][0] > lst[1][0] else (0, None)  # ties are ambiguous
+
+    out = {}
+    for g, lst in ranked_g.items():
+        c, h = best(lst)
+        if h is None or c < 2 or best(ranked_h[h])[1] != g:
+            continue
+        if c >= 0.6 * n_pc[g] and c >= 0.6 * n_ps2[h]:
+            out[g] = h
+    return out
+
+
+def match_features(pc, ps2, pairs, rev, gpairs, banned):
+    """Mutual-best matches between unpaired functions by rarity-weighted feature overlap."""
+    def fp(p):
+        f = {("s", s) for s in pc.strings[p] if not s.startswith("FILE:")}
+        f |= {("c", pairs[c]) for c in pc.calls[p] if c in pairs}
+        f |= {("r", pairs[c]) for c in pc.callers[p] if c in pairs}
+        f |= {("g", gpairs[g]) for g in pc.globs[p] if g in gpairs}
+        return f
+
+    paired_globals = set(gpairs.values())
+
+    def fq(q):
+        f = {("s", s) for s in ps2.strings[q] if not s.startswith("FILE:")}
+        f |= {("c", c) for c in ps2.calls[q] if c in rev}
+        f |= {("r", c) for c in ps2.callers[q] if c in rev}
+        f |= {("g", h) for h in ps2.globs[q] if h in paired_globals}
+        return f
+
+    fqs = {q: fq(q) for q in ps2.funcs}
+    df = collections.Counter(x for f in fqs.values() for x in f)
+    n = len(ps2.funcs)
+    weight = {x: math.log(1 + n / c) for x, c in df.items()}
+    index = collections.defaultdict(list)
+    for q, f in fqs.items():
+        if q not in rev:
+            for x in f:
+                index[x].append(q)
+
+    scores = {}  # p -> [(score, q)]
+    for p in pc.funcs:
+        if p in pairs:
+            continue
+        f = fp(p)
+        if len(f) < 2:
+            continue
+        wp = sum(weight.get(x, 0) for x in f)
+        shared = collections.Counter()
+        nshared = collections.Counter()
+        for x in f:
+            for q in index.get(x, ()):
+                shared[q] += weight[x]
+                nshared[q] += 1
+        cand = []
+        for q, w in shared.items():
+            if nshared[q] < 2:
+                continue
+            wq = sum(weight[x] for x in fqs[q])
+            cand.append((w / (wp + wq - w), q))
+        if cand:
+            cand.sort(reverse=True)
+            scores[p] = cand
+    best_p = {}
+    for p, cand in scores.items():
+        for sc, q in cand:
+            if sc > best_p.get(q, (0, None))[0]:
+                best_p[q] = (sc, p)
+    out = []
+    for p, cand in scores.items():
+        sc, q = cand[0]
+        second = cand[1][0] if len(cand) > 1 else 0
+        if sc >= 0.5 and sc - second >= 0.2 and best_p[q][1] == p and (p, q) not in banned \
+                and compatible(pc, ps2, p, q):
+            out.append((p, q))
+    return out
 
 
 def main():
@@ -293,20 +416,34 @@ def main():
 
     # MSVC emits each object contiguously, so a propagated pair sitting between two
     # functions of one other object is wrong. Ban it and propagate again until stable.
+    def cluster_filter():
+        while True:
+            ordered = sorted(pairs)
+            objs = [obj_of[pairs[p]] for p in ordered]
+            bad = [p for i, p in enumerate(ordered)
+                   if method[p] != "strings" and 0 < i < len(ordered) - 1
+                   and objs[i - 1] == objs[i + 1] != objs[i]]
+            if not bad:
+                return
+            for p in bad:
+                q = pairs.pop(p)
+                del rev[q], method[p], evidence[p]
+                banned.add((p, q))
+            propagate()
+
     propagate()
-    while True:
-        ordered = sorted(pairs)
-        objs = [obj_of[pairs[p]] for p in ordered]
-        bad = [p for i, p in enumerate(ordered)
-               if method[p] != "strings" and 0 < i < len(ordered) - 1
-               and objs[i - 1] == objs[i + 1] != objs[i]]
-        if not bad:
-            break
-        for p in bad:
-            q = pairs.pop(p)
-            del rev[q], method[p], evidence[p]
-            banned.add((p, q))
+    cluster_filter()
+
+    # 4. Feature matching, alternating with propagation, until nothing new pairs.
+    for _ in range(10):
+        before = len(pairs)
+        gpairs = pair_globals(pc, ps2, pairs)
+        for p, q in match_features(pc, ps2, pairs, rev, gpairs, banned):
+            add(p, q, "features", "shared strings/calls/callers/globals")
         propagate()
+        cluster_filter()
+        if len(pairs) == before:
+            break
 
     # Write the mapping.
     with open(OUT, "w", newline="") as f:
@@ -320,7 +457,7 @@ def main():
     total = len(pc.funcs)
     by = collections.Counter(method.values())
     print(f"paired {len(pairs)}/{total} PC functions -> {OUT.relative_to(ROOT)}")
-    for m in ("strings", "calls", "order"):
+    for m in ("strings", "calls", "order", "features"):
         print(f"  {m:8} {by[m]}")
 
     if args.check:
