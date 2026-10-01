@@ -585,11 +585,21 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       the count by subtraction; index and pointer forms and the permuter didn't get
       there). PC `NUMTL` gets its first-short bitfields (`renderplane` at bits 4–11; no
       `sbexists`).
-- [ ] `nudlist.c` part 8: `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes, stubbed:
-      drops deleted materials from the dynamic scene, compacts its sort priorities,
-      links new ones; calls `DisplayListFindFirstMtls` and
-      `NuDisplayListCreateMtlDlist`); `NuDisplayListUpdateSpecial` (`0x554610`, x87 box
-      transform with inlined vector helpers), `NuDisplayListRndrSpecial` (`0x554be0`).
+- [x] `nudlist.c` part 8: `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes, was
+      stubbed) is an effective match. It drops released materials from the dynamic scene
+      and links new ones, written as per-material `static __forceinline` helpers (PS2
+      lists their locals in blocks of their own), with an `__inline` sort-list unlink and
+      `DisplayListAddSortPri` now `__inline` (it's inlined here, called by
+      `NuDisplaySceneAdd`). `pri->sys_next = NULL` made `DisplayListAddSortPri` exact
+      (97% → 100%). Left over: base/index operand order in some `sort_pris[sp]` addresses
+      (docs/matching.md, open questions). New: the `next_pos` static (`0x616ebc` = 7, the
+      material list's link item), and `NUMTL.dlist_mtl` (`0x3c`). Hook test: save prompt
+      reached; LinkDynamicMtls is called from the hooked EndFrame, so the trace doesn't
+      count it.
+- [ ] `nudlist.c` part 9: `NuDisplayListUpdateSpecial` (`0x554610`, 875 bytes, x87 box
+      transform with inlined vector helpers) and `NuDisplayListRndrSpecial` (`0x554be0`,
+      1372 bytes; PS2 locals: `sob`, `buff`, `outcode`, `clip_obj`, `ds`, `scene_mtl`,
+      `windmtx`, `centre`, `dist`), both stubbed in `nu3d_stubs.c`.
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

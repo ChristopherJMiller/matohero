@@ -26,6 +26,9 @@ static int items_per_mtl = 8;
 // GLOBAL: BIONICLE 0x616eb8
 static int dyn_geom_pos = 6;
 
+// GLOBAL: BIONICLE 0x616ebc
+static int next_pos = 7;
+
 // GLOBAL: BIONICLE 0x616eb0
 int nudlist_debug_level = 2;
 
@@ -199,10 +202,11 @@ void NuDisplayListCreate(NUDISPLAYSCENE *dlist, VARIPTR *buff, VARIPTR buffend, 
     DisplayListBeforeFrame(dlist, 1);
 }
 
-/* Links a sort priority into the global list, which is kept in sort_pri order (inlined
- * on PS2; name ours). */
+/* Links a sort priority into the global list, which is kept in sort_pri order (name
+ * ours). Inlined into DisplayListLinkDynamicMtls (as on PS2, where it has no copy of its
+ * own); NuDisplaySceneAdd calls it. */
 // FUNCTION: BIONICLE 0x553c90
-static void DisplayListAddSortPri(NUSORTPRI *pri) {
+static __inline void DisplayListAddSortPri(NUSORTPRI *pri) {
     NUSORTPRI *plast;
     NUSORTPRI *p;
 
@@ -210,7 +214,7 @@ static void DisplayListAddSortPri(NUSORTPRI *pri) {
     p = global_dlist_manager.sort_list;
     if (global_dlist_manager.sort_list == NULL) {
         global_dlist_manager.sort_list = pri;
-        pri->sys_next = p;
+        pri->sys_next = NULL;
     } else {
         while (p != NULL && p->sort_pri < pri->sort_pri) {
             plast = p;
@@ -225,6 +229,258 @@ static void DisplayListAddSortPri(NUSORTPRI *pri) {
         }
     }
     global_dlist_manager.nsort_pris++;
+}
+
+/* Unlinks a sort priority from the global list (name ours; inlined, as on PS2). */
+static __inline void DisplayListRemoveSortPri(NUSORTPRI *pri) {
+    NUSORTPRI *plast;
+    NUSORTPRI *p;
+
+    plast = NULL;
+    p = global_dlist_manager.sort_list;
+    while (p != pri) {
+        plast = p;
+        p = p->sys_next;
+    }
+    if (plast == NULL) {
+        global_dlist_manager.sort_list = p->sys_next;
+    } else {
+        plast->sys_next = p->sys_next;
+    }
+    global_dlist_manager.nsort_pris--;
+}
+
+/* Releases one use of a material in the dynamic scene. With its last use it leaves its
+ * sort priority's chain (and the sort priority the global list, with its last material),
+ * gives back its list buffer, and the materials after it close up. Name ours (the PS2
+ * prototype lists these locals in a block of their own). `__inline` alone is too big to
+ * be inlined, and the code written straight into the loop spills to other stack slots. */
+static __forceinline void DisplayListDelDynamicMtl(NUMTL *mtl) {
+    NUDISPLAYLISTMANAGER *dlm;
+    NUDISPLAYSCENE *dlist;
+    int sp;
+    int j;
+    int sort_pri;
+    int idx;
+    NUDISPLAYLISTITEM *item;
+    NUDISPLAYLISTITEM *prev;
+    NUDISPLAYLIST *lost;
+
+    dlm = &global_dlist_manager;
+    dlist = &dlm->dyn_mtl_dlist;
+    if (mtl->dlist_mtl == NULL) {
+        return;
+    }
+    idx = -1;
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (dlist->mtls[j] == mtl) {
+            idx = j;
+            break;
+        }
+    }
+    if (idx == -1) {
+        return;
+    }
+    dlm->material_used[idx]--;
+    if (dlm->material_used[idx] > 0) {
+        return;
+    }
+    sort_pri = (mtl->renderplane << 17) + mtl->sort_pri;
+    sp = -1;
+    for (j = 0; j < dlist->nsort_pris; j++) {
+        if (dlist->sort_pris[j].sort_pri == sort_pri) {
+            sp = j;
+        }
+    }
+    item = mtl->dlist_mtl->mtl_item;
+    if (dlist->sort_pris[sp].items == item) {
+        dlist->sort_pris[sp].items = item[next_pos].next;
+        item[next_pos].id = 4;
+        item[next_pos].next = NULL;
+        item[next_pos].type = 0x84;
+    } else {
+        for (j = 0; j < dlist->sort_pris[sp].nmtls; j++) {
+            prev = dlist->mtls[dlist->sort_pris[sp].mtl_first + j]->dlist_mtl->mtl_item;
+            if (prev[next_pos].next == item) {
+                prev[next_pos].next = item[next_pos].next;
+                item[next_pos].id = 4;
+                item[next_pos].next = NULL;
+                item[next_pos].type = 0x84;
+                break;
+            }
+        }
+    }
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (dlm->mtl_buffers_used[j] && item == (NUDISPLAYLISTITEM *)(dlm->mtlbuff.intaddr + j * 0x80)) {
+            dlm->mtl_buffers_used[j] = 0;
+            break;
+        }
+    }
+    dlist->sort_pris[sp].nmtls--;
+    if (dlist->sort_pris[sp].nmtls == 0) {
+        DisplayListRemoveSortPri(&dlist->sort_pris[sp]);
+        for (j = sp; j < dlist->nsort_pris - 1; j++) {
+            /* Only the first 16 bytes move up: the sort key, the items and the global
+             * links (four dword moves in the original). */
+            memcpy(&dlist->sort_pris[j], &dlist->sort_pris[j + 1], 16);
+        }
+        dlist->nsort_pris--;
+    }
+    lost = dlist->dlist_mtls[idx];
+    for (j = idx; j < (int)dlist->nmtls - 1; j++) {
+        dlist->mtls[j] = dlist->mtls[j + 1];
+        dlist->dlist_mtls[j] = dlist->dlist_mtls[j + 1];
+        dlm->material_used[j] = dlm->material_used[j + 1];
+    }
+    dlist->dlist_mtls[(int)dlist->nmtls - 1] = lost;
+    dlm->material_used[(int)dlist->nmtls - 1] = 0;
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (dlm->material_used[j]) {
+            dlist->mtls[j]->dlist_mtl->mtl_id = j;
+        }
+    }
+    DisplayListFindFirstMtls(dlist);
+    mtl->dlist_mtl = NULL;
+}
+
+/* Adds one use of a material to the dynamic scene. A new material gets a free slot,
+ * sorted by render plane and sort priority, a list built in a free buffer, and a place in
+ * its sort priority's chain, or a new sort priority. Name ours, inlined like the above. */
+static __forceinline void DisplayListAddDynamicMtl(NUMTL *mtl) {
+    NUDISPLAYLISTMANAGER *dlm;
+    NUDISPLAYSCENE *dlist;
+    int sp;
+    int j;
+    int sort_pri;
+    int idx;
+    int buffidx;
+    int insert;
+    NUDISPLAYLIST *last;
+    VARIPTR mtlbuff;
+    int sort_pri2;
+    NUDISPLAYLISTITEM *item;
+    NUDISPLAYLISTITEM *prev;
+    NUDISPLAYLISTITEM *next;
+
+    dlm = &global_dlist_manager;
+    dlist = &dlm->dyn_mtl_dlist;
+    idx = -1;
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (dlist->mtls[j] == mtl) {
+            idx = j;
+            break;
+        }
+    }
+    if (idx != -1) {
+        dlm->material_used[idx]++;
+        return;
+    }
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (!dlm->material_used[j]) {
+            idx = j;
+            break;
+        }
+    }
+    if (idx == -1) {
+        return;
+    }
+    buffidx = -1;
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (!dlm->mtl_buffers_used[j]) {
+            dlm->mtl_buffers_used[j] = 1;
+            buffidx = j;
+            break;
+        }
+    }
+    sort_pri = (mtl->renderplane << 17) + mtl->sort_pri;
+    sp = -1;
+    for (j = 0; j < dlist->nsort_pris; j++) {
+        if (dlist->sort_pris[j].sort_pri == sort_pri) {
+            sp = j;
+        }
+    }
+    insert = -1;
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (dlm->material_used[j]) {
+            sort_pri2 = (dlist->mtls[j]->renderplane << 17) + dlist->mtls[j]->sort_pri;
+            if (sort_pri <= sort_pri2) {
+                insert = j;
+                break;
+            }
+        }
+    }
+    if (insert == -1) {
+        insert = idx;
+    }
+    last = dlist->dlist_mtls[(int)dlist->nmtls - 1];
+    for (j = (int)dlist->nmtls - 2; j >= insert; j--) {
+        dlist->mtls[j + 1] = dlist->mtls[j];
+        dlist->dlist_mtls[j + 1] = dlist->dlist_mtls[j];
+        dlm->material_used[j + 1] = dlm->material_used[j];
+    }
+    dlist->dlist_mtls[insert] = last;
+    dlm->material_used[insert] = 0;
+    for (j = 0; j < (int)dlist->nmtls; j++) {
+        if (dlm->material_used[j]) {
+            dlist->mtls[j]->dlist_mtl->mtl_id = j;
+        }
+    }
+    dlm->material_used[insert] = 1;
+    mtl->dlist_mtl = dlist->dlist_mtls[insert];
+    item = mtl->dlist_mtl->mtl_item;
+    mtlbuff.intaddr = dlm->mtlbuff.intaddr + buffidx * 0x80;
+    item = NuDisplayListCreateMtlDlist(item, mtl, &mtlbuff, dlm->mtlbuffend);
+    dlist->mtls[insert] = mtl;
+    mtl->dlist_mtl->mtl_item = item;
+    mtl->dlist_mtl->dyn_geom = &item[dyn_geom_pos];
+    mtl->dlist_mtl->dlist = dlist;
+    mtl->dlist_mtl->mtl_id = insert;
+    if (sp != -1) {
+        if (insert != 0 && (dlist->mtls[insert - 1]->renderplane << 17) + dlist->mtls[insert - 1]->sort_pri == sort_pri) {
+            prev = dlist->mtls[insert - 1]->dlist_mtl->mtl_item;
+            next = prev[next_pos].next;
+            item[next_pos].type = 0x8d;
+            item[next_pos].next = next;
+            item[next_pos].id = 1;
+            prev[next_pos].next = item;
+        } else {
+            next = dlist->sort_pris[sp].items;
+            item[next_pos].type = 0x8d;
+            item[next_pos].next = next;
+            item[next_pos].id = 1;
+            dlist->sort_pris[sp].items = item;
+        }
+    } else {
+        sp = dlist->nsort_pris;
+        dlist->sort_pris[sp].sort_pri = sort_pri;
+        dlist->sort_pris[sp].items = item;
+        dlist->sort_pris[sp].mtl = dlm->temp_mtl;
+        dlist->sort_pris[sp].nmtls = 0;
+        DisplayListAddSortPri(&dlist->sort_pris[sp]);
+        dlist->nsort_pris++;
+    }
+    dlist->sort_pris[sp].nmtls++;
+    DisplayListFindFirstMtls(dlist);
+}
+
+/* Brings the dynamic material scene up to date with the materials released and added
+ * since the last frame. Effective match: some `sort_pris[sp]` addresses come out as
+ * index + base instead of base + index. */
+// FUNCTION: BIONICLE 0x553e40
+static void DisplayListLinkDynamicMtls(void) {
+    int i;
+
+    if (global_dlist_manager.nnew_materials == 0 && global_dlist_manager.ndel_materials == 0) {
+        return;
+    }
+    for (i = 0; i < global_dlist_manager.ndel_materials; i++) {
+        DisplayListDelDynamicMtl(global_dlist_manager.del_materials[i]);
+    }
+    global_dlist_manager.ndel_materials = 0;
+    for (i = 0; i < global_dlist_manager.nnew_materials; i++) {
+        DisplayListAddDynamicMtl(global_dlist_manager.new_materials[i]);
+    }
+    global_dlist_manager.nnew_materials = 0;
 }
 
 /* Registers a scene's display list for drawing. */

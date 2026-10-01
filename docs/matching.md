@@ -230,6 +230,11 @@ exact; `tools/permute.py` automates some of them.
 - **A PS2 local list without a loop counter means no loop.** `buildFrustrum`'s four
   transform-and-`w` steps are written out (PS2 has no `i`); as a loop MSVC kept it rolled,
   since it calls a function (54% → 94%).
+- **One field, compared signed in one function and unsigned in another.**
+  `NUDISPLAYSCENE.nmtls` is `unsigned int` (PS2 type). `DisplayListBeforeFrame`'s
+  `(nmtls + 7) / 128` and `DisplayListMaterialClipUpdate`'s `>> 3` need it unsigned, but
+  `DisplayListLinkDynamicMtls` compares it to `int` counters with `jl`/`jle`, so it casts
+  `(int)dlist->nmtls` at each use, as `MaterialClipUpdate` already does once.
 
 ## Structure
 
@@ -331,6 +336,24 @@ exact; `tools/permute.py` automates some of them.
   use; a plain `static int` keeps it in `eax` (35% → identical).
 - `__FILE__`/`__LINE__` call sites: pass the original line explicitly (`NuMemAllocAt`);
   `#line` breaks reccmp's line mapping.
+- **A big loop body can be a forced-inline helper, and the stack layout shows it.**
+  `DisplayListLinkDynamicMtls` written as one function got the right instructions but the
+  wrong spill slots and registers (79%). The PS2 prototype lists a second block of locals
+  that repeats `dlm` and `dlist`, a sign of inlined helpers. Splitting each loop body into a
+  per-material `static __forceinline` helper with its own `dlm`/`dlist` locals fixed the slots
+  (94%); a plain `__inline` helper is too big to be inlined. Smaller pieces followed the same
+  way: the sort-list unlink as an `__inline` helper taking the `NUSORTPRI *` (80% → 91%), and
+  `DisplayListAddSortPri` marked `__inline`, which LinkDynamicMtls inlines while
+  `NuDisplaySceneAdd` still calls it.
+- **Storing a constant can reuse a register known to hold it.** `DisplayListAddSortPri`'s
+  `if (sort_list == NULL) { sort_list = pri; pri->sys_next = p; }` stored `p`'s copy
+  of the list head; the original stores the tested register itself, and its inlined copy
+  stores a zeroed `ebx`. That came from `pri->sys_next = NULL` (97% → exact, and the
+  inlined copy matched as well).
+- **Load an argument into its variable first when the original loads it early.**
+  `NuDisplayListCreateMtlDlist(mtl->dlist_mtl->mtl_item, …)` loaded `mtl_item` just before
+  the push. The original loads it ahead of the buffer-offset arithmetic, which came from
+  `item = mtl->dlist_mtl->mtl_item;` on its own line before the call (effective).
 
 ## reccmp limits
 
@@ -372,6 +395,15 @@ exact; `tools/permute.py` automates some of them.
   callee-saved registers, with `flags` and `fh` swapped). Parameter orders, a `follow`
   local, loop shapes and the permuter changed nothing; its caller
   `NuDisplayListDrawRenderScene` (69%) only differs because of it.
+
+- **Base or index first in `[reg + reg]`.** In `DisplayListLinkDynamicMtls` (effective)
+  the original writes some `dlist->sort_pris[sp]` addresses with the base register first
+  (`[edx + ecx]`) where ours puts the `sp * 36` register first: every access on the add
+  path, and the check and unlink after a sort priority's `nmtls--`. The instructions are
+  otherwise the same. No luck so far with a `pri` local, `(sort_pris + sp)`,
+  `sp[sort_pris]`, `dlm->dyn_mtl_dlist.sort_pris`, moving the `sp` declaration, a
+  `(dlist, sp)` helper or the global written directly (the last two were much worse).
+  The sum operand-order rule above (the leaf referenced first goes first) may apply.
 
 - **`NuUTF8ToUnicode` (33%)**: identical code with `ecx`/`edx` swapped for the source
   pointer and the byte temporary. The permuter's moves and hand variants (loop forms,

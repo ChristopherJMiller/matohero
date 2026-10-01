@@ -55,7 +55,7 @@ struct numtl_s {
     short pad : 4;
     short unknown_02;
     unsigned char rs[0x38];
-    unsigned int unknown_3c;
+    NUDISPLAYLIST *dlist_mtl; /* the material's list in a dynamic scene */
     NUMTLATTRIB attrib;
     unsigned char unknown_48[0x54 - 0x48];
     NUCOLOUR3 diffuse;

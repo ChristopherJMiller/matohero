@@ -64,7 +64,6 @@ void NuDisplayListSwapBuffersEndFrame(void);
 int NuDisplayListAddRenderScene(void);
 
 /* Not decompiled yet (nu3d_stubs.c). */
-void DisplayListLinkDynamicMtls(void);
 void DisplayListFindFirstMtls(NUDISPLAYSCENE *ds);
 void DisplayListCreateDynMtlList(VARIPTR *buff, VARIPTR buffend);
 

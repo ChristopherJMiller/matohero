@@ -183,12 +183,6 @@ void RndrStateClear(NURNDRSTATE *state) {
 void RndrStateResetSharedGlobalState(void) {
 }
 
-/* nudlist.c statics without arguments, stubbed as plain functions for now. */
-
-// STUB: BIONICLE 0x553e40
-void DisplayListLinkDynamicMtls(void) {
-}
-
 
 // STUB: BIONICLE 0x550250
 void _NuTimeBarSlotBegin(int tbh, int slotix, char *txt) {
