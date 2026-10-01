@@ -154,10 +154,14 @@ headless boot to title) → commit.
       reached, `NuTimeGetFrameTime` 373k calls.
 - [ ] Rest of `0x56c3a0–0x56cf3e`: `NuFrameBegin`/`NuFrameEnd` (need nu3d/PC callees
       stubbed), `0x56c820` (ms timer, `NuTimeGetTime`?), `0x56c980` (sets
-      `nuapi.video_swap_mode` and `native_FPS`), `0x56ca30–0x56ce90` (recursive
-      evaluator, unknown), `0x56cec0`/`0x56cf00`/`0x56cf20` (critical-section table at
+      `nuapi.video_swap_mode` and `native_FPS`), `0x56ca30–0x56ce90` (`nurdpf.c`, the float
+      expression evaluator behind `NuFParGetFloatRDP`; `NuRDPF` = `0x56ce90`; the int
+      one, `NuRDPI` = `0x56e0b0`, sits after rnc), `0x56cec0`/`0x56cf00`/`0x56cf20` (critical-section table at
       `0x34c5fb8`), `0x56c3a0`/`0x56c3d0` (tables at `0x34c57e4`, maybe nulang).
-- [ ] `nucore/nufpar.c` (saga), ~21
+- [x] `nucore/nufpar.c` (saga): all 24 PC functions exact (BH has one command stack,
+      saga two). Stubs for the nufile callees, `NuFileExists` (`pc/nufile_pc.c`) and the
+      expression evaluators `NuRDPI`/`NuRDPF`. Hook test: 183 functions, title reached,
+      the game's script files parsed by our code (`NuFParGetWord` 138k calls).
 - [ ] `nucore/nufile.c` (saga), ~52
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
 

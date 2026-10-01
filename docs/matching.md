@@ -33,6 +33,10 @@ exact; `tools/permute.py` automates some of them.
   `v /= sign; return v;` gives it; `return v / sign;` gives `fdivp` (`NuAToF`).
 - **Comparison operand order is visible too.** `pow_x[n] == x` loads `x` first, and
   `x == pow_x[n]` loads `pow_x[n]` first (`NuPow`). The permuter flips these.
+- **Early returns keep their own epilogue.** `if (a) return 0; if (b) return 0;`
+  compiles to two returns; `if (a || b) return 0;` shares one (`NuFParInterpretWord`).
+  Likewise `if (x) {…return…} else { return 0; }` vs. a leading `if (!x) return 0;`
+  decides where the zero return lands (`NuFParGetInt`).
 - **Branch order follows the `if`.** `test ah, 1; jne` comes from
   `if (x >= 0.0f) {…} else {…}`, while `if (x < 0.0f)` gives `test ah, 5; jp`
   (`NuASin`).
@@ -66,7 +70,8 @@ exact; `tools/permute.py` automates some of them.
   mark the helper `__inline` (it still gets an out-of-line copy if something calls it
   that way): `NuStrLen`, `NuStrLenW`, `NuStrRChr`, `NuToUpper`, `NuToLower`,
   `NuToUpperW`, `NuRandFloatSeeded`, `NuRandIntSeeded`, `NuVecSub`, `NuVecCross`,
-  `NuVecMagSqr`, `NuVecMag` so far. Whether the compiler then inlines a given call
+  `NuVecMagSqr`, `NuVecMag`, `NuGetWChar`, `NuFParUnGetWord`, `NuFParClose`,
+  `NuFParInit`, `NuFreeFPar` so far. Whether the compiler then inlines a given call
   is still its own choice (`NuStrNCmp` calls `NuStrLen`, `NuStrGetExt` inlines it).
 - **Function order in an object.** `/O2` implies `/Gy`, so each function is its own
   COMDAT, emitted in source order, except that a function calling one defined *later* in
