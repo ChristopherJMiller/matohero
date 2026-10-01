@@ -18,6 +18,9 @@ exact; `tools/permute.py` automates some of them.
 - **…but grouping shows.** A four-term sum compiles the same for any term order, but
   parentheses change the evaluation order: `NuVec4MtxTransformH`'s `w, z, y, x` order
   came from `a + b + (c + d)` (83% → 100%). Several groupings give the same code.
+- **…but not for `__int64`.** `now + (MAX - base)` was reassociated into
+  `now - base + MAX`; the original's order came from updating in place,
+  `now.QuadPart += MAX - base` (`NuTimeGetTicksPS`).
 - **Parentheses stop reassociation.** `dy * 512.0f / dx` became `dy / dx * -512` with a
   negated table index; `(dy * 512.0f) / dx` matched (`fxyd` in nutrig).
 - **A local vs. the same expression inline changes term order**, even when the asm

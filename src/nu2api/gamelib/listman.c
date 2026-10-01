@@ -62,12 +62,12 @@ NULSTHDR *NuLstCreateBuff(int elcnt, int elsize, VARIPTR *ptr, VARIPTR end, int 
     NULNKHDR *curr;
     NULNKHDR *next;
 
-    list = (NULSTHDR *)((ptr->addr + align - 1) & ~(align - 1));
+    list = (NULSTHDR *)((ptr->intaddr + align - 1) & ~(align - 1));
     eltotsize = (elsize + sizeof(NULNKHDR) - 1 + align) & -align;
     buffsize = elcnt * eltotsize + sizeof(NULSTHDR);
-    ptr->void_ptr = list;
-    if (buffsize < end.addr - (unsigned int)list) {
-        ptr->addr = (unsigned int)list + buffsize;
+    ptr->voidptr = list;
+    if (buffsize < end.intaddr - (unsigned int)list) {
+        ptr->intaddr = (unsigned int)list + buffsize;
 
         list->free = (NULNKHDR *)(list + 1);
         list->head = NULL;

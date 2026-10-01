@@ -147,7 +147,16 @@ headless boot to title) → commit.
 - [ ] `nucore/nustring.c` part 3: `NuStringTableLoadCSV` (`0x568ff0`, 1148 bytes) and
       `NuStringTableLoadTXT` (`0x569480`). They use `NUFPAR`/`NuFile`, so do them after
       `nufpar` and `nufile`.
-- [ ] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga), small
+- [x] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga) and
+      `nucore/pc/nutime_pc.c` (QueryPerformanceCounter ticks): 16 functions, all exact,
+      plus the `nuapi` global (`0x3607b60`, PS2 layout). Win32 imports compare by name,
+      so platform code matches like anything else. Hook test: 159 functions, title
+      reached, `NuTimeGetFrameTime` 373k calls.
+- [ ] Rest of `0x56c3a0–0x56cf3e`: `NuFrameBegin`/`NuFrameEnd` (need nu3d/PC callees
+      stubbed), `0x56c820` (ms timer, `NuTimeGetTime`?), `0x56c980` (sets
+      `nuapi.video_swap_mode` and `native_FPS`), `0x56ca30–0x56ce90` (recursive
+      evaluator, unknown), `0x56cec0`/`0x56cf00`/`0x56cf20` (critical-section table at
+      `0x34c5fb8`), `0x56c3a0`/`0x56c3d0` (tables at `0x34c57e4`, maybe nulang).
 - [ ] `nucore/nufpar.c` (saga), ~21
 - [ ] `nucore/nufile.c` (saga), ~52
 - [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
