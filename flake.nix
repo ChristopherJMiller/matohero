@@ -45,11 +45,14 @@
 
           shellHook = ''
             # reccmp isn't in nixpkgs: keep it in a venv layered over the nix python.
-            if [ ! -f .venv/.requirements ] || ! cmp -s requirements.txt .venv/.requirements; then
-              python3 -m venv --system-site-packages .venv
-              .venv/bin/pip install -q -r requirements.txt && cp requirements.txt .venv/.requirements
+            # Only from the repo root (where requirements.txt lives).
+            if [ -f requirements.txt ] && [ -f flake.nix ]; then
+              if [ ! -f .venv/.requirements ] || ! cmp -s requirements.txt .venv/.requirements; then
+                python3 -m venv --system-site-packages .venv
+                .venv/bin/pip install -q -r requirements.txt && cp requirements.txt .venv/.requirements
+              fi
+              export PATH="$PWD/.venv/bin:$PATH"
             fi
-            export PATH="$PWD/.venv/bin:$PATH"
             echo "bionicle-heroes decomp shell — game files live in ./orig (gitignored)"
           '';
         };
