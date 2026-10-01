@@ -10,7 +10,29 @@
 typedef struct numtl_s NUMTL;
 typedef struct nugscn_s NUGSCN;
 typedef struct nudisplayscene_s NUDISPLAYSCENE;
-typedef struct nurndrstate_s NURNDRSTATE;
+typedef struct nuglobalrndrstate_s NUGLOBALRNDRSTATE;
+
+/* The render state a material list was last drawn with (PS2 layout). */
+typedef struct nurndrstate_s {
+    int gs_bot;
+    int gs_top;
+    NUMTL *mtl;
+    unsigned short unused;
+    unsigned char *mpg;
+    int tid;
+    int gs_ptr;
+    unsigned short texture_slots;
+    short konst_id;
+    int global_id;
+    short lights_id;
+    short lights_type;
+    short lights_specular_id;
+    short lights_fx_id;
+    short camera_id;
+    short fog_id;
+    short vertexgroups_id;
+    short reflection_id;
+} NURNDRSTATE;
 
 /* A display list command (PC layout: the PS2 has a size first and type/id at 2/3). type
  * picks the handler (0x80 + index), id what NuDisplayListExecute does with it. */
@@ -204,7 +226,7 @@ struct nudisplayscene_s {
     unsigned int pad : 15;
     NUGSCN *gscene;
     void *ps;
-    void *local_state;
+    NUGLOBALRNDRSTATE *local_state;
     unsigned int NumInstances;
     unsigned char *SpecialFlags;
     void *mtl_anims;

@@ -566,13 +566,18 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `NuDisplayListCreateMtlDlist` (`0x553cf0`) 96% (where `add esp` lands among the
       last stores). `VARIPTR` gains the PS2's `mtx44`, `mtl` and `item` members;
       `DisplayListCreateDynMtlList` (`0x555880`) stubbed.
-- [ ] `nudlist.c` part 5: `DisplayListCreateDynMtlList` (`0x555880`, 816 bytes),
-      `DisplayListFixMaterials` (`0x5555e0`, 573 bytes, a local `NURNDRSTATE`; calls
-      `0x544cb0`, `0x544bf0`), `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes); the
-      item builders `0x5539f0` (`NuDisplayListCreate`?), `0x553d90`;
-      `NuDisplayListUpdateSpecial` (`0x554610`), `NuDisplayListRndrSpecial` (`0x554be0`),
-      `NuDisplayListAddRenderScene` (`0x555bc0`, stubbed);
-      `DisplayListCreateSkinTransformPS` (`0x55b860`).
+- [x] `nudlist.c` part 5: `DisplayListFixMaterials` (`0x5555e0`, static) and
+      `NuDisplayListAddRenderScene` (`0x555bc0`) effective (block placement and local
+      store scheduling; the permuter found nothing). `NURNDRSTATE` gets the PS2 layout;
+      `RndrStateUpdate`/`RndrStateUpdateFx` are folded empty functions on PC;
+      `DisplayListUpdateRenderState` (`0x544cb0`) and `RndrStateResetGlobalState`
+      (`0x544bf0`) stubbed. Both run every frame in the hook test.
+- [ ] `nudlist.c` part 6: `DisplayListCreateDynMtlList` (`0x555880`, 816 bytes),
+      `DisplayListLinkDynamicMtls` (`0x553e40`, 1785 bytes); the item builders `0x5539f0`
+      (`NuDisplayListCreate`?) and `0x553d90` (finds each sort priority's first material
+      by `renderplane << 17 + sort_pri`); `NuDisplayListUpdateSpecial` (`0x554610`),
+      `NuDisplayListRndrSpecial` (`0x554be0`); `DisplayListCreateSkinTransformPS`
+      (`0x55b860`).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

@@ -187,6 +187,9 @@ exact; `tools/permute.py` automates some of them.
   NuTexCreate(header[1]), …)` loaded the other arguments before `NuTexCreate` and popped
   its argument right away; `tid = NuTexCreate(header[1]);` first gave the original's
   deferred stack cleanup over three calls (`NuQFntInit` 68% → 100%).
+- **`return n++` in two branches shares one tail; `n++; return n - 1;` keeps two.**
+  `NuDisplayListAddRenderScene` ends both branches with `inc`/store/`dec`/epilogue;
+  `return dlm->nrender_scenes++;` in each merged them into one `mov`/`inc` tail.
 - **A global pointer read once, then used through a register, was copied to a local.**
   `NuDisplayListLinkItem` loads `display_list_buffer` once after aligning through it and
   keeps it in `eax` across byte stores that could alias it; writing

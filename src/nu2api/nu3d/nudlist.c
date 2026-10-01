@@ -462,6 +462,85 @@ static void DisplayListMaterialClipUpdate(NUDISPLAYSCENE *ds) {
     }
 }
 
+/* Links each used material list for drawing: the dynamic geometry first, then the
+ * scene items of the buffer being drawn, back to the material's end; updates the render
+ * states in sort order and drops materials on hidden layers. */
+// FUNCTION: BIONICLE 0x5555e0
+static void DisplayListFixMaterials(void) {
+    NUDISPLAYLISTMANAGER *dlm;
+    NUSORTPRI *sp;
+    int j;
+    NURNDRSTATE state;
+    NUGLOBALRNDRSTATE *rolling_state;
+    NUDISPLAYSCENE *ds;
+    NUDISPLAYLIST *dlist_mtl;
+    NUMTL *mtl;
+
+    dlm = &global_dlist_manager;
+    rolling_state = NULL;
+    RndrStateClear(&state);
+    for (sp = dlm->sort_list; sp != NULL; sp = sp->sys_next) {
+        ds = sp->display_scene;
+        if (ds == NULL) {
+            RndrStateUpdateFx(&state, sp->items);
+            continue;
+        }
+        if (!ds->dynamic_used_this_frame && !ds->scene_used_this_frame) {
+            continue;
+        }
+        for (j = 0; j < sp->nmtls; j++) {
+            dlist_mtl = ds->dlist_mtls[sp->mtl_first + j];
+            if (dlist_mtl->mtl_item->id != 0) {
+                continue;
+            }
+            mtl = ds->mtls[sp->mtl_first + j];
+            if (ds->local_state != NULL && ds->scene_used_this_frame) {
+                if (dlist_mtl->mtl_last != dlist_mtl->first) {
+                    DisplayListUpdateRenderState(dlist_mtl, ds->local_state);
+                    rolling_state = ds->local_state;
+                } else if (rolling_state != ds->local_state) {
+                    DisplayListUpdateRenderState(dlist_mtl, ds->local_state);
+                    rolling_state = ds->local_state;
+                }
+            } else {
+                rolling_state = NULL;
+            }
+            if (dlist_mtl->mtl_last != dlist_mtl->first) {
+                *dlist_mtl->dyn_geom = *dlist_mtl->first;
+                if (!ds->scene_used_this_frame) {
+                    dlist_mtl->mtl_last->next = dlist_mtl->mtl_item->next;
+                    dlist_mtl->mtl_last = dlist_mtl->first;
+                } else {
+                    if (dlist_mtl->scene_first[dlist_mtl->scene_buffer] != dlist_mtl->scene_next) {
+                        dlist_mtl->mtl_last->next = dlist_mtl->scene_first[dlist_mtl->scene_buffer];
+                        dlist_mtl->scene_next->type = 0x8d;
+                        dlist_mtl->scene_next->id = 1;
+                        dlist_mtl->scene_next->next = dlist_mtl->dyn_geom + 1;
+                    }
+                    dlist_mtl->mtl_last = dlist_mtl->first;
+                }
+            } else if (dlist_mtl->scene_first[dlist_mtl->scene_buffer] != dlist_mtl->scene_next) {
+                dlist_mtl->dyn_geom->next = dlist_mtl->scene_first[dlist_mtl->scene_buffer];
+                dlist_mtl->scene_next->type = 0x8d;
+                dlist_mtl->scene_next->id = 1;
+                dlist_mtl->scene_next->next = dlist_mtl->dyn_geom + 1;
+            } else {
+                dlist_mtl->dyn_geom->next = dlist_mtl->dyn_geom + 1;
+            }
+            RndrStateUpdate(&state, mtl, dlist_mtl->mtl_item);
+            if (ds->mtl_layer_mask && (ds->mtl_layer_mask & mtl->attrib.mtl_layers)) {
+                dlist_mtl->mtl_item->id = 1;
+                ds->mtl_used[ds->buffer][dlist_mtl->mtl_id / 8] &= ~(1 << (dlist_mtl->mtl_id % 8));
+            }
+        }
+    }
+    for (j = 0; j < dlm->ndisplay_lists; j++) {
+        if (dlm->dlists[j]->local_state != NULL) {
+            RndrStateResetGlobalState(dlm->dlists[j]->local_state);
+        }
+    }
+}
+
 /* Runs a display list: id 0 steps to the next item, 1 jumps, 3 calls the handler for
  * the item's type with its data, 4 ends. */
 // FUNCTION: BIONICLE 0x555820
@@ -489,6 +568,102 @@ void NuDisplayListExecute(NUDISPLAYLISTITEM *item, NUDISPLAYLISTITEMFN *fntable)
         }
     }
 }
+
+/* Collects this frame's sort priorities into a new render scene with the 2D list, and
+ * returns its index (-1 if there is nothing to draw). Scenes that support instancing get
+ * copies of their dynamic sort priorities, so the lists can be reused. */
+// FUNCTION: BIONICLE 0x555bc0
+int NuDisplayListAddRenderScene(void) {
+    NUDISPLAYLISTMANAGER *dlm;
+    NUSORTPRI *sp;
+    int nsort_pris;
+    int i;
+    int j;
+    NUDISPLAYLIST *rs2d;
+    NUSORTPRI *sp2;
+    NUDISPLAYLIST *dlist_mtl;
+    NUDISPLAYLISTITEM *item;
+    VARIPTR *buff;
+    NUSORTPRI **sort_pris;
+    NUDISPLAYSCENE *ds;
+
+    dlm = &global_dlist_manager;
+    rs2d = &dlm->dlist_2d;
+    display_list_buffer->intaddr = (display_list_buffer->intaddr + 15) & ~15;
+    buff = display_list_buffer;
+    sort_pris = (NUSORTPRI **)buff->voidptr;
+    buff->voidptr = &sort_pris[dlm->nsort_pris + 1];
+    nsort_pris = 0;
+    for (sp = dlm->sort_list; sp != NULL; sp = sp->sys_next) {
+        ds = sp->display_scene;
+        if (ds != NULL && ds->scene_supports_instancing) {
+            if (!ds->dynamic_used_this_frame) {
+                continue;
+            }
+            sp2 = (NUSORTPRI *)((buff->intaddr + 3) & ~3);
+            buff->intaddr = ((buff->intaddr + 3) & ~3) + sizeof(NUSORTPRI);
+            sp2->sort_pri = sp->sort_pri;
+            sp2->items = buff->item;
+            sp2->display_scene = sp->display_scene;
+            sp2->nmtls = sp->nmtls;
+            sp2->mtl_first = sp->mtl_first;
+            j = 0;
+            for (i = 0; i < sp->nmtls; i++) {
+                dlist_mtl = sp->display_scene->dlist_mtls[sp->mtl_first + i];
+                if (dlist_mtl->mtl_last == dlist_mtl->first) {
+                    continue;
+                }
+                item = dlist_mtl->mtl_item + 1;
+                if (item->type == 0x80) {
+                    sp2->items[j] = *item;
+                } else {
+                    sp2->items[j] = dlist_mtl->mtl_item[3];
+                }
+                j++;
+                sp2->items[j] = *dlist_mtl->first;
+                j++;
+                dlist_mtl->mtl_last->next = &sp2->items[j];
+                dlist_mtl->mtl_last = dlist_mtl->first;
+                RndrStateClear(dlist_mtl->state);
+            }
+            sp2->items[j].id = 4;
+            sp2->items[j].next = NULL;
+            sp2->items[j].type = 0x84;
+            buff->intaddr += (j + 1) * sizeof(NUDISPLAYLISTITEM);
+            sort_pris[nsort_pris++] = sp2;
+            sp2->rendered_this_frame = 1;
+        } else if (!sp->rendered_this_frame &&
+                   (ds == NULL || ds->dynamic_used_this_frame || ds->scene_used_this_frame)) {
+            sort_pris[nsort_pris++] = sp;
+            sp->rendered_this_frame = 1;
+        }
+    }
+    if (nsort_pris == 0 && rs2d->mtl_last == rs2d->first) {
+        return -1;
+    }
+    dlm->render_scenes[dlm->nrender_scenes] = (NUDISPLAYLISTRENDERSCENE *)((buff->intaddr + 3) & ~3);
+    buff->intaddr = ((buff->intaddr + 3) & ~3) + sizeof(NUDISPLAYLISTRENDERSCENE);
+    dlm->render_scenes[dlm->nrender_scenes]->nsort_pris = nsort_pris;
+    dlm->render_scenes[dlm->nrender_scenes]->sort_pris = sort_pris;
+    item = rs2d->mtl_last;
+    if (item != rs2d->first) {
+        item->type = 0x84;
+        item->next = NULL;
+        item->id = 4;
+        dlm->render_scenes[dlm->nrender_scenes]->render_2d_first = *rs2d->first;
+        RndrStateClear(rs2d->state);
+        rs2d->mtl_last = rs2d->first;
+        dlm->nrender_scenes++;
+        return dlm->nrender_scenes - 1;
+    }
+    item = &dlm->render_scenes[dlm->nrender_scenes]->render_2d_first;
+    item->type = 0x84;
+    item->next = NULL;
+    item->id = 4;
+    dlm->nrender_scenes++;
+    return dlm->nrender_scenes - 1;
+}
+
 
 // FUNCTION: BIONICLE 0x555eb0
 void NuDisplayListDrawRenderScene(int scene_id) {

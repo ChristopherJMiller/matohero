@@ -47,6 +47,7 @@ extern NUDISPLAYLISTMANAGER global_dlist_manager;
 extern int nudlist_debug_level;
 extern int do_capture;
 extern NUFILE capture_fh;
+extern VARIPTR *display_list_buffer;
 
 void NuDisplaySceneAdd(NUDISPLAYSCENE *ds);
 void NuDisplayListSwapBuffersBeginFrame(void);
@@ -57,11 +58,11 @@ void NuDisplayListDrawAll(void);
 NUDISPLAYLISTITEM *NuDisplayListCreateMtlDlist(NUDISPLAYLISTITEM *item, NUMTL *mtl, VARIPTR *buff, VARIPTR buffend);
 void NuDisplayListSwapBuffersEndFrame(void);
 
-/* Not decompiled yet (nu3d_stubs.c). */
 int NuDisplayListAddRenderScene(void);
+
+/* Not decompiled yet (nu3d_stubs.c). */
 void DisplayListLinkDynamicMtls(void);
 void DisplayListCreateDynMtlList(VARIPTR *buff, VARIPTR buffend);
-void DisplayListFixMaterials(void);
 
 /* nutimebar.c, not decompiled yet. */
 void _NuTimeBarSlotBegin(int tbh, int slotix, char *txt);
@@ -86,5 +87,7 @@ void *DisplayListCreateRigidSkinTransformPS(VARIPTR *buff, NUMTX *mtx);
 /* PS2: nu3d/ps2/nurndrstat.c, not decompiled yet. */
 void RndrStateClear(NURNDRSTATE *state);
 void RndrStateResetSharedGlobalState(void);
+void RndrStateResetGlobalState(NUGLOBALRNDRSTATE *state);
+void DisplayListUpdateRenderState(NUDISPLAYLIST *dlist, NUGLOBALRNDRSTATE *local_state);
 
 #endif
