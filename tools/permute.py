@@ -5,22 +5,23 @@
   tools/permute.py NuVecRotateX --apply    also write it into the source file
 
 The function is found by name next to its `// FUNCTION: BIONICLE 0x...` marker. Variants are
-written next to the source (permvar_N.c, removed afterwards) and compiled in batches by
+written to a scratch directory under build/ (so neither the build nor reccmp sees them) and compiled in batches by
 one cl run each, since Wine startup dominates a compile. The function is compared
 in-process: both versions are disassembled and operands that
 the linker would fill in (relocations in our object, absolute addresses in the original)
 are masked before a sequence match. The best candidate is then confirmed with reccmp.
 
-Variant dimensions, from what mattered on earlier files:
-  * operand order of each product `a * b` (MSVC canonicalizes sums, not products);
-  * operand order of comparisons: `a < b` <-> `b > a`, `a == b` <-> `b == a` (the
-    load order of x87 compares follows it);
-  * order of the local variable declarations (affects register allocation).
-Small spaces are searched exhaustively, larger ones by hill climbing.
+Moves, from what mattered on earlier files (docs/matching.md):
+  * flip the operands of one product `a * b`;
+  * flip a comparison: `a < b` <-> `b > a`, `a == b` <-> `b == a`;
+  * swap two adjacent simple statements in one block that don't touch each other's
+    targets, or two adjacent leading declarations (register allocation and x87 stack
+    order follow source order).
+Search: batches of random one- or two-move neighbours; the best is taken even on a tie,
+to cross plateaus; after a few rounds without a new best it restarts near the best.
 """
 import argparse
 import difflib
-import itertools
 import random
 import re
 import shutil
@@ -28,6 +29,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import capstone
@@ -127,21 +129,12 @@ def relative_jumps(lines):
 
 
 def score(ours, orig):
-    return difflib.SequenceMatcher(None, relative_jumps(ours), relative_jumps(orig), autojunk=False).ratio()
-
-
-def products(body):
-    return [m for m in PRODUCT.finditer(body)]
-
-
-def apply_flips(body, matches, flips, swap):
-    out, last = [], 0
-    for m, f in zip(matches, flips):
-        out.append(body[last:m.start()])
-        out.append(swap(m) if f else m.group(0))
-        last = m.end()
-    out.append(body[last:])
-    return "".join(out)
+    """Sequence similarity, plus a small bonus for instructions already in the same
+    position (separates variants the ratio alone rates equal). 1.0 means identical."""
+    a, b = relative_jumps(ours), relative_jumps(orig)
+    ratio = difflib.SequenceMatcher(None, a, b, autojunk=False).ratio()
+    same = sum(1 for x, y in zip(a, b) if x == y) / max(len(a), len(b), 1)
+    return 0.98 * ratio + 0.02 * same
 
 
 def swap_product(m):
@@ -175,12 +168,89 @@ def declarations(body):
     return lines, idx
 
 
+STMT = re.compile(r"^(\s+)([^;{}()=!<>]*?[\w\]])\s*(=|\+=|-=|\*=|/=)\s*([^;]+);$")
+
+
+class Model:
+    """A function body as lines, with the moves the search can make: flip one product or
+    comparison (tracked per original line), or swap two adjacent statements or leading
+    declarations that don't touch each other's targets."""
+
+    def __init__(self, body):
+        self.lines = body.split("\n")
+        self.prods = [list(PRODUCT.finditer(l)) for l in self.lines]
+        self.comps = [list(COMPARE.finditer(l)) for l in self.lines]
+        _, decl = declarations(body)
+        self.decl = set(decl)
+        self.stmt = {}
+        for i, line in enumerate(self.lines):
+            m = STMT.match(line)
+            if m and i not in self.decl and not line.strip().startswith(("return", "if", "for", "while")):
+                self.stmt[i] = (m.group(1), m.group(2).strip())
+        self.flippable = [(i, "p", k) for i, ms in enumerate(self.prods) for k in range(len(ms))]
+        self.flippable += [(i, "c", k) for i, ms in enumerate(self.comps) for k in range(len(ms))]
+
+    def initial(self):
+        return (frozenset(), tuple(range(len(self.lines))))
+
+    def render(self, state):
+        flips, order = state
+        out = []
+        for i in order:
+            line = self.lines[i]
+            for kind, matches, swap in (("p", self.prods[i], swap_product), ("c", self.comps[i], swap_compare)):
+                for k in sorted((k for (j, t, k) in flips if j == i and t == kind), reverse=True):
+                    m = matches[k]
+                    line = line[:m.start()] + swap(m) + line[m.end():]
+            out.append(line)
+        return "\n".join(out)
+
+    def swappable(self, a, b):
+        """Adjacent lines a, b (original indices) may trade places."""
+        if a in self.decl and b in self.decl:
+            return True
+        if a in self.stmt and b in self.stmt and self.stmt[a][0] == self.stmt[b][0]:
+            la, lb = self.stmt[a][1], self.stmt[b][1]
+
+            def uses(target, line):
+                return re.search(rf"(?<![\w>.]){re.escape(target)}(?![\w])", line)
+
+            return la != lb and not uses(la, self.lines[b]) and not uses(lb, self.lines[a])
+        return False
+
+    def moves(self, state):
+        flips, order = state
+        out = [("flip", f) for f in self.flippable]
+        out += [("swap", j) for j in range(len(order) - 1) if self.swappable(order[j], order[j + 1])]
+        return out
+
+    def apply(self, state, move):
+        flips, order = state
+        if move[0] == "flip":
+            return (flips ^ {move[1]}, order)
+        j = move[1]
+        o = list(order)
+        o[j], o[j + 1] = o[j + 1], o[j]
+        return (flips, tuple(o))
+
+    def random_step(self, state, rng, n=1):
+        for _ in range(n):
+            ms = self.moves(state)
+            if not ms:
+                break
+            state = self.apply(state, rng.choice(ms))
+        return state
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("function")
     ap.add_argument("--apply", action="store_true", help="write the best variant into the source")
-    ap.add_argument("--budget", type=int, default=200, help="max variants to compile")
+    ap.add_argument("--budget", type=int, default=300, help="max variants to compile")
+    ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--time", type=int, default=900, help="wall-clock limit in seconds")
     args = ap.parse_args()
+    rng = random.Random(args.seed)
 
     src, addr, text, b0, b1 = find_function(args.function)
     body = text[b0:b1]
@@ -199,12 +269,13 @@ def main():
             chunk = new[i:i + 40]
             paths = []
             for j, cand in enumerate(chunk):
-                path = src.parent / f"permvar_{j}{src.suffix}"
+                path = tmp / "src" / f"permvar_{j}{src.suffix}"
+                path.parent.mkdir(exist_ok=True)
                 path.write_text(text[:b0] + cand + text[b1:])
                 paths.append(path)
                 if path not in written:
                     written.append(path)
-            build.compile_many(paths, tmp)
+            build.compile_many(paths, tmp, extra_includes=[src.parent], project=build.project_of(src))
             for path, cand in zip(paths, chunk):
                 obj = tmp / (path.stem + ".obj")
                 code, relocs = obj_function(obj, args.function) if obj.exists() else (None, None)
@@ -221,67 +292,56 @@ def main():
     def evaluate(candidate):
         return evaluate_many([candidate])[0]
 
+    model = Model(body)
     try:
-        best_body, best = body, evaluate(body)
-        print(f"{args.function} @ {addr:#x}: baseline {best:.4f}")
-        prods = products(body)
-        comps = [m for m in COMPARE.finditer(body)]
-        dims = len(prods) + len(comps)
-
-        def variant(pflips, cflips, order):
-            b = apply_flips(body, prods, pflips, swap_product)
-            # Comparisons are matched on the product-flipped text.
-            cm = [m for m in COMPARE.finditer(b)]
-            if len(cm) == len(cflips):
-                b = apply_flips(b, cm, cflips, swap_compare)
-            lines, idx = declarations(b)
-            if order and idx:
-                decl = [lines[i] for i in idx]
-                for i, j in zip(idx, order):
-                    lines[i] = decl[j]
-            return "\n".join(lines)
-
-        _, decl_idx = declarations(body)
-        orders = list(itertools.permutations(range(len(decl_idx)))) if len(decl_idx) <= 4 else [tuple(range(len(decl_idx)))]
-        space = (2 ** dims) * len(orders)
-        print(f"  {len(prods)} products, {len(comps)} comparisons, {len(decl_idx)} declarations: {space} variants")
-        if space <= args.budget:
-            cands = [variant(f[:len(prods)], f[len(prods):], o)
-                     for f in itertools.product([0, 1], repeat=dims) for o in orders]
-            for cand, sc in zip(cands, evaluate_many(cands)):
-                if sc > best:
-                    best, best_body = sc, cand
-            print(f"  exhaustive: best {best:.4f}")
-        else:
-            state = [0] * dims
-            order = tuple(range(len(decl_idx)))
-            improved = True
-            while improved and len(seen) < args.budget and best < 1.0:
-                improved = False
-                neighbours = []
-                for mv in list(range(dims)) + [("swap", i) for i in range(len(decl_idx) - 1)]:
-                    if isinstance(mv, int):
-                        st, o = state[:], order
-                        st[mv] ^= 1
-                    else:
-                        st, o = state, list(order)
-                        o[mv[1]], o[mv[1] + 1] = o[mv[1] + 1], o[mv[1]]
-                        o = tuple(o)
-                    neighbours.append((st, o, variant(st[:len(prods)], st[len(prods):], o)))
-                scores = evaluate_many([n[2] for n in neighbours])
-                top = max(range(len(neighbours)), key=lambda k: scores[k])
-                if scores[top] > best:
-                    best = scores[top]
-                    state, order, best_body = neighbours[top]
-                    improved = True
-                    print(f"  {best:.4f} after {len(seen)} variants")
-        print(f"best {best:.4f} after {len(seen)} variants")
+        cur = model.initial()
+        cur_score = evaluate(model.render(cur))
+        best, best_score = cur, cur_score
+        nmoves = len(model.moves(cur))
+        print(f"{args.function} @ {addr:#x}: baseline {best_score:.4f}; "
+              f"{len(model.flippable)} flippable, {nmoves} moves from the start")
+        stale = 0
+        empty = 0
+        deadline = time.time() + args.time
+        while len(seen) < args.budget and best_score < 1.0 and nmoves and time.time() < deadline:
+            # A batch of random neighbours (one or two moves each), compiled together.
+            batch = []
+            for _ in range(24):
+                st = model.random_step(cur, rng, 1 if rng.random() < 0.7 else 2)
+                if model.render(st) not in seen:
+                    batch.append(st)
+            if not batch:
+                # Everything near here was tried; after enough misses the space is exhausted.
+                empty += 1
+                if empty >= 20:
+                    print("  search space exhausted")
+                    break
+                cur = model.random_step(best, rng, 3)
+                continue
+            empty = 0
+            scores = evaluate_many([model.render(st) for st in batch])
+            k = max(range(len(batch)), key=lambda i: scores[i])
+            if scores[k] > best_score:
+                best, best_score = batch[k], scores[k]
+                stale = 0
+                print(f"  {best_score:.4f} after {len(seen)} variants")
+            else:
+                stale += 1
+            if scores[k] >= cur_score:
+                cur, cur_score = batch[k], scores[k]  # ties accepted: crosses plateaus
+            if stale >= 4:
+                cur = model.random_step(best, rng, 3)  # restart near the best with a kick
+                cur_score = evaluate(model.render(cur))
+                stale = 0
+        best_body = model.render(best)
+        print(f"best {best_score:.4f} after {len(seen)} variants")
         if best_body != body:
-            diff = difflib.unified_diff(body.splitlines(), best_body.splitlines(), lineterm="", n=1)
+            diff = difflib.unified_diff(body.splitlines(), best_body.splitlines(), lineterm="", n=0)
             print("\n".join(list(diff)[2:]))
     finally:
         for path in written:
             path.unlink(missing_ok=True)
+
         shutil.rmtree(tmp, ignore_errors=True)
 
     if args.apply and best_body != body:

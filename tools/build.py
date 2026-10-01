@@ -65,6 +65,9 @@ def project_of(src):
 
 def sources():
     for src in sorted(SRC.rglob("*")):
+        # Hidden directories hold scratch files (tools/permute.py variants).
+        if any(part.startswith(".") for part in src.relative_to(SRC).parts):
+            continue
         if src.suffix.lower() in (".c", ".cpp"):
             proj = project_of(src)
             yield proj, PROJECTS[proj], src
@@ -92,16 +95,19 @@ def compile_source(src, obj):
     return res.returncode == 0, out
 
 
-def compile_many(srcs, outdir):
+def compile_many(srcs, outdir, extra_includes=(), project=None):
     """Compile several sources of one project in a single cl run (Wine startup dominates
     a compile, so batching matters). Objects land in outdir as <stem>.obj. Returns the
     compiler output."""
-    lib = project_of(srcs[0])
+    lib = project or project_of(srcs[0])
     cfg = PROJECTS[lib]
     outdir.mkdir(parents=True, exist_ok=True)
     flags = COMMON_FLAGS + cfg["flags"] + (CXX_FLAGS if srcs[0].suffix.lower() == ".cpp" else [])
-    rels = [".\\" + str(s.relative_to(SRC / lib)).replace("/", "\\") for s in srcs]
-    includes = [f"/I{winpath(SRC / p)}" for p in [lib] + [p for p in PROJECTS if p != lib] if (SRC / p).exists()]
+    # Sources outside the project (scratch variants) compile by absolute path.
+    rels = [".\\" + str(s.relative_to(SRC / lib)).replace("/", "\\") if s.is_relative_to(SRC / lib)
+            else winpath(s) for s in srcs]
+    includes = [f"/I{winpath(d)}" for d in extra_includes]
+    includes += [f"/I{winpath(SRC / p)}" for p in [lib] + [p for p in PROJECTS if p != lib] if (SRC / p).exists()]
     cmd = [str(MSVC), "cl", *flags, *includes, f"/Fo{winpath(outdir)}\\", *rels]
     return subprocess.run(cmd, cwd=SRC / lib, capture_output=True, text=True).stdout
 
