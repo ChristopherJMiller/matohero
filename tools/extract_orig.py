@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Populate orig/ from a user-supplied copy of BIONICLE Heroes (PC).
+"""Populate orig/ from a user-supplied copy of BIONICLE Heroes.
 
 Accepts any of:
-  * the retail disc as a .zip containing a MODE1/2352 .bin/.cue
+  * the retail PC disc as a .zip containing a MODE1/2352 .bin/.cue
   * a raw .bin (MODE1/2352) or a plain 2048-byte-sector .iso
-  * the "No DRM" .iso (or the .zip around it)
+  * the "No DRM" PC .iso (or the .zip around it)
+  * the Sep 28 2006 PS2 prototype (.rar or .iso), for its symbols and linker map
 
 Produces (all gitignored):
   orig/retail/       untouched SecuROM-wrapped exes + installer (when a retail disc is given)
   orig/game/         installed game tree (data, movies, DLLs) from the MSI/Main.cab
   orig/Bionicle.exe  the reference binary we decompile against (decrypted, see docs/binary-notes.md)
+  orig/ps2proto/     prototype ELF with symbols/.mdebug, its linker map, and SLES/SYSTEM.CNF
 
-Requires the dev shell (7z, msiextract).
+Requires the dev shell (7z, msiextract, unar).
 """
 import argparse
 import hashlib
@@ -31,6 +33,14 @@ KNOWN = {
     "193b43651052dd68a6e08d204baadd3de16c68fa": "bionicle_win2k.exe (decrypted)",
     "87c49d3e41903158bf58793a649febaac6d1f3e1": "bionicle.exe (retail, SecuROM)",
     "2128663ee5a121bd39343485da16824d390ec9dd": "bionicle_win2k.exe (retail, SecuROM)",
+}
+
+# Sep 28 2006 PS2 prototype (SLES_541.50 build): the debug ELF and its linker map.
+PS2_FILES = {
+    "BION~213.ELF": "dadcfab9fa07b169147179efdcdc753def0b7752",
+    "BION~213.MAP": "5bad4b24929ab31d27ef59b01bf761702995296d",
+    "SLES_541.50": "7c141981d88271804089d885efa6004ecc718e08",
+    "SYSTEM.CNF": "f98ac0796a7ef1c0da0a456fb47dd5c7fb3a4a8f",
 }
 
 GAME_DIR_IN_ISO = "program files/Eidos/BIONICLE Heroes"
@@ -59,6 +69,12 @@ def bin_to_iso(src, dst):
 
 def to_iso(src, tmp):
     """Return a path to a 2048-byte-sector ISO for whatever we were given."""
+    if src.suffix.lower() == ".rar":
+        run("unar", "-q", "-f", "-o", str(tmp), str(src))
+        candidates = sorted(tmp.rglob("*.iso"))
+        if not candidates:
+            sys.exit(f"{src}: no .iso inside")
+        return candidates[0]
     if src.suffix.lower() == ".zip":
         run("7z", "e", "-y", f"-o{tmp}", str(src))
         candidates = sorted(tmp.glob("*.bin")) + sorted(tmp.glob("*.iso"))
@@ -96,6 +112,15 @@ def main():
             iso = to_iso(image.resolve(), work)
             members = list_iso(iso)
             lower = {m.lower(): m for m in members}
+
+            if "bion~213.elf" in lower:
+                dest = ORIG / "ps2proto"
+                for name, digest in PS2_FILES.items():
+                    extract(iso, lower[name.lower()], dest)
+                    got = sha1(dest / name)
+                    note = "ok" if got == digest else f"UNEXPECTED sha1 {got}"
+                    print(f"ps2 prototype {name}: {note}")
+                continue
 
             # Decrypted exes: ViTALiTY/ on the retail rip, or in place on the No-DRM image.
             for name in ("Bionicle.exe", "bionicle_win2k.exe"):

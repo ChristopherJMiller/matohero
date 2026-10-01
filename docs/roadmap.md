@@ -36,9 +36,9 @@ portable platform layer for Linux.
 
 ### M1: Groundwork
 
-- [ ] **PS2 prototype ingestion.** Extend `tools/extract_orig.py` to pull
-      `BION~213.ELF`/`.MAP` from the Sep 28 2006 prototype `.rar`. Parse the `.MAP` into
-      an object → functions table (`h:\Bionicle\Ps2\Source\…`), the original source tree.
+- [x] **PS2 prototype ingestion.** `tools/extract_orig.py` pulls the ELF/MAP from the
+      prototype `.rar`; `tools/ps2map.py` writes `orig/ps2proto/symbols.csv` (11,851
+      functions in 560 objects, with C++ signatures). See `docs/ps2-prototype.md`.
 - [ ] **PS2 types.** Package a `.mdebug` (ECOFF/MIPS debug) dumper (e.g. chaoticgd/ccc
       `stdump`) in the flake; dump structs/enums/prototypes for reference into a
       gitignored dir.
