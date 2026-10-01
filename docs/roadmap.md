@@ -189,8 +189,13 @@ headless boot to title) → commit.
       exact. `0x565bf0` is the engine's byte-wise memmove, stubbed as `NuMemMove`
       (`numem.c`, our name). Hook test: 266 functions, paks loaded through our code
       (`NuFilePakGetItem` 448 calls), input works.
-- [ ] `NuFrameBegin` (`0x56c6a0`) / `NuFrameEnd` (`0x56c6c0`, need nu3d/PC callees
-      stubbed).
+- [x] `NuFrameBegin` (`0x56c6a0`) / `NuFrameEnd` (`0x56c6c0`): both exact on the first
+      build. PC's `NuFrameEnd` also pauses sound and sleeps while the window is inactive,
+      pumping messages, and checks for a lost D3D device. New stubs: nu3d callees in
+      `nu3d/nu3d_stubs.c` (PS2 names), the PC layer in `pc/pcapi_stubs.c` (names ours:
+      `PCFrameLock`/`Unlock`, `PCSoundPause`/`Resume`, `PCProcessMessages`,
+      `PCCheckDevice`, `pc_app_active`). Hook test: 268 functions, the frame loop runs
+      through our code (3.5k frames to the save prompt).
 - [x] `nucore/nufpar.c` (saga): all 24 PC functions exact (BH has one command stack,
       saga two). Stubs for the nufile callees, `NuFileExists` (`pc/nufile_pc.c`) and the
       expression evaluators `NuRDPI`/`NuRDPF`. Hook test: 183 functions, title reached,
