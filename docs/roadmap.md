@@ -102,7 +102,11 @@ headless boot to title) → commit.
       comparison direction, independent declaration order; batches of 40 variants per
       `cl` run (~1 s/variant). Recovers the known InvMtxRotate fix. Future dimensions:
       safe statement reordering, temporaries, if/else vs ?:.
-- [ ] `numath/nutrig.c` (saga), ~`0x570c10–0x571220`, ~10
+- [x] `numath/nutrig.c` part 1 (saga): 11 functions, 10 exact (`NuTrigInit` identical but
+      ~92% from a reccmp limitation, see `docs/matching.md`); `NuPowFast` 93% (`pop ecx`).
+- [ ] `numath/nutrig.c` part 2: `NuPow` (32-entry result cache, inline `exp(log)`),
+      `NuLog10` and `NuExp10` (lazily built tables via `NuMemAlloc`, lines 868/928),
+      currently stubs in `nutrig_stubs.c`.
 - [ ] `numath/numtx.c` (saga), ~`0x56e250–0x56fc50`, ~30
 - [ ] `numath/nuquat.c` (saga), ~`0x56fd60–0x570060`, ~4
 - [ ] `numath/nufloat.c`, `numath/nuplane.c` (saga), small
