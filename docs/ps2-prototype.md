@@ -60,7 +60,7 @@ file-name hint). After each round, a cluster filter bans any pair sitting betwee
 functions of another object, and propagation reruns. Per-file static helpers that recur
 under one name on PS2 (`NuError`, `NuDebugMsg`) are never propagated.
 
-Current coverage: 1,859 of 5,469 PC functions (34%). Treat anything but `strings` as a
+Current coverage: 1,877 of 5,469 PC functions (34%). Treat anything but `strings` as a
 strong hint until reccmp confirms a match. The `--check` flag compares against
 annotated `src/` (currently 5/5 correct where paired).
 

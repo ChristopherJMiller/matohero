@@ -59,8 +59,15 @@ public class ApplyPs2Names extends GhidraScript {
 						currentProgram, SourceType.IMPORTED);
 					name = name.substring(sep + 2);
 				}
-				fn.setParentNamespace(ns);
-				fn.setName(name, SourceType.IMPORTED);
+				try {
+					fn.setParentNamespace(ns);
+					fn.setName(name, SourceType.IMPORTED);
+				}
+				catch (Exception e) {
+					println("skipped " + f.get(0) + " " + f.get(2) + ": " + e.getMessage());
+					skipped++;
+					continue;
+				}
 				String sig = signature.isEmpty() ? f.get(2) : signature;
 				fn.setComment(null);
 				currentProgram.getListing().setComment(fn.getEntryPoint(), CodeUnit.PLATE_COMMENT,

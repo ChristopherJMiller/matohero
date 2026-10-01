@@ -70,16 +70,26 @@ def parse_map():
 
 
 def bare_name(sig):
-    """'charbaseAddAnimFlag(char *)' -> 'charbaseAddAnimFlag'; plain names pass through."""
-    depth = 0
+    """'charbaseAddAnimFlag(char *)' -> 'charbaseAddAnimFlag'. Template instantiations
+    carry their return type ('GUIMaker * CreateObject<GUIMaker>(void)'); drop it."""
+    depth, name = 0, sig
     for i, ch in enumerate(sig):
         if ch == "<":
             depth += 1
         elif ch == ">":
             depth -= 1
         elif ch == "(" and depth == 0 and i > 0:
-            return sig[:i]
-    return sig
+            name = sig[:i]
+            break
+    depth, cut = 0, 0
+    for i, ch in enumerate(name):
+        if ch == "<":
+            depth += 1
+        elif ch == ">":
+            depth -= 1
+        elif ch == " " and depth == 0:
+            cut = i + 1
+    return name[cut:].lstrip("*&")
 
 
 def main():
