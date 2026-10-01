@@ -62,9 +62,22 @@ int NuRndrSwapScreenEx(int hRT, void (*fn)()) {
     return 0;
 }
 
-// STUB: BIONICLE 0x53cd80
-int NuRndrGScnObj(NUGOBJ *gobj, NUMTX *wm) {
+// STUB: BIONICLE 0x53b5a0
+int NuRndrGScnObjClipFlag(NUGOBJ *gobj, NUMTX *wm, int outcode) {
     return 0;
+}
+
+// STUB: BIONICLE 0x53cdc0
+int NuHGobjRndrMtxDwa(NUHGOBJ *hgobj, NUMTX *wm, int nlayers, short *layers, NUMTX *mtx_array, DEFORMERWEIGHTSARRAY **array_dwa, int forceshadow) {
+    return 0;
+}
+
+// STUB: BIONICLE 0x546150
+void NuHGobjEval(NUHGOBJ *hgobj, int njanims, NUJOINTANIM *janim, NUMTX *mtx_array) {
+}
+
+// STUB: BIONICLE 0x581440
+void d3dSetTransform(int state, NUMTX *m) {
 }
 
 // STUB: BIONICLE 0x554610
@@ -74,10 +87,6 @@ void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec) {
 // STUB: BIONICLE 0x554be0
 int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, void *blend_values) {
     return 0;
-}
-
-// STUB: BIONICLE 0x53d640
-void NuCameraSet(NUCAMERA *camera) {
 }
 
 // STUB: BIONICLE 0x581070

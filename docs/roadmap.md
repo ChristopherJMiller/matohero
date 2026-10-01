@@ -379,8 +379,17 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       starts like `D3DVIEWPORT9` (`NUPCVIEWPORT` here). `0x348f764`/`68` are
       `nurndr_pixel_width`/`height` (renamed from `PS2_REZ_W`/`H`). Hook test: 349
       functions, `NuVpUpdate` 23k calls, input works.
-- [ ] The PC `NuCameraSet` (`0x53d640`) and what sits around it (`0x53d6a0`, `0x53d6c0`):
-      probably pc/nurndr. `NuCameraSetProjectionMtx` at `0x53e350`.
+- [x] `nu3d/pc/nurndr.c` part 1 (`.\pc\nurndr.c`, `0x53aab0`–`0x53e3c8`, the PC renderer
+      front end; it calls Direct3D only through the PC layer's `d3d*` wrappers, so no SDK
+      is needed): `NuRndrShadowOnOff`, `NuRndrGScnObj` (on PC a clamp around
+      `NuRndrGScnObjClipFlag`), `NuHGobjRndr` (static `mtx_array[256]`) and the PC
+      `NuCameraSet`: 4/4 exact. Hook test: 353 functions, `NuRndrGScnObj` 922k calls,
+      input works.
+- [ ] `pc/nurndr.c` part 2: name the rest of the file against PS2 `ps2/nurndr.o`
+      (`NuRndrEndScene` `0x53d230` inlines `0x53aab0`, a buffer reset; `0x53ade0` is the
+      swap behind `NuRndrSwapScreenEx` `0x53ae40`; `0x53ae60`/`0x53ae80`/`0x53aeb0` set
+      render states `0x22`/`0x1c` (fog); `0x53d6a0` copies `vmtx` out; the big ones are
+      `NuRndrGScnObjClipFlag` `0x53b5a0` and `NuHGobjRndrMtxDwa` `0x53cdc0`).
 - [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
       `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
 

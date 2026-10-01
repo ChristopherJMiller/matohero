@@ -8,7 +8,24 @@ extern NUMTL *nurndr_forced_mtl;
 extern NUMTL **nurndr_forced_mtl_table;
 extern int nurndr_nforced_mtls;
 
+typedef struct nuhgobj_s NUHGOBJ;
+typedef struct nujointanim_s NUJOINTANIM;
+typedef struct deformerweightsarray_s DEFORMERWEIGHTSARRAY;
+
+/* pc/nurndr.c */
+extern int nurndr_shadowson;
+void NuRndrShadowOnOff(int flag);
 int NuRndrGScnObj(NUGOBJ *gobj, NUMTX *wm);
+int NuRndrGScnObjClipFlag(NUGOBJ *gobj, NUMTX *wm, int outcode);
+int NuHGobjRndr(NUHGOBJ *hgobj, NUMTX *wm, int nlayers, short *layers);
+int NuHGobjRndrMtxDwa(NUHGOBJ *hgobj, NUMTX *wm, int nlayers, short *layers, NUMTX *mtx_array,
+                      DEFORMERWEIGHTSARRAY **array_dwa, int forceshadow);
+
+/* NuHGobjEval.c, not decompiled yet. */
+void NuHGobjEval(NUHGOBJ *hgobj, int njanims, NUJOINTANIM *janim, NUMTX *mtx_array);
+
+/* The PC layer's Direct3D wrapper (named after its error-check string). */
+void d3dSetTransform(int state, NUMTX *m);
 
 /* Render target size in pixels (nurndr_gen.c). */
 extern int nurndr_pixel_width;
