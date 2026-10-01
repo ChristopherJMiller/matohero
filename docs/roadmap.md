@@ -80,10 +80,32 @@ M1 polish (after the hook DLL works):
       type archive (or apply it through a script) so decompiler output gets real struct
       members.
 
-### M2 onward
+### M2: Nu2 engine core
 
-Filled in as M1 lands: one queue entry per original object file, ordered by
-dependency (core first) and saga coverage.
+One entry per original object, PC address range from `orig/ps2proto/pc_objects.csv`.
+Order: self-contained math first, then core services. "saga" = opensagadev/saga has the
+file. Each object: decompile → match → hook-test (`tools/hook.py --trace --install`,
+headless boot to title) → commit.
+
+- [ ] **Hook objects that define globals.** `tools/hook.py` skips any object defining
+      an annotated `GLOBAL` (its copy would diverge from the exe's). Patch those
+      objects' COFF symbol tables in the hook build so the definitions become external
+      references bound to the original addresses (statics renamed per object). Needed
+      before almost any other object can be hook-tested; `nurand.obj` is the first case.
+- [x] `numath/nurand.c` (saga): 9/9 exact. Needed float constants in reccmp
+      (`tools/floatconsts.py`, since the exe has no relocations).
+- [ ] `numath/nuvec.c` (saga), PC ~`0x570240–0x570a30`, ~24 functions
+- [ ] `numath/nutrig.c` (saga), ~`0x570c10–0x571220`, ~10
+- [ ] `numath/numtx.c` (saga), ~`0x56e250–0x56fc50`, ~30
+- [ ] `numath/nuquat.c` (saga), ~`0x56fd60–0x570060`, ~4
+- [ ] `numath/nufloat.c`, `numath/nuplane.c` (saga), small
+- [ ] `nucore/nustring.c` (saga), ~`0x5687d0–0x569f60`, ~47
+- [ ] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga), small
+- [ ] `nucore/nufpar.c` (saga), ~21
+- [ ] `nucore/nufile.c` (saga), ~52
+- [ ] `nucore/numem.c` (`NuMemAllocFn` stub today) and `nucore/pc/nuthread.c`
+
+After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`.
 
 ## Needs from Chris
 

@@ -135,6 +135,8 @@ def main():
     if not exe.exists() or res.returncode not in (0, 1):
         sys.exit("link failed")
     print(f"built {exe.relative_to(ROOT)} from {len(objs)} objects ({unresolved} unresolved externals)")
+    # Float constants in the original, for reccmp (see tools/floatconsts.py).
+    subprocess.run([sys.executable, str(ROOT / "tools" / "floatconsts.py")], check=True)
 
 
 if __name__ == "__main__":
