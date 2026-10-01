@@ -2,7 +2,10 @@
 
 #include <string.h>
 
+#include "folded.h"
+#include "nufloat.h"
 #include "numem.h"
+#include "nurndr.h"
 #include "nutrig.h"
 #include "nuvec.h"
 #include "nuvec4.h"
@@ -58,11 +61,20 @@ NUMTX psmtx = NUMTX_IDENTITY;
 // GLOBAL: BIONICLE 0x616950
 NUMTX clip_planes = NUMTX_IDENTITY;
 
+// GLOBAL: BIONICLE 0x96ce10
+NUCAMFX camfx = NUCAMFX_NONE;
+
 // GLOBAL: BIONICLE 0x96ce18
 int prev_lock = 0;
 
 // GLOBAL: BIONICLE 0x616990
 float nucamera_farclip_hack = 0.1f;
+
+// GLOBAL: BIONICLE 0x96ce1c
+static int clip_scissor_to_viewport = 0;
+
+// GLOBAL: BIONICLE 0x96ce20
+static int current_clip_scissor_to_viewport = 0;
 
 // GLOBAL: BIONICLE 0x96ce24
 int num_cameras_allocated = 0;
@@ -70,11 +82,23 @@ int num_cameras_allocated = 0;
 // GLOBAL: BIONICLE 0x3607480
 NUCAMERA global_camera;
 
+// GLOBAL: BIONICLE 0x36073e0
+NUREFLECT global_reflect;
+
 // GLOBAL: BIONICLE 0x3607344
 float zx;
 
 // GLOBAL: BIONICLE 0x3607464
 float zy;
+
+// GLOBAL: BIONICLE 0x3607340
+float zxs;
+
+// GLOBAL: BIONICLE 0x3607348
+float zys;
+
+// GLOBAL: BIONICLE 0x96cc40
+NUCLIPPLANES ClipPlanes;
 
 // GLOBAL: BIONICLE 0x3607500
 NUCAMERA cam_copy;
@@ -176,6 +200,111 @@ void NuCameraSetScissorClipMtx(NUMTX *vcmtx, NUMTX *vmtx, NUCAMERA *cam, int fas
         cmtx._32 = -2.0f * nc * fc / (fc - nc);
     }
     NuMtxMulVU0(vcmtx, vmtx, &cmtx);
+}
+
+// FUNCTION: BIONICLE 0x538740
+void NuCameraBuildClipPlanes(void) {
+    float NearDist;
+    float NearDistSqr;
+    float HalfWidth;
+    float HalfHeight;
+    float LR_InvLen;
+    float TB_InvLen;
+    _VUMTX CamSpaceFrustrumPlanes;
+    _VUMTX CamSpaceScissorPlanes;
+    float fDot;
+
+    NearDist = global_camera.nearclip;
+    NearDistSqr = NearDist * NearDist;
+
+    HalfWidth = zx * NearDist;
+    HalfHeight = zy * NearDist;
+    LR_InvLen = 1.0f / NuFsqrt(HalfWidth * HalfWidth + NearDistSqr);
+    TB_InvLen = 1.0f / NuFsqrt(HalfHeight * HalfHeight + NearDistSqr);
+    NuMtxSetZero(&CamSpaceFrustrumPlanes.m);
+    CamSpaceFrustrumPlanes.m._00 = -(LR_InvLen * NearDist);
+    CamSpaceFrustrumPlanes.m._20 = LR_InvLen * HalfWidth;
+    CamSpaceFrustrumPlanes.m._01 = -CamSpaceFrustrumPlanes.m._00;
+    CamSpaceFrustrumPlanes.m._21 = CamSpaceFrustrumPlanes.m._20;
+    CamSpaceFrustrumPlanes.m._12 = -(TB_InvLen * NearDist);
+    CamSpaceFrustrumPlanes.m._22 = TB_InvLen * HalfHeight;
+    CamSpaceFrustrumPlanes.m._13 = -CamSpaceFrustrumPlanes.m._12;
+    CamSpaceFrustrumPlanes.m._23 = CamSpaceFrustrumPlanes.m._22;
+
+    HalfWidth = zxs * NearDist;
+    HalfHeight = zys * NearDist;
+    LR_InvLen = 1.0f / NuFsqrt(HalfWidth * HalfWidth + NearDistSqr);
+    TB_InvLen = 1.0f / NuFsqrt(HalfHeight * HalfHeight + NearDistSqr);
+    NuMtxSetZero(&CamSpaceScissorPlanes.m);
+    CamSpaceScissorPlanes.m._00 = -(LR_InvLen * NearDist);
+    CamSpaceScissorPlanes.m._20 = LR_InvLen * HalfWidth;
+    CamSpaceScissorPlanes.m._01 = -CamSpaceScissorPlanes.m._00;
+    CamSpaceScissorPlanes.m._21 = CamSpaceScissorPlanes.m._20;
+    CamSpaceScissorPlanes.m._12 = -(TB_InvLen * NearDist);
+    CamSpaceScissorPlanes.m._22 = TB_InvLen * HalfHeight;
+    CamSpaceScissorPlanes.m._13 = -CamSpaceScissorPlanes.m._12;
+    CamSpaceScissorPlanes.m._23 = CamSpaceScissorPlanes.m._22;
+
+    NuMtxMulH(&ClipPlanes.FrustrumPlanes.m, &vmtx, &CamSpaceFrustrumPlanes.m);
+    NuMtxMulH(&ClipPlanes.ScissorPlanes.m, &vmtx, &CamSpaceScissorPlanes.m);
+
+    fDot = global_camera.mtx._20 * global_camera.mtx._30 + global_camera.mtx._21 * global_camera.mtx._31 +
+           global_camera.mtx._22 * global_camera.mtx._32;
+    ClipPlanes.NearPlane.v4.x = global_camera.mtx._20;
+    ClipPlanes.NearPlane.v4.y = global_camera.mtx._21;
+    ClipPlanes.NearPlane.v4.z = global_camera.mtx._22;
+    ClipPlanes.NearPlane.v4.w = -fDot - global_camera.nearclip;
+
+    ClipPlanes.NearFarPlanes.m._00 = -global_camera.mtx._20;
+    ClipPlanes.NearFarPlanes.m._10 = -global_camera.mtx._21;
+    ClipPlanes.NearFarPlanes.m._20 = -global_camera.mtx._22;
+    ClipPlanes.NearFarPlanes.m._30 = fDot + global_camera.farclip;
+    ClipPlanes.NearFarPlanes.m._01 = ClipPlanes.NearPlane.v4.x;
+    ClipPlanes.NearFarPlanes.m._11 = ClipPlanes.NearPlane.v4.y;
+    ClipPlanes.NearFarPlanes.m._21 = ClipPlanes.NearPlane.v4.z;
+    ClipPlanes.NearFarPlanes.m._31 = ClipPlanes.NearPlane.v4.w;
+    ClipPlanes.NearFarPlanes.m._02 = NuFabs(ClipPlanes.NearFarPlanes.m._00);
+    ClipPlanes.NearFarPlanes.m._12 = NuFabs(ClipPlanes.NearFarPlanes.m._10);
+    ClipPlanes.NearFarPlanes.m._22 = NuFabs(ClipPlanes.NearFarPlanes.m._20);
+    ClipPlanes.NearFarPlanes.m._32 = NuFabs(ClipPlanes.NearFarPlanes.m._30);
+    ClipPlanes.NearFarPlanes.m._03 = NuFabs(ClipPlanes.NearFarPlanes.m._01);
+    ClipPlanes.NearFarPlanes.m._13 = NuFabs(ClipPlanes.NearFarPlanes.m._11);
+    ClipPlanes.NearFarPlanes.m._23 = NuFabs(ClipPlanes.NearFarPlanes.m._21);
+    ClipPlanes.NearFarPlanes.m._33 = NuFabs(ClipPlanes.NearFarPlanes.m._31);
+
+    ClipPlanes.AbsFrustrumPlanes.m._00 = NuFabs(ClipPlanes.FrustrumPlanes.m._00);
+    ClipPlanes.AbsFrustrumPlanes.m._01 = NuFabs(ClipPlanes.FrustrumPlanes.m._01);
+    ClipPlanes.AbsFrustrumPlanes.m._02 = NuFabs(ClipPlanes.FrustrumPlanes.m._02);
+    ClipPlanes.AbsFrustrumPlanes.m._03 = NuFabs(ClipPlanes.FrustrumPlanes.m._03);
+    ClipPlanes.AbsFrustrumPlanes.m._10 = NuFabs(ClipPlanes.FrustrumPlanes.m._10);
+    ClipPlanes.AbsFrustrumPlanes.m._11 = NuFabs(ClipPlanes.FrustrumPlanes.m._11);
+    ClipPlanes.AbsFrustrumPlanes.m._12 = NuFabs(ClipPlanes.FrustrumPlanes.m._12);
+    ClipPlanes.AbsFrustrumPlanes.m._13 = NuFabs(ClipPlanes.FrustrumPlanes.m._13);
+    ClipPlanes.AbsFrustrumPlanes.m._20 = NuFabs(ClipPlanes.FrustrumPlanes.m._20);
+    ClipPlanes.AbsFrustrumPlanes.m._21 = NuFabs(ClipPlanes.FrustrumPlanes.m._21);
+    ClipPlanes.AbsFrustrumPlanes.m._22 = NuFabs(ClipPlanes.FrustrumPlanes.m._22);
+    ClipPlanes.AbsFrustrumPlanes.m._23 = NuFabs(ClipPlanes.FrustrumPlanes.m._23);
+    ClipPlanes.AbsFrustrumPlanes.m._30 = 0.0f;
+    ClipPlanes.AbsFrustrumPlanes.m._31 = 0.0f;
+    ClipPlanes.AbsFrustrumPlanes.m._32 = 0.0f;
+    ClipPlanes.AbsFrustrumPlanes.m._33 = 0.0f;
+
+    ClipPlanes.AbsScissorPlanes.m._00 = NuFabs(ClipPlanes.ScissorPlanes.m._00);
+    ClipPlanes.AbsScissorPlanes.m._01 = NuFabs(ClipPlanes.ScissorPlanes.m._01);
+    ClipPlanes.AbsScissorPlanes.m._02 = NuFabs(ClipPlanes.ScissorPlanes.m._02);
+    ClipPlanes.AbsScissorPlanes.m._03 = NuFabs(ClipPlanes.ScissorPlanes.m._03);
+    ClipPlanes.AbsScissorPlanes.m._10 = NuFabs(ClipPlanes.ScissorPlanes.m._10);
+    ClipPlanes.AbsScissorPlanes.m._11 = NuFabs(ClipPlanes.ScissorPlanes.m._11);
+    ClipPlanes.AbsScissorPlanes.m._12 = NuFabs(ClipPlanes.ScissorPlanes.m._12);
+    ClipPlanes.AbsScissorPlanes.m._13 = NuFabs(ClipPlanes.ScissorPlanes.m._13);
+    ClipPlanes.AbsScissorPlanes.m._20 = NuFabs(ClipPlanes.ScissorPlanes.m._20);
+    ClipPlanes.AbsScissorPlanes.m._21 = NuFabs(ClipPlanes.ScissorPlanes.m._21);
+    ClipPlanes.AbsScissorPlanes.m._22 = NuFabs(ClipPlanes.ScissorPlanes.m._22);
+    ClipPlanes.AbsScissorPlanes.m._23 = NuFabs(ClipPlanes.ScissorPlanes.m._23);
+    ClipPlanes.AbsScissorPlanes.m._30 = 0.0f;
+    ClipPlanes.AbsScissorPlanes.m._31 = 0.0f;
+    ClipPlanes.AbsScissorPlanes.m._32 = 0.0f;
+    ClipPlanes.AbsScissorPlanes.m._33 = 0.0f;
 }
 
 // FUNCTION: BIONICLE 0x539690
@@ -299,4 +428,86 @@ void NuCameraRelock(void) {
     if (prev_lock == 1) {
         NuCameraSet(&locked_camera);
     }
+}
+
+// FUNCTION: BIONICLE 0x539c90
+void NuCameraSetEx(NUCAMERA *camera, int fast) {
+    NUMTX mci;
+    NUMTX mri;
+    NUMTX minv;
+    int ang;
+    float l;
+    float la;
+
+    global_camera = *camera;
+    FaceYDirStream(NuAtan2D(-global_camera.mtx._20, -global_camera.mtx._22));
+    if (!fast) {
+        NuVpUpdate();
+    }
+    if (camfx == NUCAMFX_NONE) {
+        NuMtxInvVU0(&vmtx, &global_camera.mtx);
+        NuMtxScaleVU0(&vmtx, &global_camera.scale);
+    } else {
+        NuMtxCopy(&minv, &numtx_identity);
+        minv._11 = -1.0f;
+        NuMtxInv(&mci, &global_camera.mtx);
+        NuMtxInv(&mri, &global_reflect.mtx);
+        vmtx = mri;
+        if (camfx == NUCAMFX_REFLECT) {
+            NuMtxMul(&vmtx, &vmtx, &minv);
+        }
+        NuMtxMul(&vmtx, &vmtx, &global_reflect.mtx);
+        NuMtxMul(&vmtx, &vmtx, &mci);
+    }
+    if (!fast) {
+        NuCameraSetProjectionMtx(&pmtx, global_camera.fov, global_camera.aspect, global_camera.nearclip,
+                                 global_camera.farclip);
+        pmtx._00 *= vport_hrdump_xscale;
+        pmtx._20 = vport_hrdump_xoffset;
+        pmtx._21 = vport_hrdump_yoffset;
+        pmtx._11 *= vport_hrdump_yscale;
+    }
+    NuCameraSetVPortClipMtx(&vpc_vport_mtx, &vmtx, &global_camera, fast);
+    if (clip_scissor_to_viewport != current_clip_scissor_to_viewport) {
+        fast = 0;
+        current_clip_scissor_to_viewport = clip_scissor_to_viewport;
+    }
+    if (clip_scissor_to_viewport) {
+        NuCameraSetVPortClipMtx(&vpc_sci_mtx, &vmtx, &global_camera, fast);
+    } else {
+        NuCameraSetScissorClipMtx(&vpc_sci_mtx, &vmtx, &global_camera, fast);
+    }
+    NuVpGetScalingMtx(&smtx);
+    NuMtxMulH(&vpmtx, &vmtx, &pmtx);
+    NuMtxMulH(&vpsmtx, &vpmtx, &smtx);
+    NuMtxMulH(&psmtx, &pmtx, &smtx);
+    if (!fast) {
+        NuCameraBuildClipPlanes();
+        ang = (int)((global_camera.fov * 0.5f) * 10430.378f);
+        zy = NU_SIN_LUT(ang) / NU_COS_LUT(ang);
+        zx = zy / global_camera.aspect;
+        clip_planes._12 = NU_COS_LUT(ang);
+        clip_planes._22 = NU_SIN_LUT(ang);
+        clip_planes._02 = 0.0f;
+        clip_planes._32 = 0.0f;
+        clip_planes._03 = 0.0f;
+        clip_planes._23 = clip_planes._22;
+        clip_planes._33 = 0.0f;
+        clip_planes._13 = -clip_planes._12;
+        la = 1.0f / clip_planes._12 / camera->aspect * clip_planes._22;
+        l = 1.0f / NuFsqrt(la * la + 1.0f);
+        clip_planes._10 = 0.0f;
+        clip_planes._30 = 0.0f;
+        clip_planes._11 = 0.0f;
+        clip_planes._31 = 0.0f;
+        clip_planes._00 = -l;
+        clip_planes._20 = la * l;
+        clip_planes._01 = l;
+        clip_planes._21 = la * l;
+        zxs = PS2_SREZ_W * zx / PS2_REZ_W;
+        zys = PS2_SREZ_H * zy / PS2_REZ_H;
+    }
+    NuRndrSetViewMtx(&vpsmtx, &vpc_vport_mtx, &vpc_sci_mtx);
+    NuRndrSetSpecularLight(NULL, NULL);
+    NuRndrStateUpdateCameraState();
 }

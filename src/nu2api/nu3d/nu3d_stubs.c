@@ -1,5 +1,6 @@
 #include "nucamera.h"
 #include "nurndr.h"
+#include "nuvport.h"
 
 /* nu3d functions and globals the decompiled code uses, not decompiled yet. */
 
@@ -11,6 +12,18 @@ NUMTL **nurndr_forced_mtl_table;
 
 // GLOBAL: BIONICLE 0x348f75c
 int nurndr_nforced_mtls;
+
+// GLOBAL: BIONICLE 0x348f764
+int PS2_REZ_W;
+
+// GLOBAL: BIONICLE 0x348f768
+int PS2_REZ_H;
+
+// GLOBAL: BIONICLE 0x616be0
+int PS2_SREZ_W = 4096;
+
+// GLOBAL: BIONICLE 0x616be4
+int PS2_SREZ_H = 4096;
 
 // STUB: BIONICLE 0x53ef70
 void NuPortalInit(void) {
@@ -53,4 +66,22 @@ int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX
 
 // STUB: BIONICLE 0x53d640
 void NuCameraSet(NUCAMERA *camera) {
+}
+
+// STUB: BIONICLE 0x53a6a0
+void NuVpUpdate(void) {
+}
+
+// STUB: BIONICLE 0x53b090
+int NuRndrSetSpecularLight(NUVEC *dir, NUCOLOUR4 *intensity) {
+    return 0;
+}
+
+// STUB: BIONICLE 0x53e350
+void NuCameraSetProjectionMtx(NUMTX *mtx, float fFOV, float fAspect, float fNearPlane, float fFarPlane) {
+}
+
+// STUB: BIONICLE 0x544960
+int NuRndrStateUpdateCameraState(void) {
+    return 0;
 }

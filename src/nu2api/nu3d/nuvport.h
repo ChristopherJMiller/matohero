@@ -2,6 +2,7 @@
 #define NUVPORT_H
 
 #include "numath.h"
+#include "nutypes.h"
 
 /* Viewport (layout from the PS2 prototype). */
 typedef struct nuviewport_s {
@@ -23,8 +24,19 @@ typedef struct nuviewport_s {
     float scis_h;
 } NUVIEWPORT;
 
+extern NUMTX vp_cmtx;
 extern NUVIEWPORT vpCurrent;
+extern NUMTX vp_smtx;
+/* Offset and scale applied to the projection, for tiled hi-res screen dumps. */
+extern float vport_hrdump_xoffset;
+extern float vport_hrdump_yoffset;
+extern float vport_hrdump_xscale;
+extern float vport_hrdump_yscale;
 
+void NuVpGetClippingMtx(NUMTX *mtx);
+void NuVpGetScalingMtx(NUMTX *mtx);
 NUVIEWPORT *NuVpGetCurrentViewport(void);
+/* PS2: nu3d/ps2/nuvport.c, not decompiled yet (nu3d_stubs.c). */
+void NuVpUpdate(void);
 
 #endif

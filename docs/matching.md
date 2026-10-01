@@ -26,6 +26,15 @@ exact; `tools/permute.py` automates some of them.
 - **…and constant folding.** `fov * 0.5f * 10430.378f` (or `fov / 2.0f * …`) compiles to
   one `fmul` by 5215.19; the original's two `fmul`s came from
   `(fov * 0.5f) * 10430.378f` (`NuCameraSetVPortClipMtx`).
+- **A `static` function in a header is ICF-folded across the whole exe.** `NuCameraSetEx`
+  calls a 64-byte matrix copy at `0x414140` with `src` in `eax` and `dst` in `ecx`; the
+  same function serves ~100 call sites in game code. MSVC gives static functions register
+  arguments, and a struct assignment would have been an inline `rep movsd`, so the source
+  has an element-by-element copy as a `static` function in a shared header (`NuMtxCopy` in
+  `numtx.h`, name ours). The marker sits in the header.
+- **A local `__declspec(align(16))` matrix gives `push ebp; mov ebp, esp; and esp, -16`.**
+  `NuCameraBuildClipPlanes` keeps its plane matrices in the PS2's `_VUMTX` (now a 16-byte
+  aligned union in `numath/nuvu0.h`).
 - **Repeated constant stores are grouped.** A float constant stored more than once goes
   into a register, and all its stores are emitted together where its group starts;
   single stores stay `mov [mem], imm32` in source order. Which register a constant gets

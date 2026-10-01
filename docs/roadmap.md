@@ -342,10 +342,26 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `clip_planes` `0x616950`); zero-initialised data went to `.bss` (`prev_lock`
       `0x96ce18`, `num_cameras_allocated` `0x96ce24`). New `numath/nuvu0.h` declares the
       VU0 replacements. Hook test: 333 functions, `GetViewMtx` 500k calls, input works.
-- [ ] `nu3d/nucamera_gen.c` part 2: `BuildClipPlanes` (`0x538740`, 1449 bytes),
-      `0x538cf0` (2451 bytes, called from `0x597f50`: `ClipTestExtentsGeneric`?),
-      `0x5399b0` (726 bytes, from `0x4e5cd0`), `SetEx` (`0x539c90`). After it, the rest
-      of `nuvport_gen` (`0x53a140`–`0x53a520`) and the PC `NuCameraSet` (`0x53d640`).
+- [x] `nu3d/nucamera_gen.c` part 2: `SetEx` exact (98.8% until `zx = zy / aspect` moved
+      up next to `zy`), `BuildClipPlanes` 63% (see below), plus `NuVpGetClippingMtx`/
+      `NuVpGetScalingMtx` and the matrix copy at `0x414140` (a `static` header function,
+      `NuMtxCopy` in `numtx.h`, ICF-folded with ~100 game call sites): 4 new exact.
+      `FaceYDirStream` folds into the empty stub and `NuRndrSetViewMtx` into a new
+      `return 0` group (`NuZeroFolded`, `0x4b44a0`); `NuVpUpdate`, `NuRndrSetSpecularLight`,
+      `NuRndrStateUpdateCameraState`, `NuCameraSetProjectionMtx` stubbed. The projection
+      tweak globals are `nuvport_gen`'s `vport_hrdump_*` (hi-res dump tiling). Hook test:
+      337 functions, `SetEx` 21k calls, `NuMtxCopy` 106k, input works.
+- [ ] `NuCameraBuildClipPlanes` (63%): the plane-building half matches apart from where
+      the first `NuMtxMulH`'s pushes are scheduled; the near/far tail differs because the
+      original gives `fDot` a stack home (`fst [esp+8]`, in `NearDistSqr`'s slot) and keeps
+      `NearPlane.w` and `-_20` on the x87 stack, while ours keeps `fDot` there. Tried:
+      declaration orders, reusing a live-across-calls local, the dot written out twice, an
+      `__inline` dot helper, chained/duplicated copies; `fDot = _20*_30 + (_21*_31 +
+      _22*_32)` gets the original's add grouping but scores lower.
+- [ ] `nu3d/nucamera_gen.c` part 3: `0x538cf0` (2451 bytes, called from `0x597f50`:
+      `ClipTestExtentsGeneric`?), `0x5399b0` (726 bytes, from `0x4e5cd0`). After it, the
+      rest of `nuvport_gen` (`0x53a140`–`0x53a4d0`, `NuVpUpdate` `0x53a6a0`) and the PC
+      `NuCameraSet` (`0x53d640`).
 - [ ] Other nu3d candidates with saga sources: `nuspline` (3 PC functions),
       `nugscn_gen`, `nuportal_gen` (12), `nuqfnt` (30), `nudlist` (14).
 

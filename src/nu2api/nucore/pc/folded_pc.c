@@ -7,6 +7,11 @@ int NuPCZeroFolded() {
     return 0;
 }
 
+// STUB: BIONICLE 0x4b44a0
+int NuZeroFolded() {
+    return 0;
+}
+
 // STUB: BIONICLE 0x5af030
 void NuEmptyFolded() {
 }

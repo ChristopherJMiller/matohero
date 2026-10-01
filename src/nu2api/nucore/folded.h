@@ -20,6 +20,12 @@ int NuPCZeroFolded();
 void NuEmptyFolded();
 #define NuPSFileInitDevices NuEmptyFolded
 #define NuVideoSetSwapModePS NuEmptyFolded
+#define FaceYDirStream NuEmptyFolded
+
+/* `return 0` in optimized code, folded into a game function at 0x4b44a0: the PS2's VU1
+ * stream setup (nu3d/ps2/nustream.c), which has no PC counterpart. */
+int NuZeroFolded();
+#define NuRndrSetViewMtx NuZeroFolded
 
 /* Empty `void` functions of the PC platform layer, which was built with frame pointers
  * (`push ebp; mov ebp, esp; pop ebp; ret`), so they fold separately. */

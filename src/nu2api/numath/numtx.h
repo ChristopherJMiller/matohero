@@ -51,4 +51,28 @@ void NuMtxGetTranslation(NUMTX *m, NUVEC *t);
 float NuMtxDet3(NUMTX *m);
 void NuMtxGetPerspectiveD3D(NUMTX *mtx, float *fovy, float *aspect, float *zNear, float *zFar);
 
+/* Copies a matrix element by element. A `static` function in a header (name ours): each
+ * object that calls it gets its own copy, with arguments in registers (src in eax, dst in
+ * ecx), and the linker folds them all (/OPT:ICF) into the one at 0x414140, which the game
+ * code calls too. PS2 inlines it as four 128-bit moves (perhaps `NuMtxCopy44VU0`). */
+// FUNCTION: BIONICLE 0x414140
+static void NuMtxCopy(NUMTX *dst, NUMTX *src) {
+    dst->_00 = src->_00;
+    dst->_01 = src->_01;
+    dst->_02 = src->_02;
+    dst->_03 = src->_03;
+    dst->_10 = src->_10;
+    dst->_11 = src->_11;
+    dst->_12 = src->_12;
+    dst->_13 = src->_13;
+    dst->_20 = src->_20;
+    dst->_21 = src->_21;
+    dst->_22 = src->_22;
+    dst->_23 = src->_23;
+    dst->_30 = src->_30;
+    dst->_31 = src->_31;
+    dst->_32 = src->_32;
+    dst->_33 = src->_33;
+}
+
 #endif
