@@ -38,6 +38,10 @@ exact; `tools/permute.py` automates some of them.
 
 ## Structure
 
+- **Inline helpers have exact semantics.** BH's `NuFdiv(a, b)` returns 0 if *either*
+  operand is 0 (two compares in `NuQuatSlerp`). With a constant numerator the extra
+  test folds away, so `NuVecMtxTransformH` matched with the wrong definition. Getting
+  it right lifted `NuMtxAlignZ` from 63% to 94.5%.
 - **Check saga's structure against the asm.** saga targets a later engine, which added
   things BH doesn't have: `NuMtxMul/MulH/MulR` branch on `m == m0 || m == m1`, while BH
   always builds into a local and copies (`sub esp, 0x40` … `rep movsd`); `NuMtxInvRSS`

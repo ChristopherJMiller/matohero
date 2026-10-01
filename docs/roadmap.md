@@ -112,10 +112,16 @@ headless boot to title) → commit.
       saga's text in PC order. Near misses: `RotateX/Z`, `PreRotateX/Y` (87–95%, x87
       `fxch` placement), `Inv` (93%), `InvRSS` (85%), `Mul/MulH/MulR` (56–63%), `InvH`
       (46%), `AlignZ` (63%). Hook test: 73 functions in-game, `NuMtxTranslate` 69k calls.
-- [ ] **Permuter v2.** Single-flip hill climbing plateaus on the numtx multiplies. Add
-      pairwise/random-restart search, safe statement reordering, and inline-vs-local
-      subexpression rewrites (what moved `InvRSS`).
-- [ ] `numath/nuquat.c` (saga), ~`0x56fd60–0x570060`, ~4
+- [x] **Permuter v2.** Statement swaps, plateau-crossing random search with restarts,
+      per-line flips, a positional tie-break in the score, exhaustion detection and a
+      `--time` limit; scratch variants live under `build/`. Solves the known nuvec case in
+      ~20 variants but found nothing for the numtx near-misses (~300 variants each), so
+      their differences lie outside these moves.
+- [ ] **Permuter v3 ideas.** Inline-vs-local subexpression rewrites (what moved
+      `InvRSS`), `x * -y` ↔ `-(x * y)`, temporaries for repeated loads.
+- [x] `numath/nuquat.c`: 4/4 (3 exact, 1 effective). `NuMtxToQuat` (Shoemake) and
+      `NuQuatSlerp` (older than saga's) written from the asm. Found the original
+      `NuFdiv` (tests both operands for zero), which also lifted `NuMtxAlignZ` 63% → 94.5%.
 - [ ] `numath/nufloat.c`, `numath/nuplane.c` (saga), small
 - [ ] `nucore/nustring.c` (saga), ~`0x5687d0–0x569f60`, ~47
 - [ ] `nucore/nulist.c`, `nutime.c`, `nuapi.c`, `nuptrblock.c` (saga), small
