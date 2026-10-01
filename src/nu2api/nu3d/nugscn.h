@@ -9,7 +9,42 @@
 
 typedef struct numtl_s NUMTL;
 typedef struct nugscn_s NUGSCN;
-typedef struct nuclipobject_s NUCLIPOBJECT;
+
+/* Clip object of a display list special: materials and items it covers. */
+typedef struct nuclipobject_s {
+    unsigned int nclip_items;
+    unsigned int *mtls;
+    int *items;
+} NUCLIPOBJECT;
+
+/* Geometry of a graphics object (only the material chain so far). */
+typedef struct nugeom_s {
+    struct nugeom_s *next;
+    NUMTL *mtl;
+} NUGEOM;
+
+/* A graphics object; next_gobj chains the levels of detail. */
+typedef struct nugobj_s {
+    struct nugobj_s *sysnext;
+    struct nugobj_s *syslast;
+    int type;
+    NUGEOM *geom;
+    void *faceon_geom;
+    float r;
+    float r2;
+    NUVEC min;
+    NUVEC max;
+    NUVEC cntr;
+    float cntr_r;
+    float cntr_r2;
+    unsigned int flags;
+    struct nugobj_s *next_gobj;
+    char exdata[12];
+    void *colourref;
+    int colourref_size;
+    void *focolourref;
+    int focolourref_size;
+} NUGOBJ;
 
 typedef struct nuinstanim_s {
     NUMTX mtx;
@@ -79,12 +114,49 @@ typedef struct nuspecialobject_s {
     void *RigidBody;
 } NUSPECIALOBJECT;
 
-/* Display list of a scene (PS2 layout; only what's used so far). */
+/* Display list of a scene (PS2 layout). */
 typedef struct nudisplayscene_s {
     char *name;
-    char unknown_04[0x68];
+    int nitems;
+    void *items;
+    int CRC;
+    int nclip_objects;
+    NUCLIPOBJECT *clip_objects;
+    unsigned short *nclip_items;
+    unsigned short *cliptags;
+    int *tagoffset;
+    unsigned int *mtl_clip;
+    float *clip_range;
+    float *farclip;
+    unsigned char *clip_used[2];
+    char bounds[16];
+    char *visibility_flags;
+    unsigned int nmtls;
+    NUMTL **mtls;
+    void **dlist_mtls;
+    unsigned char *mtl_used[2];
+    int nsort_pris;
+    void *sort_pris;
+    unsigned int nstaticinstances;
     int nspecials;
     NUSPECIALOBJECT *specials;
+    unsigned int used_this_frame : 1;
+    unsigned int dynamic_used_this_frame : 1;
+    unsigned int scene_used_this_frame : 1;
+    unsigned int sorted_this_frame : 1;
+    unsigned int scene_supports_instancing : 1;
+    unsigned int mtl_layer_mask : 8;
+    unsigned int is_a_clone : 1;
+    unsigned int bounds_version : 1;
+    unsigned int buffer : 1;
+    unsigned int scene_specials : 1;
+    unsigned int pad : 15;
+    NUGSCN *gscene;
+    void *ps;
+    void *local_state;
+    unsigned int NumInstances;
+    unsigned char *SpecialFlags;
+    void *mtl_anims;
 } NUDISPLAYSCENE;
 
 /* A loaded scene. The PC layout differs from the PS2's (display_list is at 0x1b4 on PC,
@@ -95,7 +167,7 @@ struct nugscn_s {
     NUMTL **mtls;
     int nummtl;
     int numgobj;
-    void **gobjs;
+    NUGOBJ **gobjs;
     int numinstance;
     NUINSTANCE *instances;
     int numspecial;

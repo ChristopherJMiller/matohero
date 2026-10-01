@@ -250,6 +250,19 @@ char *NuSpecialGetName(NUHSPECIAL *sph) {
     return NULL;
 }
 
+// FUNCTION: BIONICLE 0x53e880
+int NuSpecialDrawAt(NUHSPECIAL *special, NUMTX *transform) {
+    if (special != NULL && special->scene != NULL) {
+        if (special->special != NULL && special->special->instance != NULL) {
+            return NuRndrGScnObj(special->scene->gobjs[special->special->instance->objid], transform);
+        }
+        if (special->special_obj != NULL) {
+            return NuDisplayListRndrSpecial(special, transform, 0, NULL, NULL);
+        }
+    }
+    return 0;
+}
+
 // FUNCTION: BIONICLE 0x53e8d0
 int NuSpecialExistsFn(NUHSPECIAL *sph) {
     if (sph != NULL && (sph->special != NULL || sph->special_obj != NULL)) {
@@ -281,6 +294,75 @@ void NuSpecialForceMtl(NUMTL *mtl) {
     }
 }
 
+// FUNCTION: BIONICLE 0x53e960
+void NuSpecialSetVisibility(NUHSPECIAL *spec, int visibility) {
+    NUSPECIALOBJECT *sob;
+    NUINSTANCE *inst;
+
+    if (spec == NULL || spec->scene == NULL) {
+        return;
+    }
+    if (spec->special != NULL) {
+        inst = spec->special->instance;
+        if (inst != NULL) {
+            inst->flags.visible = visibility;
+        }
+        if (visibility) {
+            spec->special->flags |= 0x200;
+        } else {
+            spec->special->flags &= ~0x200;
+        }
+        return;
+    }
+    sob = spec->special_obj;
+    if (sob != NULL) {
+        if (visibility) {
+            sob->flags |= 0x202;
+            if (spec->scene->display_list->scene_specials) {
+                spec->scene->display_list->visibility_flags[sob->instance_ix] |= 1;
+            }
+        } else {
+            spec->special_obj->flags &= ~2;
+            spec->special_obj->flags &= ~0x200;
+            if (spec->scene->display_list->scene_specials) {
+                spec->scene->display_list->visibility_flags[sob->instance_ix] &= ~1;
+            }
+        }
+    }
+}
+
+// FUNCTION: BIONICLE 0x53ea40
+void NuSpecialSetCollision(NUHSPECIAL *spec, int collision) {
+    if (spec != NULL && spec->scene != NULL) {
+        if (spec->special != NULL) {
+            if (collision) {
+                spec->special->flags |= 0x200;
+            } else {
+                spec->special->flags &= ~0x200;
+            }
+        } else if (spec->special_obj != NULL) {
+            if (collision) {
+                spec->special_obj->flags |= 0x200;
+            } else {
+                spec->special_obj->flags &= ~0x200;
+            }
+        }
+    }
+}
+
+// FUNCTION: BIONICLE 0x53eab0
+int NuSpecialGetCollision(NUHSPECIAL *spec) {
+    if (spec != NULL && spec->scene != NULL) {
+        if (spec->special != NULL) {
+            return spec->special->flags & 0x200;
+        }
+        if (spec->special_obj != NULL) {
+            return spec->special_obj->flags & 0x200;
+        }
+    }
+    return 0;
+}
+
 // FUNCTION: BIONICLE 0x53eaf0
 int NuSpecialGetVisibilityFn(NUHSPECIAL *spec) {
     if (spec->scene != NULL) {
@@ -292,6 +374,106 @@ int NuSpecialGetVisibilityFn(NUHSPECIAL *spec) {
         }
     }
     return 0;
+}
+
+// FUNCTION: BIONICLE 0x53eb20
+int NuSpecialGetInstanceix(NUHSPECIAL *special) {
+    int i;
+
+    if (special->special != NULL) {
+        for (i = 0; i < special->scene->numinstance; i++) {
+            if (&special->scene->instances[i] == special->special->instance) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    if (special->special_obj != NULL) {
+        return special->special_obj->instance_ix;
+    }
+    return -1;
+}
+
+// FUNCTION: BIONICLE 0x53eb60
+int NuSpecialNumMtls(NUHSPECIAL *special) {
+    NUGOBJ *gobj;
+    NUGEOM *geom;
+    int cnt;
+    int n;
+
+    cnt = 0;
+    if (special->special != NULL) {
+        gobj = special->scene->gobjs[special->special->instance->objid];
+        while (gobj->next_gobj != NULL) {
+            gobj = gobj->next_gobj;
+        }
+        for (geom = gobj->geom; geom != NULL; geom = geom->next) {
+            cnt++;
+        }
+        return cnt;
+    }
+    if (special->special_obj != NULL) {
+        for (n = 0; special->special_obj->clip_range[n] != 0.0f; n++) {
+        }
+        return special->special_obj->clip_objects[n].nclip_items;
+    }
+    return 0;
+}
+
+// FUNCTION: BIONICLE 0x53ebf0
+NUMTL *NuSpecialGetMtl(NUHSPECIAL *special, int i) {
+    NUGOBJ *gobj;
+    NUGEOM *geom;
+    int n;
+
+    if (special->special != NULL) {
+        gobj = special->scene->gobjs[special->special->instance->objid];
+        while (gobj->next_gobj != NULL) {
+            gobj = gobj->next_gobj;
+        }
+        geom = gobj->geom;
+        for (; i != 0; i--) {
+            if (geom == NULL) {
+                return NULL;
+            }
+            geom = geom->next;
+        }
+        return geom->mtl;
+    }
+    if (special->special_obj != NULL) {
+        for (n = 0; special->special_obj->clip_range[n] != 0.0f; n++) {
+        }
+        return special->scene->display_list->mtls[special->special_obj->clip_objects[n].mtls[i]];
+    }
+    return NULL;
+}
+
+// FUNCTION: BIONICLE 0x53eca0
+void NuSpecialGetBounds(NUHSPECIAL *special, NUVEC *min, NUVEC *max) {
+    NUGOBJ *gobj;
+
+    if (special->special != NULL) {
+        gobj = special->scene->gobjs[special->special->instance->objid];
+        while (gobj->next_gobj != NULL) {
+            gobj = gobj->next_gobj;
+        }
+        *min = gobj->min;
+        *max = gobj->max;
+    } else if (special->special_obj != NULL) {
+        *min = *(NUVEC *)&special->special_obj->min;
+        *max = *(NUVEC *)&special->special_obj->max;
+    }
+}
+
+// FUNCTION: BIONICLE 0x53ed40
+void NuSpecialGetRadius(NUHSPECIAL *special, NUVEC *cntr, float *radius) {
+    if (special->special != NULL) {
+        *radius = special->scene->gobjs[special->special->instance->objid]->cntr_r;
+        *cntr = special->scene->gobjs[special->special->instance->objid]->cntr;
+    } else {
+        *cntr = *(NUVEC *)&special->special_obj->sphere;
+        *radius = special->special_obj->sphere.w;
+    }
 }
 
 // FUNCTION: BIONICLE 0x53edc0
@@ -309,6 +491,40 @@ NUMTX *NuSpecialGetDrawMtx(NUHSPECIAL *special) {
         return &special->special_obj->draw_mtx;
     }
     return NULL;
+}
+
+// FUNCTION: BIONICLE 0x53ee00
+void NuSpecialSetDrawMtx(NUHSPECIAL *special, NUMTX *mtx) {
+    if (special != NULL && special->scene != NULL) {
+        if (special->special != NULL) {
+            special->special->instance->mtx = *mtx;
+        } else {
+            special->special_obj->draw_mtx = *mtx;
+            if (special->scene->display_list->scene_specials) {
+                NuDisplayListUpdateSpecial(special);
+                special->special_obj->flags |= 0x400;
+            }
+        }
+    }
+}
+
+// FUNCTION: BIONICLE 0x53ee60
+void NuSpecialSetDrawPos(NUHSPECIAL *special, NUVEC *pos) {
+    if (special != NULL && special->scene != NULL) {
+        if (special->special != NULL) {
+            special->special->instance->mtx._30 = pos->x;
+            special->special->instance->mtx._31 = pos->y;
+            special->special->instance->mtx._32 = pos->z;
+        } else {
+            special->special_obj->draw_mtx._30 = pos->x;
+            special->special_obj->draw_mtx._31 = pos->y;
+            special->special_obj->draw_mtx._32 = pos->z;
+            if (special->scene->display_list->scene_specials) {
+                NuDisplayListUpdateSpecial(special);
+                special->special_obj->flags |= 0x400;
+            }
+        }
+    }
 }
 
 // FUNCTION: BIONICLE 0x53eef0

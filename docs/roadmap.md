@@ -324,9 +324,18 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `nugscn.h` places the fields used. `permute.py` now parses signatures with nested
       parentheses (`char (*WCName)[20]`). Hook test: 303 functions, `NuSpecialFind` 641
       calls, input works.
-- [ ] `nu3d/nuspecial.c` part 3: `DrawAt` (`0x53e880`), `SetVisibility` (`0x53e960`),
-      `NumMtls`, `GetMtl`, `GetBounds`, `GetRadius`, `SetDrawMtx`, the unnamed
-      `0x53ea40`, `0x53eab0`, `0x53eb20`, `0x53ee60`, and `0x53e350` (before `Find`).
+- [x] `nu3d/nuspecial.c` part 3: `DrawAt`, `SetCollision`, `GetCollision`,
+      `GetInstanceix`, `NumMtls`, `GetMtl`, `GetBounds`, `GetRadius`, `SetDrawMtx`,
+      `SetDrawPos`: 10/10 exact on the first build; `SetVisibility` 89% (the original
+      tests `instance` and reloads it, yet keeps `edi` saved at entry as with a local).
+      nuspecial is complete on PC: 31 functions, 27 exact. `nugscn.h` now has `NUGOBJ`,
+      `NUGEOM`, `NUCLIPOBJECT` and the PS2 `NUDISPLAYSCENE`; `NuRndrGScnObj`,
+      `NuDisplayListUpdateSpecial`, `NuDisplayListRndrSpecial` stubbed. Hook test: 313
+      functions, `NuSpecialDrawAt` 104k calls, input works. (`0x53e350`, before
+      `NuSpecialFind`, builds a perspective matrix: nurndr, not nuspecial.)
+- [ ] Next nu3d file: candidates with saga sources are `nuspline` (3 PC functions),
+      `nugscn_gen`, `nucamera_gen` (23), `nuportal_gen` (12), `nuqfnt` (30), `nudlist`
+      (14).
 
 Notes for later units:
 

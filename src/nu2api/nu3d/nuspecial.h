@@ -20,5 +20,16 @@ int NuSpecialGetVisibilityFn(NUHSPECIAL *spec);
 NUMTX *NuSpecialGetDrawMtx(NUHSPECIAL *special);
 NUINSTANIM *NuSpecialGetInstAnim(NUHSPECIAL *special);
 int NuSpecialCompare(NUHSPECIAL *special1, NUHSPECIAL *special2);
+int NuSpecialDrawAt(NUHSPECIAL *special, NUMTX *transform);
+void NuSpecialSetVisibility(NUHSPECIAL *spec, int visibility);
+void NuSpecialSetCollision(NUHSPECIAL *spec, int collision);
+int NuSpecialGetCollision(NUHSPECIAL *spec);
+int NuSpecialGetInstanceix(NUHSPECIAL *special);
+int NuSpecialNumMtls(NUHSPECIAL *special);
+NUMTL *NuSpecialGetMtl(NUHSPECIAL *special, int i);
+void NuSpecialGetBounds(NUHSPECIAL *special, NUVEC *min, NUVEC *max);
+void NuSpecialGetRadius(NUHSPECIAL *special, NUVEC *cntr, float *radius);
+void NuSpecialSetDrawMtx(NUHSPECIAL *special, NUMTX *mtx);
+void NuSpecialSetDrawPos(NUHSPECIAL *special, NUVEC *pos);
 
 #endif

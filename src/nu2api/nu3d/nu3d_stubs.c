@@ -35,3 +35,17 @@ void NuTimeBarSetRender(int tbh) {
 int NuRndrSwapScreenEx(int hRT, void (*fn)()) {
     return 0;
 }
+
+// STUB: BIONICLE 0x53cd80
+int NuRndrGScnObj(NUGOBJ *gobj, NUMTX *wm) {
+    return 0;
+}
+
+// STUB: BIONICLE 0x554610
+void NuDisplayListUpdateSpecial(NUHSPECIAL *hspec) {
+}
+
+// STUB: BIONICLE 0x554be0
+int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX *skin_mtx, void *blend_values) {
+    return 0;
+}
