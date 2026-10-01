@@ -1,4 +1,5 @@
 #include "nucamera.h"
+#include "nuportal.h"
 #include "nurndr.h"
 #include "nuvport.h"
 
@@ -101,4 +102,55 @@ int NuRndrSetSpecularLight(NUVEC *dir, NUCOLOUR4 *intensity) {
 // STUB: BIONICLE 0x544960
 int NuRndrStateUpdateCameraState(void) {
     return 0;
+}
+
+/* nuportal_gen.c statics not decompiled yet, stubbed as plain functions for now. */
+
+// STUB: BIONICLE 0x53f040
+void drawPortal(NUPORTAL *p, NUROOM *room) {
+}
+
+// STUB: BIONICLE 0x53f300
+void drawViewFrustrum(void) {
+}
+
+// STUB: BIONICLE 0x53fd30
+NUFRUSTRUM *buildFrustrum(NUVEC *min, NUVEC *max, short camera_roomid) {
+    return NULL;
+}
+
+// STUB: BIONICLE 0x540430
+int clipPortal(NUPORTAL *portal, NUROOM *room, int roomid, NUFRUSTRUM *frust, NUFRUSTRUM **newfrust) {
+    return 0;
+}
+
+// STUB: BIONICLE 0x540640
+NUFRUSTRUM *createPortalFrustrum(NUPORTAL *portal, int room_id) {
+    return NULL;
+}
+
+/* PS2: nu3d/ps2/nuportal_ps2.c; PC file name unknown. */
+
+// STUB: BIONICLE 0x55b470
+void Initialise_PS(NUGSCN *gsc) {
+}
+
+// STUB: BIONICLE 0x55b480
+void FlagRoomInstancesAsVisible(NUROOM *room, NUGSCN *gsc) {
+}
+
+// STUB: BIONICLE 0x55b500
+void SetAllInstancesVisible(NUGSCN *gsc) {
+}
+
+// STUB: BIONICLE 0x55b550
+void SetAllInstancesHidden(NUGSCN *gsc) {
+}
+
+// STUB: BIONICLE 0x55b5a0
+void clipRoomAgainstFrustrum(NUGSCN *gsc, NUROOM *room, NUFRUSTRUM *frust) {
+}
+
+// STUB: BIONICLE 0x54f7a0
+void NuRndrSphere(NUVEC *pos, float radius, unsigned int col, float yscale) {
 }

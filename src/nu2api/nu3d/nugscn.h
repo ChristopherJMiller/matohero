@@ -215,6 +215,14 @@ typedef struct nuportalinfo_s {
     int version;
 } NUPORTALINFO;
 
+/* Bounding spheres and boxes of a scene's instances (PS2 layout). */
+typedef struct nubounds_s {
+    int nspheres;
+    int nbounds;
+    NUVEC4 *spheres;
+    NUVEC4 *boxes;
+} NUBOUNDS;
+
 /* A named path of points. */
 typedef struct nugspline_s {
     short len;
@@ -239,8 +247,10 @@ struct nugscn_s {
     int numsplines; /* PS2 has splinedata before these */
     NUGSPLINE *splines;
     char unknown_030[0x9c - 0x30];
-    NUPORTALINFO portalinfo; /* PS2 keeps a pointer to it in the visibility data */
-    char unknown_11c[0x1b4 - 0x11c];
+    NUPORTALINFO portalinfo;
+    char unknown_11c[0x194 - 0x11c];
+    NUBOUNDS bounds;
+    char unknown_1a4[0x1b4 - 0x1a4];
     NUDISPLAYSCENE *display_list;
 };
 

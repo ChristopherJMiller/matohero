@@ -1,5 +1,8 @@
 #include "nuportal.h"
 
+#include "nucamera.h"
+#include "nuvec.h"
+
 /* Portal visibility: rooms joined by portals, walked from the camera's room through the
  * portals in view, narrowing a frustum at each step. Names, types and locals from the PS2
  * prototype; logic checked against opensagadev/saga src/nu2api/nu3d/nuportal.cpp
@@ -8,8 +11,32 @@
 // GLOBAL: BIONICLE 0x616bb4
 int portals_enabled = 1;
 
+// GLOBAL: BIONICLE 0x616bb8
+static int portal_inst = -1;
+
+// GLOBAL: BIONICLE 0x337c8b4
+static NUVEC *override_campos;
+
+// GLOBAL: BIONICLE 0x337a3d0
+static NUMTX local_inv_view_mtx;
+
+// GLOBAL: BIONICLE 0x337c890
+static NUVEC4 near_clip_plane;
+
+// GLOBAL: BIONICLE 0x337c8a0
+static NUVEC world_campos;
+
+// GLOBAL: BIONICLE 0x337c8ac
+static short camera_roomid;
+
+// GLOBAL: BIONICLE 0x337a468
+static NUCAMERA *cam;
+
 // GLOBAL: BIONICLE 0x3604fd0
 NUVEC4 cam_plane;
+
+// GLOBAL: BIONICLE 0x3604fa0
+short rooms_visited[18];
 
 // GLOBAL: BIONICLE 0x337a4b0
 static char fstackmem[9182];
@@ -247,6 +274,56 @@ int clipTestBox(NUVEC4 *min, NUVEC4 *max, NUVEC4 *frust, int nplanes) {
     return inside == nplanes * 8 ? 1 : 2;
 }
 
+/* Debug: draws the bounding sphere of instance i (inlined on PS2; name ours). */
+// FUNCTION: BIONICLE 0x53ffe0
+static void drawInstanceSphere(int i, NUGSCN *gsc) {
+    NUVEC4 *sphere;
+
+    if (i != -1 && i < gsc->bounds.nspheres) {
+        sphere = &gsc->bounds.spheres[i];
+        NuRndrSphere((NUVEC *)sphere, sphere->w, 0x400000, 1.0f);
+    }
+}
+
+/* 0 if the portal is out of view, 1 if inside all the frustum's planes, 2 if crossing. */
+// FUNCTION: BIONICLE 0x540020
+static int checkPortalVisibility(NUPORTAL *portal, NUFRUSTRUM *frust, NUGSCN *gsc, short roomid, short next_room) {
+    int i;
+    int j;
+    int inside;
+    int outside;
+    float dot;
+    float test_sgn;
+
+    if (gsc->portalinfo.rooms[roomid].depth < gsc->portalinfo.rooms[next_room].depth) {
+        test_sgn = portal->plane_eqn.x * world_campos.x + portal->plane_eqn.y * world_campos.y +
+                   portal->plane_eqn.z * world_campos.z + portal->plane_eqn.w;
+        if (portal->right_room == roomid && test_sgn < 0.0f) {
+            return 0;
+        }
+        if (portal->left_room == roomid && test_sgn > 0.0f) {
+            return 0;
+        }
+    }
+    inside = 0;
+    for (i = 0; i < frust->nplanes; i++) {
+        outside = 0;
+        for (j = 0; j < portal->npoints; j++) {
+            dot = frust->planes[i].x * portal->points[j].x + frust->planes[i].y * portal->points[j].y +
+                  frust->planes[i].z * portal->points[j].z + frust->planes[i].w;
+            if (dot >= 0.0f) {
+                inside++;
+            } else {
+                outside++;
+            }
+        }
+        if (outside == portal->npoints) {
+            return 0;
+        }
+    }
+    return inside == frust->nplanes * portal->npoints ? 1 : 2;
+}
+
 // FUNCTION: BIONICLE 0x540840
 void NuPortalRoomClipTestAll(NUGSCN *gsc, char *RoomList) {
     int i;
@@ -292,4 +369,120 @@ int NuPortalClipTest(NUGSCN *gsc, NUVEC *centre, float radius, short roomid) {
         }
     }
     return 0;
+}
+
+// FUNCTION: BIONICLE 0x540960
+static void roomRecursive(NUGSCN *gsc, NUFRUSTRUM *frustrum, short roomid, short prev_room, int depth) {
+    NUPORTAL *new_portal;
+    NUROOM *room;
+    unsigned int i;
+    int j;
+    int clip;
+    short next_room;
+    NUFRUSTRUM *new_frustrum;
+
+    room = &gsc->portalinfo.rooms[roomid];
+    for (j = 0; j < depth - 1; j++) {
+        if (rooms_visited[j] == roomid) {
+            return;
+        }
+    }
+    if (depth >= 16) {
+        return;
+    }
+    rooms_visited[depth] = roomid;
+    if (roomid == camera_roomid) {
+        FlagRoomInstancesAsVisible(room, gsc);
+    } else {
+        clipRoomAgainstFrustrum(gsc, room, frustrum);
+    }
+    room->is_visible = 1;
+    if (depth >= gsc->portalinfo.max_depth) {
+        return;
+    }
+    for (i = 0; i < room->nportals; i++) {
+        new_portal = &gsc->portalinfo.portals[room->portals[i]];
+        next_room = new_portal->left_room;
+        if (next_room == roomid) {
+            next_room = new_portal->right_room;
+        }
+        if (next_room == prev_room) {
+            continue;
+        }
+        switch (new_portal->flags & 1 ? checkPortalVisibility(new_portal, frustrum, gsc, roomid, next_room) : 0) {
+        case 0:
+            break;
+        case 1:
+            drawPortal(new_portal, &gsc->portalinfo.rooms[next_room]);
+            new_frustrum = createPortalFrustrum(new_portal, next_room);
+            roomRecursive(gsc, new_frustrum, next_room, roomid, depth + 1);
+            break;
+        case 2:
+            clip = clipPortal(new_portal, &gsc->portalinfo.rooms[next_room], next_room, frustrum, &new_frustrum);
+            if (clip == 1) {
+                roomRecursive(gsc, new_frustrum, next_room, roomid, depth + 1);
+            } else if (clip == 4) {
+                new_frustrum = copyFrustrum(frustrum);
+                new_frustrum->roomid = next_room;
+                roomRecursive(gsc, new_frustrum, next_room, roomid, depth + 1);
+            }
+            break;
+        default:
+            roomRecursive(gsc, frustrum, next_room, roomid, depth + 1);
+            break;
+        }
+    }
+}
+
+// FUNCTION: BIONICLE 0x540b40
+int NuPortalVisibility(NUGSCN *gsc) {
+    unsigned int i;
+    NUVEC p;
+    NUVEC *pcampos;
+    float nearclip;
+    NUFRUSTRUM *view_frustrum;
+
+    Initialise_PS(gsc);
+    pcampos = override_campos != NULL ? override_campos : &world_campos;
+    if (!portals_enabled) {
+        SetAllInstancesVisible(gsc);
+        return 0;
+    }
+    if (gsc->portalinfo.nportals == 0 || gsc->portalinfo.nrooms == 0 || gsc->bounds.nbounds == 0) {
+        return 0;
+    }
+    nfrustra = &gsc->portalinfo.nfrustra;
+    *nfrustra = 0;
+    frustra = gsc->portalinfo.frustra;
+    SetAllInstancesHidden(gsc);
+    cam = NuCameraGetCam();
+    local_inv_view_mtx = *NuCameraGetMtx();
+    world_campos.x = global_camera.mtx._30;
+    world_campos.y = global_camera.mtx._31;
+    world_campos.z = global_camera.mtx._32;
+    nearclip = cam->nearclip;
+    camera_roomid = NuPortalWhichRoom(gsc, pcampos);
+    gsc->portalinfo.camera_roomid = camera_roomid;
+    if (camera_roomid == -1) {
+        return 0;
+    }
+
+    /* The camera plane and the near clip plane, both facing along the view. */
+    cam_plane.x = near_clip_plane.x = local_inv_view_mtx._20;
+    cam_plane.y = near_clip_plane.y = local_inv_view_mtx._21;
+    cam_plane.z = near_clip_plane.z = local_inv_view_mtx._22;
+    p.x = local_inv_view_mtx._20 * nearclip + world_campos.x;
+    p.y = local_inv_view_mtx._21 * nearclip + world_campos.y;
+    p.z = local_inv_view_mtx._22 * nearclip + world_campos.z;
+    near_clip_plane.w = -(local_inv_view_mtx._20 * p.x + local_inv_view_mtx._21 * p.y + local_inv_view_mtx._22 * p.z);
+    cam_plane.w = -(local_inv_view_mtx._20 * world_campos.x + local_inv_view_mtx._21 * world_campos.y +
+                    local_inv_view_mtx._22 * world_campos.z);
+    view_frustrum = buildFrustrum(&nuvec_minus_one, &nuvec_one, -2);
+    drawViewFrustrum();
+    for (i = 0; i < gsc->portalinfo.nrooms; i++) {
+        gsc->portalinfo.rooms[i].is_visible = 0;
+    }
+    roomRecursive(gsc, view_frustrum, camera_roomid, -1, 0);
+    drawInstanceSphere(portal_inst, gsc);
+    return 1;
 }

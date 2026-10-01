@@ -437,14 +437,25 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       overwrites the new planes pointer, an original bug). `copyFrustrum` is a static with
       no caller yet, so it isn't emitted or checked until `roomRecursive` lands. Hook test:
       367 functions, `clipTestBox` 128k calls.
-- [ ] `nuportal_gen.c` part 4, top-down because the rest are statics: `NuPortalVisibility`
-      (`0x540b40`, called from `0x486550`) → `roomRecursive` (`0x540960`, recursive) →
-      `0x540430` (portal clip: extents `0x540280`, rect clip `0x540370`, `buildFrustrum`
-      `0x53fd30`, `drawClippedPortal` `0x53f420`), `0x540640` (`createPortalFrustrum`:
-      extents, `transposeClipPlanes` `0x53fb80`), `0x540020` (room-instance clip),
-      `copyFrustrum`, `drawPortal` `0x53f040`; `NuPortalVisibility` also calls
-      `drawViewFrustrum` `0x53f300` and `0x53ffe0`. `drawSquare` is `0x53f1d0`.
-      `0x540d80` on starts another file.
+- [x] `nuportal_gen.c` part 4: `NuPortalVisibility` (effective; `cam_plane.w` multiplies
+      with `world_campos` loaded first, which no spelling reproduced),
+      `checkPortalVisibility` (static, gsc in eax and roomid in edx; MSVC unrolled its
+      point loop 4x with a remainder loop), `drawInstanceSphere` (`0x53ffe0`, name ours;
+      inlined on PS2) and `copyFrustrum` exact; `roomRecursive` 48% only because
+      `drawPortal`, `buildFrustrum`, `clipPortal`, `createPortalFrustrum` and
+      `drawViewFrustrum` are still plain stubs (wrong calling convention for the statics).
+      The PS2's `ps2/nuportal_ps2.c` functions (`Initialise_PS`, `SetAllInstancesVisible`/
+      `Hidden`, `FlagRoomInstancesAsVisible`, `clipRoomAgainstFrustrum`, `0x55b470`–
+      `0x55b5a0`) and `NuRndrSphere` (`0x54f7a0`) are stubbed. PC `NUGSCN` gets `bounds`
+      (`NUBOUNDS`) at `0x194`; `nuvec_one`/`nuvec_minus_one` are numath data at
+      `0x617530`/`0x61753c`. Hook test: 371 functions, `NuPortalVisibility` 2.4k calls,
+      `checkPortalVisibility` 38k.
+- [ ] `nuportal_gen.c` part 5: the remaining statics, which `roomRecursive` needs before
+      it can match: `buildFrustrum` `0x53fd30` (cdecl, 3 args), `transposeClipPlanes`
+      `0x53fb80`, `clipPortal` `0x540430` (with the extents helper `0x540280`, ebx/esi/edi,
+      and the rectangle clip `0x540370`), `createPortalFrustrum` `0x540640` (portal in
+      eax), the debug drawing `drawPortal` `0x53f040`, `drawSquare` `0x53f1d0`,
+      `drawViewFrustrum` `0x53f300`, `drawClippedPortal` `0x53f420`.
 - [ ] Other nu3d candidates with saga sources: `nugscn_gen`, `nuqfnt` (30), `nudlist`
       (14).
 

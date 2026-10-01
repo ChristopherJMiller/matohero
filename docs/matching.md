@@ -63,6 +63,12 @@ exact; `tools/permute.py` automates some of them.
   spill slot if registers are short), and later uses reuse it. In `NuPortalWhichRoom` our
   build stopped hoisting once the loop also had an indexed store into a local array and a
   `break`; the original hoists anyway (unsolved).
+- **A register copy before a store suggests a chained assignment.** `mov eax, edx; mov
+  [cam_plane], eax` … `mov [near_clip_plane], edx` came from
+  `cam_plane.x = near_clip_plane.x = m._20;` (written the other way round, the stores
+  swap; `NuPortalVisibility`, 82% → effective).
+- **MSVC unrolls variable-count inner loops 4x** with a remainder loop when the body is
+  small (`checkPortalVisibility`'s per-point plane test); the source is a plain loop.
 - **Repeated constant stores are grouped.** A float constant stored more than once goes
   into a register, and all its stores are emitted together where its group starts;
   single stores stay `mov [mem], imm32` in source order. Which register a constant gets

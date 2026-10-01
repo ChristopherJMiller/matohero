@@ -3,6 +3,9 @@
 
 #include "numath.h"
 
+extern NUVEC nuvec_one;
+extern NUVEC nuvec_minus_one;
+
 float NuVecMtxTransformH(NUVEC *v, NUVEC *v0, NUMTX *m0);
 void NuVecMtxRotate(NUVEC *v, NUVEC *v0, NUMTX *m0);
 void NuVecInvMtxTransform(NUVEC *v, NUVEC *v0, NUMTX *m0);

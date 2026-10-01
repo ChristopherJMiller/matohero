@@ -9,6 +9,12 @@
  * and signatures from the PS2 prototype. In PC order; the PC exe has 24 of the PS2's
  * 46 nuvec functions (the rest were unused and dropped by the linker). */
 
+// GLOBAL: BIONICLE 0x617530
+NUVEC nuvec_one = {1.0f, 1.0f, 1.0f};
+
+// GLOBAL: BIONICLE 0x61753c
+NUVEC nuvec_minus_one = {-1.0f, -1.0f, -1.0f};
+
 // FUNCTION: BIONICLE 0x570240
 float NuVecMtxTransformH(NUVEC *v, NUVEC *v0, NUMTX *m0) {
     float w = NuFdiv(1.0f, m0->_03 * v0->x + m0->_13 * v0->y + m0->_23 * v0->z + m0->_33);
