@@ -734,12 +734,19 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       - It calls `NuMtlCreateEx(1, numtl_renderplane)` directly. Making `NuMtlCreate`
         `__inline` instead got it inlined into `NuMtlCreateVariants` too (100% → 86%).
       - The second block sets the 3D material's `K`/`L` again: a slip in the original.
-- [ ] `pc/numtl.c` part 6, the rest of the file:
+- [x] `pc/numtl.c` part 6: the shader-description pair, 2/2 exact (names ours).
+      - `NuMtlShaderDescInit` (`0x541680`): defaults, then texture flags, or the diffuse
+        colour at the PS2's 128 = 1.0 scale.
+      - `NuMtlShaderUpdate` (`0x541740`): rebuilds the PC shader under
+        `PCFrameLock`/`Unlock`.
+      - New stubs: `NuShaderMtlDescInit` (`0x544760`), `NuPCShaderRelease` (`0x58b980`),
+        `NuPCShaderCreate` (`0x58ba70`).
+      - Hook test: `NuMtlShaderDescInit` 299 calls.
+- [ ] `pc/numtl.c` part 7, the rest of the file:
       - the callback adder `0x540f20` and its caller `0x541900`, and `0x5419c0` (render
         list entries from the 3000-entry pool at `0x35e94c0`);
       - `0x541040` (static, register argument) and `0x541670`;
       - `NuMtlAnimate` `0x5410b0` (990 bytes);
-      - the shader-description pair `0x541680`/`0x541740`;
       - `0x541a20` (727 bytes, material state setup);
       - the render passes `0x541d00` and `0x542320`, and `0x542390` (from
         `NuRndrEndScene`);

@@ -403,6 +403,11 @@ exact; `tools/permute.py` automates some of them.
   whatever follows it, as `smlist`'s end names `render_plane_order` in the original and
   `mtl_store` in ours. `tools/offsetmatch.py` counts that as identical (same offset from
   the same global), so there's no need to reproduce the layout.
+- **A struct reached through a cast pointer local is a different access path.**
+  `NuMtlShaderDescInit` writes the shader description inside `NUMTL`. A `desc = (NUSHADERMTLDESC *)mtl->desc` local
+  put it in `edi` with offsets from there. The original addresses every field from `mtl`
+  (`[esi+0xbc]`), so each access is written as `MTLDESC(mtl)->field` (38% → exact,
+  together with the store order).
 - **Short setters: try every statement order.** For stores to unrelated globals, MSVC
   keeps the source order but hoists loads and merges increments, so the asm order is
   only a hint. `RndrStateSetConstAlphaTint`'s six statements: the permuter's adjacent

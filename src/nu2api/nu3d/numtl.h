@@ -109,7 +109,11 @@ typedef struct nushadermtldesc_s {
     float unknown_024;
     int unknown_028[3];
     float unknown_034;
-    int unknown_038[(0x100 - 0x38) / 4]; /* not chars: /GS would guard the frame */
+    int unknown_038[(0xa8 - 0x38) / 4]; /* not chars: /GS would guard the frame */
+    unsigned char unknown_0a8;
+    unsigned char unknown_0a9;
+    short unknown_0aa;
+    int unknown_0ac[(0x100 - 0xac) / 4];
     unsigned int unknown_100; /* bits */
     int unknown_104[(0x150 - 0x104) / 4];
     double unknown_150; /* something 8-byte aligned: users align their frames */
@@ -152,9 +156,13 @@ void NuMtlCreateVariants(NUMTL *forced, unsigned int *shaders, int n, void **lnk
 NUMTL *NuMtlGetForcedVariant(NUMTL *mtl, NUMTL *forced);
 NUMTL *NuMtlGetVariant(NUMTL *forced, unsigned int shader);
 
-/* Not decompiled yet (nu3d_stubs.c; names ours unless PS2). */
 void NuMtlShaderDescInit(NUMTL *mtl, int flags);
 void NuMtlShaderUpdate(NUMTL *mtl);
+
+/* Not decompiled yet (nu3d_stubs.c; names ours unless PS2). */
+void NuShaderMtlDescInit(NUSHADERMTLDESC *desc);
+void NuPCShaderRelease(int shader);
+int NuPCShaderCreate(NUSHADERMTLDESC *desc, NUMTL *mtl);
 int NuTexUnRef(int tid);
 void NuPCGeomRelease(void *geom);
 void *NuPCShaderLookup(unsigned int flags);

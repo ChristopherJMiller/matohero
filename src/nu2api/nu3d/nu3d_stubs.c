@@ -103,14 +103,19 @@ int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, in
 void NuRndrUpdateCameraPlane(void) {
 }
 
-/* Fills a new material's shader description from its colour and texture (name ours). */
-// STUB: BIONICLE 0x541680
-void NuMtlShaderDescInit(NUMTL *mtl, int flags) {
+/* Sets a shader description to its defaults (name ours). */
+// STUB: BIONICLE 0x544760
+void NuShaderMtlDescInit(NUSHADERMTLDESC *desc) {
 }
 
-/* Rebuilds a material's shader from its description (name ours). */
-// STUB: BIONICLE 0x541740
-void NuMtlShaderUpdate(NUMTL *mtl) {
+/* Releases and builds the PC shader of a material's description (names ours). */
+// STUB: BIONICLE 0x58b980
+void NuPCShaderRelease(int shader) {
+}
+
+// STUB: BIONICLE 0x58ba70
+int NuPCShaderCreate(NUSHADERMTLDESC *desc, NUMTL *mtl) {
+    return 0;
 }
 
 // STUB: BIONICLE 0x54bad0

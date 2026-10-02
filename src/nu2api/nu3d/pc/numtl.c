@@ -12,6 +12,13 @@
  * geometry of another vertex format), and destruction, which takes the variants along.
  * In PC order; the animation and default-material code isn't decompiled yet. */
 
+/* The PC layer (nucore/pc/pcapi_stubs.c, names ours). */
+void PCFrameLock(void);
+void PCFrameUnlock(void);
+
+/* A material's shader description (kept as ints in NUMTL, see numtl.h). */
+#define MTLDESC(mtl) ((NUSHADERMTLDESC *)(mtl)->desc)
+
 #define NUMTL_STORE 1800
 #define NUMTL_RENDERPLANES 24
 #define NUMTL_SORTPRIS 257
@@ -370,11 +377,44 @@ void NuMtlInit(void) {
     unknown_348c898 = 0;
 }
 
+/* Sets up a material's shader description: from its texture, or from its diffuse colour
+ * (PS2 scale, 128 = 1.0) when it has none (name ours). */
+// FUNCTION: BIONICLE 0x541680
+void NuMtlShaderDescInit(NUMTL *mtl, int flags) {
+    if (mtl->unknown_b4) {
+        NuShaderMtlDescInit(MTLDESC(mtl));
+        if (mtl->tid != 0) {
+            MTLDESC(mtl)->unknown_004 = 1;
+            MTLDESC(mtl)->unknown_0a8 = 1;
+            mtl->shader_flags = (mtl->shader_flags & ~0x3000) | 0x800;
+        } else {
+            MTLDESC(mtl)->unknown_014 = ((((0xffffff00 | (unsigned char)(int)(mtl->diffuse.b * 128.0f)) << 8) | (unsigned char)(int)(mtl->diffuse.g * 128.0f)) << 8) | (unsigned char)(int)(mtl->diffuse.r * 128.0f);
+        }
+        if (!flags) {
+            mtl->shader_flags |= 0x40000;
+        }
+    }
+}
+
+/* Rebuilds a material's PC shader from its description (name ours). */
+// FUNCTION: BIONICLE 0x541740
+void NuMtlShaderUpdate(NUMTL *mtl) {
+    if (mtl->unknown_b4) {
+        PCFrameLock();
+        if (mtl->shader != 0) {
+            NuPCShaderRelease(mtl->shader);
+        }
+        mtl->shader = NuPCShaderCreate(MTLDESC(mtl), mtl);
+        mtl->unknown_210 = NuPCShaderLookup(mtl->shader_flags);
+        PCFrameUnlock();
+    }
+}
+
 /* Replaces the material's shader description, if it has one. */
 // FUNCTION: BIONICLE 0x5417a0
 void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc) {
     if (mtl->unknown_b4) {
-        *(NUSHADERMTLDESC *)mtl->desc = *desc;
+        *MTLDESC(mtl) = *desc;
     }
 }
 
