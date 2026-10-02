@@ -391,6 +391,12 @@ exact; `tools/permute.py` automates some of them.
   plane lists 6 at a time. Ours unrolled the same way; the remaining difference was
   `smlist[i] = smlist[i]->snext` (the original reads through the list entry) against
   `= mtl->snext` (33% → identical).
+- **A clamp's constant shows how it was written.** `if (pri > 256)` compiles to `cmp
+  ecx, 0x100; jle` and `if (pri >= 257)` to `cmp ecx, 0x101; jl`; `NuMtlRenderListAdd`
+  has the second (65% → 76%; a `mtl` local for `item->mtl` made it exact).
+- **A guard handled at the end of the function is an `else`.** `NuMtlSetAlphaTest`
+  disables the alpha test for "always" in a block after the final `ret`. That came from
+  `if (atst != 1) { … } else { disable; }`; an early `return` put it first (89% → exact).
 - **Short setters: try every statement order.** For stores to unrelated globals, MSVC
   keeps the source order but hoists loads and merges increments, so the asm order is
   only a hint. `RndrStateSetConstAlphaTint`'s six statements: the permuter's adjacent

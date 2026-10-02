@@ -118,6 +118,12 @@ void NuMtlInsert(NUMTL *sm, int renderplane);
 void NuMtlRemove(NUMTL *mtl);
 void NuMtlCountRelease(void);
 void NuMtlAdd(NUMTL *mtl);
+void NuMtlAnimateSetMask(int mask);
+void NuMtlAnimateSetSpeedScale(float scale);
+void NuMtlDetachMtl(NUMTL *host);
+int NuMtlSetCurrentRenderPlane(int renderplane);
+void NuMtlSetAlphaTest(NUMTL *mtl);
+void NuMtlSetAlphaFail(NUMTL *mtl);
 NUMTL *NuMtlCreateEx(int cnt, int renderplane);
 NUMTL *NuMtlCreate(int cnt);
 

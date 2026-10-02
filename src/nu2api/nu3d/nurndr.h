@@ -34,6 +34,7 @@ void NuHGobjEval(NUHGOBJ *hgobj, int njanims, NUJOINTANIM *janim, NUMTX *mtx_arr
 
 /* The PC layer's Direct3D wrapper (named after its error-check string). */
 void d3dSetTransform(int state, NUMTX *m);
+void d3dSetRenderState(int state, int value);
 
 /* Render target size in pixels (nurndr_gen.c). */
 extern int nurndr_pixel_width;

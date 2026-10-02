@@ -705,13 +705,24 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       - New stubs: the shader description setup `0x541680` and the shader rebuild
         `0x541740` (names ours).
       - Hook test: `NuMtlInsert` 1.3k calls, `NuMtlUpdate` 1.2k.
-- [ ] `pc/numtl.c` part 3: the rest of the file, all unnamed or stubbed:
-      - the callback adder `0x540f20`;
-      - `0x540fc0`, `0x541040` and `0x5414d0`–`0x541670`;
-      - `NuMtlAnimate` `0x5410b0`;
-      - the shader-description pair above and `NuMtlSetShaderDescPS` `0x5417a0`;
-      - `0x541900`–`0x541f70`, `NuMtlCreateDefault` `0x542020`, `0x542180`,
-        `0x542320`, `0x542390`.
+- [x] `pc/numtl.c` part 3, small functions, 8/8 exact:
+      - `NuMtlRenderListAdd` (`0x540fc0`, name ours): appends an entry to the per-frame
+        render lists, indexed by render plane and sort priority (`rlist_head`/`_tail`
+        at `0x35f5040`/`0x35fb0a0`).
+      - `NuMtlAnimateSetMask`/`SetSpeedScale` (`0x5414d0`/`0x5414e0`), `NuMtlDetachMtl`
+        (`0x5414f0`), `NuMtlSetCurrentRenderPlane` (`0x541500`), `NuMtlSetShaderDescPS`
+        (`0x5417a0`).
+      - The Direct3D alpha state from a material's PS2 test bits: `NuMtlSetAlphaTest`
+        (`0x541510`) and `NuMtlSetAlphaFail` (`0x5415b0`), names ours. They call
+        `d3dSetRenderState` (`0x581230`), now stubbed.
+      - Hook test: `NuMtlRenderListAdd` 1.04M calls, the alpha setters 21k and 54k.
+- [ ] `pc/numtl.c` part 4, the rest of the file:
+      - the callback adder `0x540f20` and its caller `0x541900`;
+      - `0x541040` (static, register argument) and `0x541670`;
+      - `NuMtlAnimate` `0x5410b0` (990 bytes);
+      - the shader-description pair `0x541680`/`0x541740`;
+      - `0x5419c0`, `0x541a20`, `0x541d00`, `0x541f70`;
+      - `NuMtlCreateDefault` `0x542020`, `0x542180`, `0x542320`, `0x542390`.
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%).

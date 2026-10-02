@@ -87,6 +87,11 @@ void NuHGobjEval(NUHGOBJ *hgobj, int njanims, NUJOINTANIM *janim, NUMTX *mtx_arr
 void d3dSetTransform(int state, NUMTX *m) {
 }
 
+/* Sets a Direct3D render state, cached (named like the other d3d wrappers). */
+// STUB: BIONICLE 0x581230
+void d3dSetRenderState(int state, int value) {
+}
+
 // STUB: BIONICLE 0x53da80
 int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, int clip_to_screen) {
     return 0;
@@ -153,10 +158,6 @@ void NuQFntPrintCharW(NUQFNT *fv, NUWCHAR *txt, NUQFNT_PRINTMODE mode) {
 
 // STUB: BIONICLE 0x54b9c0
 void NuTexDestroy(int tid) {
-}
-
-// STUB: BIONICLE 0x5417a0
-void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc) {
 }
 
 // STUB: BIONICLE 0x54b8b0

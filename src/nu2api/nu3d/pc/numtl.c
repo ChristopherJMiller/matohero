@@ -1,6 +1,7 @@
 #include "numtl.h"
 
 #include "listman.h"
+#include "nurndr.h"
 #include "nutex.h"
 
 #include <string.h>
@@ -13,6 +14,16 @@
 
 #define NUMTL_STORE 1800
 #define NUMTL_RENDERPLANES 24
+#define NUMTL_SORTPRIS 257
+
+/* An entry of the per-frame render lists: something to draw with a material, sorted by
+ * render plane and sort priority (PC; layout and name ours). */
+typedef struct numtlrenderitem_s {
+    struct numtlrenderitem_s *next;
+    void *data;
+    float dist;
+    NUMTL *mtl;
+} NUMTLRENDERITEM;
 
 // GLOBAL: BIONICLE 0x33a2be0
 static NUMTL mtl_store[NUMTL_STORE];
@@ -33,6 +44,20 @@ int numtl_nmtls;
 /* The highest store index used so far. */
 // GLOBAL: BIONICLE 0x348c958
 static int mtl_allocmax;
+
+// GLOBAL: BIONICLE 0x616c10
+static int mtl_animation_mask = 0xffffff;
+
+// GLOBAL: BIONICLE 0x616c14
+static float mtl_animation_speed_scale = 1.0f;
+
+/* The render lists: first and last entry for each render plane and sort priority (the
+ * sort priority clamped to -1..255, offset by one). */
+// GLOBAL: BIONICLE 0x35f5040
+static NUMTLRENDERITEM *rlist_head[NUMTL_RENDERPLANES][NUMTL_SORTPRIS];
+
+// GLOBAL: BIONICLE 0x35fb0a0
+static NUMTLRENDERITEM *rlist_tail[NUMTL_RENDERPLANES][NUMTL_SORTPRIS];
 
 // FUNCTION: BIONICLE 0x540d70
 void NuMtlCountRelease(void) {
@@ -131,6 +156,128 @@ void NuMtlAddEx(NUMTL *mtl, int renderplane) {
     mtl->next = NULL;
     mtl->fb_mask = mtl->attrib.fill ? 0 : 0xff000000;
     NuMtlInsert(mtl, renderplane);
+}
+
+/* Appends an entry to its material's render list (name ours). */
+// FUNCTION: BIONICLE 0x540fc0
+void NuMtlRenderListAdd(NUMTLRENDERITEM *item) {
+    NUMTL *mtl;
+    int pri;
+
+    mtl = item->mtl;
+    pri = mtl->sort_pri + 1;
+    if (pri >= NUMTL_SORTPRIS) {
+        pri = NUMTL_SORTPRIS - 1;
+    } else if (pri < 0) {
+        pri = 0;
+    }
+    if (rlist_head[mtl->renderplane][pri] != NULL) {
+        rlist_tail[mtl->renderplane][pri]->next = item;
+    } else {
+        rlist_head[mtl->renderplane][pri] = item;
+    }
+    rlist_tail[mtl->renderplane][pri] = item;
+    item->next = NULL;}
+
+// FUNCTION: BIONICLE 0x5414d0
+void NuMtlAnimateSetMask(int mask) {
+    mtl_animation_mask = mask;
+}
+
+// FUNCTION: BIONICLE 0x5414e0
+void NuMtlAnimateSetSpeedScale(float scale) {
+    mtl_animation_speed_scale = scale;
+}
+
+/* Unhooks the material chained after host (the PC doesn't free it). */
+// FUNCTION: BIONICLE 0x5414f0
+void NuMtlDetachMtl(NUMTL *host) {
+    host->next = host->next->next;
+}
+
+/* Sets the render plane new materials go to; returns the old one. */
+// FUNCTION: BIONICLE 0x541500
+int NuMtlSetCurrentRenderPlane(int renderplane) {
+    int rv;
+
+    rv = numtl_renderplane;
+    numtl_renderplane = renderplane;
+    return rv;
+}
+
+/* Sets Direct3D's alpha test from the material's PS2 test (attrib.atst: never, always,
+ * less, less-equal, equal, greater-equal, greater, not-equal) and reference value
+ * (name ours). */
+// FUNCTION: BIONICLE 0x541510
+void NuMtlSetAlphaTest(NUMTL *mtl) {
+    if (mtl->attrib.atst != 1) {
+        d3dSetRenderState(15, 1); /* D3DRS_ALPHATESTENABLE */
+        if (mtl->attrib.atst == 1) {
+            d3dSetRenderState(25, 8); /* D3DRS_ALPHAFUNC, D3DCMP_ALWAYS */
+        } else if (mtl->attrib.atst == 0) {
+            d3dSetRenderState(25, 1);
+        } else if (mtl->attrib.atst == 3) {
+            d3dSetRenderState(25, 4);
+        } else if (mtl->attrib.atst == 4) {
+            d3dSetRenderState(25, 3);
+        } else if (mtl->attrib.atst == 5) {
+            d3dSetRenderState(25, 7);
+        } else if (mtl->attrib.atst == 6) {
+            d3dSetRenderState(25, 5);
+        } else if (mtl->attrib.atst == 7) {
+            d3dSetRenderState(25, 6);
+        } else if (mtl->attrib.atst == 2) {
+            d3dSetRenderState(25, 2);
+        }
+        d3dSetRenderState(24, mtl->attrib.aref * 2); /* D3DRS_ALPHAREF */
+    } else {
+        d3dSetRenderState(15, 0);
+    }
+}
+
+/* Sets up the pass for the pixels that fail the alpha test: the inverse comparison, and
+ * which buffers they still write (attrib.afail: keep, frame buffer only, z only, colour
+ * only; name ours). */
+// FUNCTION: BIONICLE 0x5415b0
+void NuMtlSetAlphaFail(NUMTL *mtl) {
+    if (mtl->attrib.atst == 1) {
+        return;
+    }
+    if (mtl->attrib.atst == 0) {
+        d3dSetRenderState(25, 8);
+    } else if (mtl->attrib.atst == 3) {
+        d3dSetRenderState(25, 5);
+    } else if (mtl->attrib.atst == 4) {
+        d3dSetRenderState(25, 6);
+    } else if (mtl->attrib.atst == 5) {
+        d3dSetRenderState(25, 2);
+    } else if (mtl->attrib.atst == 6) {
+        d3dSetRenderState(25, 4);
+    } else if (mtl->attrib.atst == 7) {
+        d3dSetRenderState(25, 3);
+    } else if (mtl->attrib.atst == 2) {
+        d3dSetRenderState(25, 7);
+    }
+    if (mtl->attrib.afail == 0) {
+        d3dSetRenderState(168, 0); /* D3DRS_COLORWRITEENABLE */
+        d3dSetRenderState(14, 0); /* D3DRS_ZWRITEENABLE */
+    } else if (mtl->attrib.afail == 1) {
+        d3dSetRenderState(14, 0);
+    } else if (mtl->attrib.afail == 2) {
+        d3dSetRenderState(168, 0);
+        d3dSetRenderState(14, 1);
+    } else if (mtl->attrib.afail == 3) {
+        d3dSetRenderState(168, 7);
+        d3dSetRenderState(14, 0);
+    }
+}
+
+/* Replaces the material's shader description, if it has one. */
+// FUNCTION: BIONICLE 0x5417a0
+void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc) {
+    if (mtl->unknown_b4) {
+        *(NUSHADERMTLDESC *)mtl->desc = *desc;
+    }
 }
 
 /* Takes cnt materials from the store, each linked to the one made before it through
