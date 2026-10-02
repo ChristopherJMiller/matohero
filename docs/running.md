@@ -8,7 +8,14 @@ tools/rungame setup        # copy orig/game -> run/game and finish the install
 tools/rungame              # play it (needs a display)
 tools/rungame --headless=90 --keys "20:Escape 40:Return"   # Xvfb, screenshots in run/shots/
                                      # (keys are held 0.3 s; the game samples once a frame)
+tools/rungame --headless=90 --sound  # headless but audible
+tools/rungame --mute                 # play without sound
 ```
+
+Headless runs are muted by default. The game plays into a temporary PipeWire null sink
+(`pw-cli create-node`, picked by `PULSE_SINK`), so its sound code runs as usual but
+nothing reaches the speakers; the sink is removed when the run ends. Without `pw-cli`,
+Wine gets no sound server and the game has no audio device.
 
 ## What setup does
 

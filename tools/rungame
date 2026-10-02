@@ -2,11 +2,14 @@
 # Run BIONICLE Heroes under Wine from a working copy of the installed game.
 #   tools/rungame setup                 copy orig/game to run/game and finish the install
 #                                       (nuconfig.txt, Ogg2Wav music conversion)
-#   tools/rungame [--headless[=SECS]] [--keys "T:KEY ..."] [--exe PATH] [-- game args]
+#   tools/rungame [--headless[=SECS]] [--keys "T:KEY ..."] [--mute|--sound] [--exe PATH]
+#                 [-- game args]
 #                                       run the game; --headless runs it in Xvfb for SECS
 #                                       seconds (default 40), saving a screenshot every 5 s
 #                                       to run/shots/; --keys presses xdotool KEYs at those
-#                                       times, e.g. --keys "15:Escape 25:Return"
+#                                       times, e.g. --keys "15:Escape 25:Return".
+#                                       Headless runs are muted unless --sound is given;
+#                                       --mute mutes a windowed run too.
 # The Wine prefix is run/prefix, separate from the compiler's toolchain/wineprefix.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,6 +17,27 @@ game="$root/run/game"
 export WINEPREFIX="$root/run/prefix"
 export WINEDEBUG="${WINEDEBUG:--all}"
 export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mscoree,mshtml=}"
+
+# Muting: the game plays into a throwaway PipeWire null sink (PULSE_SINK), so its sound
+# code runs as usual but nothing reaches the speakers; the sink is removed on exit.
+# Without pw-cli, Wine gets no sound server at all (no audio device).
+mute_node=""
+mute() {
+    local name="bionicle-mute-$$"
+    if command -v pw-cli >/dev/null 2>&1 && pw-cli create-node adapter "{ factory.name=support.null-audio-sink node.name=$name node.description=\"BIONICLE (muted)\" media.class=Audio/Sink object.linger=true priority.session=1 priority.driver=1 audio.position=[ FL FR ] }" >/dev/null 2>&1; then
+        mute_node="$(pw-cli ls Node 2>/dev/null | awk -v n="\"$name\"" '/^[[:space:]]*id [0-9]+,/ {gsub(",", "", $2); id = $2} $1 == "node.name" && $3 == n {print id}')"
+        export PULSE_SINK="$name"
+        trap unmute EXIT
+    else
+        export PULSE_SERVER="unix:/nonexistent"
+    fi
+}
+unmute() {
+    if [[ -n "$mute_node" ]]; then
+        pw-cli destroy "$mute_node" >/dev/null 2>&1 || true
+        mute_node=""
+    fi
+}
 
 setup() {
     [[ -d "$root/orig/game" ]] || { echo "orig/game missing; run tools/extract_orig.py" >&2; exit 1; }
@@ -33,13 +57,15 @@ setup() {
 }
 
 run() {
-    local headless="" exe="$game/Bionicle.exe" keys=""
+    local headless="" exe="$game/Bionicle.exe" keys="" sound=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --headless) headless=40 ;;
             --headless=*) headless="${1#*=}" ;;
             --exe) exe="$(realpath "$2")"; shift ;;
             --keys) keys="$2"; shift ;;
+            --mute) sound=off ;;
+            --sound) sound=on ;;
             --) shift; break ;;
             *) break ;;
         esac
@@ -53,8 +79,12 @@ run() {
         export WINEDLLOVERRIDES="$WINEDLLOVERRIDES;xinput1_1=n,b"
         rm -f "$game/bhhook.log"
     fi
+    if [[ "$sound" == off || ( -n "$headless" && "$sound" != on ) ]]; then
+        mute
+    fi
     if [[ -z "$headless" ]]; then
-        exec wine "$exe" "$@"
+        wine "$exe" "$@"
+        return
     fi
     mkdir -p "$root/run/shots"
     rm -f "$root/run/shots/"*.png
