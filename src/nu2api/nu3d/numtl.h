@@ -37,6 +37,14 @@ typedef struct numtlattrib_s {
     unsigned int pad : 10;
 } NUMTLATTRIB;
 
+/* Something a PC material holds geometry through (layout ours; only next and the handle
+ * that is released are known). */
+typedef struct numtlgeomref_s {
+    struct numtlgeomref_s *next;
+    int unknown_04[7];
+    void *geom;
+} NUMTLGEOMREF;
+
 /* PC layout, only the fields placed so far (from the font code). The PS2 has a
  * RNDRSTREAM rs at 0x124; on PC the font code passes the address 4 bytes in where it
  * passes rs, and nothing reads through it, so it is kept as bytes here. */
@@ -48,7 +56,13 @@ struct numtl_s {
     short renderplane : 8;
     short pad : 4;
     short unknown_02;
-    unsigned char rs[0x2c];
+    int rs; /* the font code passes this address as a RNDRSTREAM * (PS2: rs at 0x124) */
+    NUMTLGEOMREF *unknown_08; /* PC geometry the material owns, released with it */
+    NUMTLGEOMREF *unknown_0c;
+    NUMTLGEOMREF *unknown_10; /* a list of them */
+    int unknown_14[(0x28 - 0x14) / 4];
+    struct numtl_s *snext; /* the list of materials (as on PS2) */
+    struct numtl_s *slast;
     struct numtl_s *next; /* the next pass of a multi-pass material */
     int unknown_34[2];
     NUDISPLAYLIST *dlist_mtl; /* the material's list in a dynamic scene */
@@ -66,8 +80,12 @@ struct numtl_s {
     unsigned char special_id; /* index into nurndr_forced_mtl_table */
     unsigned char unknown_9f;
     int unknown_a0[(0x1b8 - 0xa0) / 4];
-    int unknown_1b8; /* a forced material stands in directly only if this agrees */
-    int unknown_1bc[(0x214 - 0x1bc) / 4]; /* 0x214 bytes: NuQFntCreate copies whole ones */
+    int unknown_1b8; /* the vertex shader: a forced material stands in directly only if
+                      * this agrees */
+    int unknown_1bc;
+    int unknown_1c0[(0x210 - 0x1c0) / 4];
+    void *unknown_210; /* looked up from unknown_1b8 (0x214 bytes in all: NuQFntCreate
+                        * copies whole ones) */
 };
 
 /* The PC's shader description (0x158 bytes; differs from saga's). Only the fields the
@@ -95,7 +113,20 @@ void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc);
 void NuMtlUpdate(NUMTL *mtl);
 void NuMtlSetRenderPlane(NUMTL *mtl, int newplane);
 void NuMtlDestroy(NUMTL *mtl);
-/* A copy of the forced material made to fit a scene material (name ours). */
+
+/* pc/numtl.c: PC variants of a material, one per vertex shader it's drawn with (names
+ * ours). */
+void NuMtlVariantsInit(int count, VARIPTR *buff, VARIPTR *buffend);
+NUMTL *NuMtlFindVariant(NUMTL *forced, int shader);
+void NuMtlCreateVariants(NUMTL *forced, int *shaders, int n, void **lnk);
 NUMTL *NuMtlGetForcedVariant(NUMTL *mtl, NUMTL *forced);
+NUMTL *NuMtlGetVariant(NUMTL *forced, int shader);
+
+/* Not decompiled yet (nu3d_stubs.c; names ours unless PS2). */
+void NuMtlRemove(NUMTL *mtl);
+void NuMtlCountRelease(void);
+int NuTexUnRef(int tid);
+void NuPCGeomRelease(void *geom);
+void *NuPCShaderLookup(int shader);
 
 #endif

@@ -98,9 +98,29 @@ int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, in
 void NuRndrUpdateCameraPlane(void) {
 }
 
-// STUB: BIONICLE 0x5425e0
-NUMTL *NuMtlGetForcedVariant(NUMTL *mtl, NUMTL *forced) {
-    return forced;
+// STUB: BIONICLE 0x540e60
+void NuMtlRemove(NUMTL *mtl) {
+}
+
+/* Drops a material from the material counts (name ours). */
+// STUB: BIONICLE 0x540d70
+void NuMtlCountRelease(void) {
+}
+
+// STUB: BIONICLE 0x54bad0
+int NuTexUnRef(int tid) {
+    return 0;
+}
+
+/* pc/nugobj.c: releases a geometry's buffers (name ours). */
+// STUB: BIONICLE 0x558670
+void NuPCGeomRelease(void *geom) {
+}
+
+/* The PC shader data for a vertex shader id (name ours). */
+// STUB: BIONICLE 0x58b470
+void *NuPCShaderLookup(int shader) {
+    return NULL;
 }
 
 // STUB: BIONICLE 0x581070
@@ -128,10 +148,6 @@ void NuRndrSphere(NUVEC *pos, float radius, unsigned int col, float yscale) {
 /* nuqfnt.c: the glyph renderer behind NuQFntPrintW/U (name from saga). */
 // STUB: BIONICLE 0x537bf0
 void NuQFntPrintCharW(NUQFNT *fv, NUWCHAR *txt, NUQFNT_PRINTMODE mode) {
-}
-
-// STUB: BIONICLE 0x542720
-void NuMtlDestroy(NUMTL *mtl) {
 }
 
 // STUB: BIONICLE 0x54b9c0

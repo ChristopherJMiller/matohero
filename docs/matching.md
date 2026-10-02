@@ -459,6 +459,13 @@ exact; `tools/permute.py` automates some of them.
   `add_item` that ours does as load/add/store. The permuter and batches of hand variants
   (index forms, increment forms, wind test forms) changed nothing.
 
+- **`NuMtlGetForcedVariant` (83%): an address-taken loop variable.** The original
+  keeps its list cursor in its stack slot as well as `eax` (a `mov [esp+8], eax` after
+  each `NuLstGetNext`), because the slot's address goes to `NuMtlCreateVariants` after
+  the loop. Ours never stores it and passes the address of an unwritten slot. A
+  `NULNKHDR *` cursor, a `while` loop, a union, a `VARIPTR`, and defining the caller
+  first changed nothing (`volatile` is much worse).
+
 - **`NuUTF8ToUnicode` (33%)**: identical code with `ecx`/`edx` swapped for the source
   pointer and the byte temporary. The permuter's moves and hand variants (loop forms,
   check order, post-increments) don't change it; it was never exact (not a regression).

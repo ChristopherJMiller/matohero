@@ -671,11 +671,29 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       `charbaseRenderInst`), `0x54fed0` (701 bytes) and its wrapper `0x550190` (21 bytes,
       from `AddOnceOnlyThings`). Probably the PS2's `NuRndrSphere`/`SphereEx`/
       `SphereMtx` family.
+- [x] `pc/numtl.c` part 1 (new file; PS2 `nu3d/ps2/numtl.c`), the end of the PC
+      material file: the PC-only cache of material variants (copies of a forced material,
+      one per vertex shader; names ours) and destruction.
+      - 6 exact: `NuMtlVariantsInit` (`0x542490`), `NuMtlFindVariant` (`0x5424c0`),
+        `NuMtlCreateVariants` (`0x542510`), `NuMtlGetVariant` (`0x542660`),
+        `NuMtlDestroy` (`0x542720`, was stubbed; it destroys the variants too), and the
+        static `MtlDestroy` (`0x5426b0`, the PS2's `NuMtlDestroy` body).
+      - `NuMtlGetForcedVariant` (`0x5425e0`, was stubbed) at 83%.
+      - PC `NUMTL` gains `snext`/`slast` (`0x28`/`0x2c`), the geometry references at
+        `0x08`/`0x0c`/`0x10`, `unknown_1bc`/`unknown_210`; `rs` is now an `int` whose
+        address the font code passes.
+      - New stubs: `NuMtlRemove` (`0x540e60`), `NuMtlCountRelease` (`0x540d70`),
+        `NuTexUnRef` (`0x54bad0`), `NuPCGeomRelease` (`0x558670`, `pc/nugobj.c`) and
+        `NuPCShaderLookup` (`0x58b470`); the last three are named by me.
+      - Hook test: init once, `NuMtlCreateVariants` 84 calls.
+- [ ] `pc/numtl.c` part 2: the rest of the file, from about `0x540d70` (`NuMtlRemove`,
+      `NuMtlCountRelease`, `NuMtlCreate` `0x5418b0`, `NuMtlUpdate` `0x5418d0`,
+      `NuMtlSetRenderPlane` `0x540f80`, `NuMtlAnimate` `0x5410b0`,
+      `NuMtlSetShaderDescPS` `0x5417a0`, `NuMtlCreateDefault` `0x542020`, …), all
+      stubbed so far.
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
-      `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%), and
-      the stubbed `NuMtlGetForcedVariant` (`0x5425e0`; needs the list helper `0x565860`
-      and `0x542510`/`0x5424c0`).
+      `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%).
 - [ ] The PC immediate-mode renderer, then `NuQFntPrintCharW` (`0x537bf0`, 1543 bytes,
       stubbed). The glyph renderer writes straight into that renderer's vertex buffers
       (`0x616e9c`/`0x616e78`, overflow flags `0x348f869`–`0x348f86b`, a state stack at

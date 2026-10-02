@@ -699,7 +699,7 @@ __inline void NuQFntMove(NUQFNT *fv, float x, float y, float z) {
         fv = system_qfont;
     }
     if (fv != NULL) {
-        rs = (NuQFntMode & 2) ? NULL : (RNDRSTREAM *)((VUFNT *)fv)->mtl->rs;
+        rs = (NuQFntMode & 2) ? NULL : (RNDRSTREAM *)&((VUFNT *)fv)->mtl->rs;
         NuQFntMoveRS(rs, fv, x, y, z);
     }
 }
