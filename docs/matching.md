@@ -382,6 +382,15 @@ exact; `tools/permute.py` automates some of them.
   dropping `static` matched both builders and their caller at once.
 - **`s.x = s.y = s.z = v` stores z, y, x.** `NuRndrGetSpecularMtx` fills its scale
   vector backwards. The chained assignment does that; three statements store x, y, z.
+- **A search loop with a fallback index is a `goto` out of the loop.**
+  `NuMtlCreateEx` scans its store for a free material, and the original sets the index
+  to 1800 explicitly after a failed scan, with the found case placed at the end of the
+  function. `for (…) if (free) { update max; goto init; }` then `ix = 1800; init:` got
+  that layout (`break` out of the loop didn't).
+- **MSVC unrolls a fixed loop over a small array.** `NuMtlRemove` checks all 24 render
+  plane lists 6 at a time. Ours unrolled the same way; the remaining difference was
+  `smlist[i] = smlist[i]->snext` (the original reads through the list entry) against
+  `= mtl->snext` (33% → identical).
 - **Short setters: try every statement order.** For stores to unrelated globals, MSVC
   keeps the source order but hoists loads and merges increments, so the asm order is
   only a hint. `RndrStateSetConstAlphaTint`'s six statements: the permuter's adjacent

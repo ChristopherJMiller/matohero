@@ -98,13 +98,14 @@ int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, in
 void NuRndrUpdateCameraPlane(void) {
 }
 
-// STUB: BIONICLE 0x540e60
-void NuMtlRemove(NUMTL *mtl) {
+/* Fills a new material's shader description from its colour and texture (name ours). */
+// STUB: BIONICLE 0x541680
+void NuMtlShaderDescInit(NUMTL *mtl, int flags) {
 }
 
-/* Drops a material from the material counts (name ours). */
-// STUB: BIONICLE 0x540d70
-void NuMtlCountRelease(void) {
+/* Rebuilds a material's shader from its description (name ours). */
+// STUB: BIONICLE 0x541740
+void NuMtlShaderUpdate(NUMTL *mtl) {
 }
 
 // STUB: BIONICLE 0x54bad0
@@ -119,7 +120,7 @@ void NuPCGeomRelease(void *geom) {
 
 /* The PC shader data for a vertex shader id (name ours). */
 // STUB: BIONICLE 0x58b470
-void *NuPCShaderLookup(int shader) {
+void *NuPCShaderLookup(unsigned int flags) {
     return NULL;
 }
 
@@ -154,17 +155,8 @@ void NuQFntPrintCharW(NUQFNT *fv, NUWCHAR *txt, NUQFNT_PRINTMODE mode) {
 void NuTexDestroy(int tid) {
 }
 
-// STUB: BIONICLE 0x5418b0
-NUMTL *NuMtlCreate(int cnt) {
-    return NULL;
-}
-
 // STUB: BIONICLE 0x5417a0
 void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc) {
-}
-
-// STUB: BIONICLE 0x5418d0
-void NuMtlUpdate(NUMTL *mtl) {
 }
 
 // STUB: BIONICLE 0x54b8b0
@@ -175,10 +167,6 @@ int NuTexCreate(NUTEX *tex) {
 // STUB: BIONICLE 0x54c2a0
 int NuTexRead(char *fname, VARIPTR *buff, VARIPTR buffend) {
     return 0;
-}
-
-// STUB: BIONICLE 0x540f80
-void NuMtlSetRenderPlane(NUMTL *mtl, int newplane) {
 }
 
 // STUB: BIONICLE 0x54baf0
@@ -195,9 +183,6 @@ int NuTexHeight(int tid) {
 void *NuGScnBufferAllocAligned(int size, int alignment) {
     return NULL;
 }
-
-// GLOBAL: BIONICLE 0x348c884
-int numtl_renderplane;
 
 
 // STUB: BIONICLE 0x550250

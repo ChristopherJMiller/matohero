@@ -79,12 +79,17 @@ struct numtl_s {
     unsigned char fxid; /* the shader effect: 0x81 and 0x85 are specular */
     unsigned char special_id; /* index into nurndr_forced_mtl_table */
     unsigned char unknown_9f;
-    int unknown_a0[(0x1b8 - 0xa0) / 4];
-    int unknown_1b8; /* the vertex shader: a forced material stands in directly only if
-                      * this agrees */
-    int unknown_1bc;
-    int unknown_1c0[(0x210 - 0x1c0) / 4];
-    void *unknown_210; /* looked up from unknown_1b8 (0x214 bytes in all: NuQFntCreate
+    unsigned int fb_mask; /* PS2 name: 0xff000000, or 0 for attrib.fill */
+    int unknown_a4[(0xb4 - 0xa4) / 4];
+    int unknown_b4; /* set when the material has a shader description */
+    /* 0xb8: the material's NUSHADERMTLDESC, kept as ints here because the struct's double
+     * would pad NUMTL past its 0x214 bytes */
+    int desc[(0x1b8 - 0xb8) / 4];
+    unsigned int shader_flags; /* the description's unknown_100; a forced material stands
+                                * in directly only if these agree */
+    int shader; /* the description's unknown_104: the shader built from it */
+    int desc_1c0[(0x210 - 0x1c0) / 4];
+    void *unknown_210; /* looked up from shader_flags (0x214 bytes in all: NuQFntCreate
                         * copies whole ones) */
 };
 
@@ -107,26 +112,34 @@ typedef struct nushadermtldesc_s {
 
 extern int numtl_renderplane;
 
-/* Not decompiled yet (nu3d_stubs.c). */
+/* pc/numtl.c */
+void NuMtlRelease(void);
+void NuMtlInsert(NUMTL *sm, int renderplane);
+void NuMtlRemove(NUMTL *mtl);
+void NuMtlCountRelease(void);
+void NuMtlAdd(NUMTL *mtl);
+NUMTL *NuMtlCreateEx(int cnt, int renderplane);
 NUMTL *NuMtlCreate(int cnt);
+
+/* Not decompiled yet (nu3d_stubs.c). */
 void NuMtlSetShaderDescPS(NUMTL *mtl, NUSHADERMTLDESC *desc);
 void NuMtlUpdate(NUMTL *mtl);
-void NuMtlSetRenderPlane(NUMTL *mtl, int newplane);
+void NuMtlAddEx(NUMTL *mtl, int renderplane);
 void NuMtlDestroy(NUMTL *mtl);
 
 /* pc/numtl.c: PC variants of a material, one per vertex shader it's drawn with (names
  * ours). */
 void NuMtlVariantsInit(int count, VARIPTR *buff, VARIPTR *buffend);
-NUMTL *NuMtlFindVariant(NUMTL *forced, int shader);
-void NuMtlCreateVariants(NUMTL *forced, int *shaders, int n, void **lnk);
+NUMTL *NuMtlFindVariant(NUMTL *forced, unsigned int shader);
+void NuMtlCreateVariants(NUMTL *forced, unsigned int *shaders, int n, void **lnk);
 NUMTL *NuMtlGetForcedVariant(NUMTL *mtl, NUMTL *forced);
-NUMTL *NuMtlGetVariant(NUMTL *forced, int shader);
+NUMTL *NuMtlGetVariant(NUMTL *forced, unsigned int shader);
 
 /* Not decompiled yet (nu3d_stubs.c; names ours unless PS2). */
-void NuMtlRemove(NUMTL *mtl);
-void NuMtlCountRelease(void);
+void NuMtlShaderDescInit(NUMTL *mtl, int flags);
+void NuMtlShaderUpdate(NUMTL *mtl);
 int NuTexUnRef(int tid);
 void NuPCGeomRelease(void *geom);
-void *NuPCShaderLookup(int shader);
+void *NuPCShaderLookup(unsigned int flags);
 
 #endif

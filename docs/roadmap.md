@@ -686,11 +686,32 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
         `NuTexUnRef` (`0x54bad0`), `NuPCGeomRelease` (`0x558670`, `pc/nugobj.c`) and
         `NuPCShaderLookup` (`0x58b470`); the last three are named by me.
       - Hook test: init once, `NuMtlCreateVariants` 84 calls.
-- [ ] `pc/numtl.c` part 2: the rest of the file, from about `0x540d70` (`NuMtlRemove`,
-      `NuMtlCountRelease`, `NuMtlCreate` `0x5418b0`, `NuMtlUpdate` `0x5418d0`,
-      `NuMtlSetRenderPlane` `0x540f80`, `NuMtlAnimate` `0x5410b0`,
-      `NuMtlSetShaderDescPS` `0x5417a0`, `NuMtlCreateDefault` `0x542020`, …), all
-      stubbed so far.
+- [x] `pc/numtl.c` part 2: the material store and render plane lists.
+      - 6 exact: `NuMtlCountRelease` (`0x540d70`, name ours), `NuMtlInsert`
+        (`0x540dc0`), `NuMtlAdd` (`0x540f60`), `NuMtlAddEx` (`0x540f80`), `NuMtlCreate`
+        (`0x5418b0`), `NuMtlUpdate` (`0x5418d0`).
+      - `NuMtlRelease` (`0x540d80`) and `NuMtlRemove` (`0x540e60`) are identical apart
+        from the address one past `smlist`.
+      - `NuMtlCreateEx` (`0x5417d0`) at 97%: the end of the store, plus one register
+        move's position.
+      - The stub at `0x540f80` was misnamed `NuMtlSetRenderPlane`; the PS2 font code calls
+        `NuMtlAddEx` there.
+      - New globals: the 1800-entry `mtl_store` (`0x33a2be0`), the 24 render plane lists
+        `smlist` (`0x337d330`), `numtl_renderplane`, the two counts and
+        `mtl_allocmax`.
+      - `NUMTL` gains `fb_mask` (`0xa0`) and the shader description region (`0xb8`,
+        kept as ints: the struct's `double` would pad `NUMTL`), with `shader_flags`
+        (`0x1b8`) and `shader` (`0x1bc`).
+      - New stubs: the shader description setup `0x541680` and the shader rebuild
+        `0x541740` (names ours).
+      - Hook test: `NuMtlInsert` 1.3k calls, `NuMtlUpdate` 1.2k.
+- [ ] `pc/numtl.c` part 3: the rest of the file, all unnamed or stubbed:
+      - the callback adder `0x540f20`;
+      - `0x540fc0`, `0x541040` and `0x5414d0`–`0x541670`;
+      - `NuMtlAnimate` `0x5410b0`;
+      - the shader-description pair above and `NuMtlSetShaderDescPS` `0x5417a0`;
+      - `0x541900`–`0x541f70`, `NuMtlCreateDefault` `0x542020`, `0x542180`,
+        `0x542320`, `0x542390`.
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%).

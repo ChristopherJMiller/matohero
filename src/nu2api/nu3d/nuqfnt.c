@@ -567,7 +567,7 @@ VUFNT *NuQFntCreate(NUFNT *fnt, int flags, int renderplane, VARIPTR *ptr, VARIPT
     vf->mtl = (NUMTL *)((ptr->intaddr + 15) & ~15);
     ptr->intaddr = ((ptr->intaddr + 15) & ~15) + sizeof(NUMTL);
     *vf->mtl = *fnt->mtl;
-    NuMtlSetRenderPlane(vf->mtl, renderplane);
+    NuMtlAddEx(vf->mtl, renderplane);
     if (flags & 8) {
         vf->mtl->attrib.uvmode = 0;
     } else {

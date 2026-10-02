@@ -757,7 +757,7 @@ int NuDisplayListRndrSpecial(NUHSPECIAL *special, NUMTX *mtx, int skinned, NUMTX
                 forced = nurndr_forced_mtl;
             }
             if (forced != NULL) {
-                if (scene_mtl->unknown_1b8 == forced->unknown_1b8) {
+                if (scene_mtl->shader_flags == forced->shader_flags) {
                     scene_mtl = forced;
                 } else {
                     scene_mtl = NuMtlGetForcedVariant(scene_mtl, forced);
