@@ -103,10 +103,6 @@ int NuCameraClipTestExtents(NUVEC *min, NUVEC *max, NUMTX *wm, float farclip, in
 void NuRndrUpdateCameraPlane(void) {
 }
 
-// STUB: BIONICLE 0x542020
-void NuMtlCreateDefault(void) {
-}
-
 /* Fills a new material's shader description from its colour and texture (name ours). */
 // STUB: BIONICLE 0x541680
 void NuMtlShaderDescInit(NUMTL *mtl, int flags) {

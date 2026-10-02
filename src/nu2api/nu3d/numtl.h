@@ -116,6 +116,9 @@ typedef struct nushadermtldesc_s {
 } NUSHADERMTLDESC;
 
 extern int numtl_renderplane;
+extern NUMTL *numtl_defaultmtl3d;
+extern NUMTL *numtl_defaultmtl2d;
+extern NUMTL *numtl_defaultmtl2dblend;
 
 /* pc/numtl.c */
 void NuMtlInit(void);

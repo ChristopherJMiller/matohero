@@ -727,7 +727,14 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       - `tools/offsetmatch.py` now also accepts an offset inside a global, up to one past
         its end, for loops over big arrays such as the 1800-material store.
       - Hook test: `NuMtlCreateBuff` 145 calls.
-- [ ] `pc/numtl.c` part 5, the rest of the file:
+- [x] `pc/numtl.c` part 5: `NuMtlCreateDefault` (`0x542020`, was stubbed) exact.
+      - It makes `numtl_defaultmtl3d` (`0x35e94a0`), `numtl_defaultmtl2d` (`0x35e94a8`)
+        and a PC-only blended 2D material (`0x3601104`, `numtl_defaultmtl2dblend`, name
+        ours).
+      - It calls `NuMtlCreateEx(1, numtl_renderplane)` directly. Making `NuMtlCreate`
+        `__inline` instead got it inlined into `NuMtlCreateVariants` too (100% → 86%).
+      - The second block sets the 3D material's `K`/`L` again: a slip in the original.
+- [ ] `pc/numtl.c` part 6, the rest of the file:
       - the callback adder `0x540f20` and its caller `0x541900`, and `0x5419c0` (render
         list entries from the 3000-entry pool at `0x35e94c0`);
       - `0x541040` (static, register argument) and `0x541670`;
@@ -736,7 +743,8 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
       - `0x541a20` (727 bytes, material state setup);
       - the render passes `0x541d00` and `0x542320`, and `0x542390` (from
         `NuRndrEndScene`);
-      - `NuMtlCreateDefault` `0x542020` (stubbed).
+      - the setter `0x541670` of `0x348c974`, a flag `0x541a20` reads when it picks the
+        Direct3D cull mode.
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%).

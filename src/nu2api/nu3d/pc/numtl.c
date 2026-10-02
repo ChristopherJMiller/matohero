@@ -66,6 +66,16 @@ int numtl_count;
 // GLOBAL: BIONICLE 0x348c948
 int numtl_nmtls;
 
+/* The default materials (the third is PC only; name ours). */
+// GLOBAL: BIONICLE 0x35e94a0
+NUMTL *numtl_defaultmtl3d;
+
+// GLOBAL: BIONICLE 0x35e94a8
+NUMTL *numtl_defaultmtl2d;
+
+// GLOBAL: BIONICLE 0x3601104
+NUMTL *numtl_defaultmtl2dblend;
+
 /* The highest store index used so far. */
 // GLOBAL: BIONICLE 0x348c958
 static int mtl_allocmax;
@@ -544,4 +554,40 @@ void NuMtlDestroy(NUMTL *mtl) {
             NuLstFree((NULNKHDR *)v);
         }
     }
+}
+
+/* The default materials: 3D in white, 2D in black without culling or z writes, and a
+ * blended 2D one that ignores z (PS2 colours and modes differ). The second block sets
+ * the 3D material's K and L again rather than the 2D one's. */
+// FUNCTION: BIONICLE 0x542020
+void NuMtlCreateDefault(void) {
+    numtl_defaultmtl3d = NuMtlCreateEx(1, numtl_renderplane);
+    numtl_defaultmtl3d->diffuse.r = 1.0f;
+    numtl_defaultmtl3d->diffuse.g = 1.0f;
+    numtl_defaultmtl3d->diffuse.b = 1.0f;
+    numtl_defaultmtl3d->attrib.zmode = 0;
+    numtl_defaultmtl3d->alpha = 1.0f;
+    numtl_defaultmtl3d->attrib.alpha = 0;
+    numtl_defaultmtl3d->K = -100;
+    numtl_defaultmtl3d->L = 0;
+    numtl_defaultmtl2d = NuMtlCreateEx(1, numtl_renderplane);
+    numtl_defaultmtl2d->diffuse.r = 0.0f;
+    numtl_defaultmtl2d->diffuse.g = 0.0f;
+    numtl_defaultmtl2d->diffuse.b = 0.0f;
+    numtl_defaultmtl2d->attrib.cull = 2;
+    numtl_defaultmtl2d->attrib.zmode = 1;
+    numtl_defaultmtl2d->alpha = 1.0f;
+    numtl_defaultmtl2d->attrib.alpha = 0;
+    numtl_defaultmtl3d->K = -100;
+    numtl_defaultmtl3d->L = 0;
+    numtl_defaultmtl2dblend = NuMtlCreateEx(1, numtl_renderplane);
+    numtl_defaultmtl2dblend->diffuse.r = 0.0f;
+    numtl_defaultmtl2dblend->diffuse.g = 0.0f;
+    numtl_defaultmtl2dblend->diffuse.b = 0.0f;
+    numtl_defaultmtl2dblend->attrib.cull = 2;
+    numtl_defaultmtl2dblend->attrib.zmode = 3;
+    numtl_defaultmtl2dblend->alpha = 1.0f;
+    numtl_defaultmtl2dblend->attrib.alpha = 1;
+    numtl_defaultmtl2dblend->K = -100;
+    numtl_defaultmtl2dblend->L = 0;
 }
