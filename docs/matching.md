@@ -397,6 +397,12 @@ exact; `tools/permute.py` automates some of them.
 - **A guard handled at the end of the function is an `else`.** `NuMtlSetAlphaTest`
   disables the alpha test for "always" in a block after the final `ret`. That came from
   `if (atst != 1) { … } else { disable; }`; an early `return` put it first (89% → exact).
+- **Where a static lands isn't up to declaration order.** Ours split `numtl.c`'s
+  uninitialised statics into several groups across `.bss`, with the order inside a group
+  neither declaration order nor its reverse. A loop bound one past an array can name
+  whatever follows it, as `smlist`'s end names `render_plane_order` in the original and
+  `mtl_store` in ours. `tools/offsetmatch.py` counts that as identical (same offset from
+  the same global), so there's no need to reproduce the layout.
 - **Short setters: try every statement order.** For stores to unrelated globals, MSVC
   keeps the source order but hoists loads and merges increments, so the asm order is
   only a hint. `RndrStateSetConstAlphaTint`'s six statements: the permuter's adjacent
@@ -480,6 +486,12 @@ exact; `tools/permute.py` automates some of them.
   the loop. Ours never stores it and passes the address of an unwritten slot. A
   `NULNKHDR *` cursor, a `while` loop, a union, a `VARIPTR`, and defining the caller
   first changed nothing (`volatile` is much worse).
+
+- **`NuMtlInit` (59%): a zero register.** After `memset(mtl_store, 0, …)` the original
+  clears `smtime[n]` and `smlist[n]` (a 24-iteration loop MSVC unrolls fully) from two
+  fresh zero registers, `ecx` and `edx`, and keeps `eax` (still 0) for the next loop's
+  counter. Ours reuses `eax` for `smlist`. Statement order, `0` vs `NULL`/`0.0f`, and
+  the position of `numtl_nmtls = 0` changed nothing.
 
 - **`NuUTF8ToUnicode` (33%)**: identical code with `ecx`/`edx` swapped for the source
   pointer and the byte temporary. The permuter's moves and hand variants (loop forms,

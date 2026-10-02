@@ -7,8 +7,8 @@ an array from 1 (`table[i - 1]`, compiled as `table - 4 + i * 4`) shows the raw 
 address against our `other_symbol[n]`, and an identical function scores 90-97%. This tool
 reads reccmp's JSON report (with diffs) and, for every function below 100%, checks each
 differing instruction pair: same length and opcode, differing only in one 4-byte field,
-whose two values sit at the same offset from the same annotated global (within 64 KB) in
-the two builds. Functions where every difference passes are written to
+whose two values sit at the same offset from the same annotated global (within 64 KB, or
+inside the global up to one past its end) in the two builds. Functions where every difference passes are written to
 build/offset_identical.json; tools/progress.py counts them as effective and tools/hook.py
 hooks them.
 
@@ -98,19 +98,32 @@ def text_field(otext, rtext):
     return None, int(diff[0][0], 16), int(diff[0][1], 16)
 
 
-def equivalent(v_orig, v_ours, gvars):
-    """Some annotated global S within MAX_DELTA of v_ours has v_orig at the same offset
-    from S's original address. The two builds lay globals out differently, so an equal
-    offset from the same symbol isn't a coincidence; the closest such S is reported."""
+def extents(gvars):
+    """Each global's extent in both builds, as far as known: up to the next annotated
+    global (the size of a big array, e.g. a material store of 1800 entries)."""
+    def gaps(addrs):
+        addrs = sorted(set(addrs))
+        return {a: b - a for a, b in zip(addrs, addrs[1:])}
+    go, gr = gaps(o for o, _, _ in gvars), gaps(r for _, r, _ in gvars)
+    return {(o, r): min(go.get(o, 0), gr.get(r, 0)) for o, r, _ in gvars}
+
+
+def equivalent(v_orig, v_ours, gvars, ext):
+    """Some annotated global S has v_orig at the same offset from S's original address as
+    v_ours from ours, the offset being within MAX_DELTA or inside S (up to one past its
+    end, for loops over a big array). The two builds lay globals out differently, so an
+    equal offset from the same symbol isn't a coincidence; the closest such S is
+    reported."""
     best = None
     for orig, recomp, name in gvars:
         d = v_ours - recomp
-        if abs(d) < MAX_DELTA and v_orig - orig == d and (best is None or abs(d) < abs(best[0])):
+        near = abs(d) < MAX_DELTA or 0 <= d <= ext[(orig, recomp)]
+        if near and v_orig - orig == d and (best is None or abs(d) < abs(best[0])):
             best = (d, name)
     return best
 
 
-def check(entry, orig_img, ours_img, gvars):
+def check(entry, orig_img, ours_img, gvars, ext):
     """None if not identical modulo offsets, else the list of explained differences."""
     explained = []
     for _, blocks in entry.get("diff", []):
@@ -133,7 +146,7 @@ def check(entry, orig_img, ours_img, gvars):
                 if f is None:
                     return None
                 _, v_orig, v_ours = f
-                hit = equivalent(v_orig, v_ours, gvars)
+                hit = equivalent(v_orig, v_ours, gvars, ext)
                 if hit is None:
                     return None
                 explained.append(f"{oa}: {hit[1]}{hit[0]:+#x}")
@@ -148,10 +161,11 @@ def find(report):
     candidates = [e for e in entries if not e.get("stub") and e.get("matching", 0) < 1.0
                   and not e.get("effective") and e.get("diff")]
     gvars = variables()
+    ext = extents(gvars)
     orig_img, ours_img = Image(ORIG), Image(RECOMP)
     found = {}
     for e in candidates:
-        why = check(e, orig_img, ours_img, gvars)
+        why = check(e, orig_img, ours_img, gvars, ext)
         if why:
             found[e["address"]] = {"name": e["name"], "matching": e["matching"], "offsets": why}
     json.dump(found, open(OUT, "w"), indent=1)

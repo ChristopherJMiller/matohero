@@ -31,6 +31,31 @@ static NUMTL mtl_store[NUMTL_STORE];
 // GLOBAL: BIONICLE 0x337d330
 static NUMTL *smlist[NUMTL_RENDERPLANES];
 
+// GLOBAL: BIONICLE 0x337d390
+static unsigned char render_plane_order[NUMTL_RENDERPLANES];
+
+// GLOBAL: BIONICLE 0x33803c8
+static unsigned char render_plane_ix[NUMTL_RENDERPLANES];
+
+// GLOBAL: BIONICLE 0x337ceb8
+static float smtime[NUMTL_RENDERPLANES];
+
+// GLOBAL: BIONICLE 0x348c888
+static int initialised;
+
+/* PC state NuMtlInit resets; nothing else references them directly (names ours). */
+// GLOBAL: BIONICLE 0x348c894
+static int unknown_348c894;
+
+// GLOBAL: BIONICLE 0x348c898
+static int unknown_348c898;
+
+// GLOBAL: BIONICLE 0x348c89c
+static int unknown_348c89c;
+
+// GLOBAL: BIONICLE 0x348c8a0
+static int unknown_348c8a0;
+
 // GLOBAL: BIONICLE 0x348c884
 int numtl_renderplane;
 
@@ -270,6 +295,69 @@ void NuMtlSetAlphaFail(NUMTL *mtl) {
         d3dSetRenderState(168, 7);
         d3dSetRenderState(14, 0);
     }
+}
+
+/* A material in a caller's buffer, outside the store (only one; cnt and buffend aren't
+ * used on PC). */
+// FUNCTION: BIONICLE 0x541f70
+NUMTL *NuMtlCreateBuff(int cnt, VARIPTR *buff, VARIPTR buffend) {
+    NUMTL *mtl;
+
+    mtl = (NUMTL *)((buff->intaddr + 15) & ~15);
+    buff->intaddr = ((buff->intaddr + 15) & ~15) + sizeof(NUMTL);
+    memset(mtl, 0, sizeof(NUMTL));
+    mtl->intalloc = 0;
+    mtl->attrib.afail = 3;
+    mtl->attrib.shade = 1;
+    mtl->attrib.filter = 1;
+    mtl->attrib.fill = 0;
+    mtl->attrib.atst = 5;
+    mtl->attrib.aref = 127;
+    mtl->alpha = 1.0f;
+    mtl->K = -90;
+    mtl->L = 0;
+    mtl->unknown_84[0] = 0.0f;
+    mtl->unknown_84[1] = 0.0f;
+    mtl->unknown_84[2] = 0.0f;
+    mtl->unknown_84[3] = 0.0f;
+    mtl->sort_pri = 0x7fff;
+    mtl->fb_mask = 0xff000000;
+    mtl->fxid = 0;
+    mtl->special_id = 0;
+    mtl->next = NULL;
+    NuMtlInsert(mtl, 0);
+    NuMtlShaderDescInit(mtl, 0);
+    return mtl;
+}
+
+/* Clears the store and the render plane lists (destroying what's left on a second
+ * call), restores the render plane order and makes the default materials. 59%: the
+ * original zeroes smlist from a fresh register where ours reuses the memset's eax
+ * (docs/matching.md, open questions). */
+// FUNCTION: BIONICLE 0x542180
+void NuMtlInit(void) {
+    int n;
+
+    if (initialised) {
+        NuMtlRelease();
+    }
+    memset(mtl_store, 0, sizeof(mtl_store));
+    for (n = 0; n < NUMTL_RENDERPLANES; n++) {
+        smtime[n] = 0.0f;
+        smlist[n] = NULL;
+    }
+    numtl_nmtls = 0;
+    for (n = 0; n < NUMTL_RENDERPLANES; n++) {
+        render_plane_order[n] = n;
+        render_plane_ix[n] = n;
+    }
+    initialised = 1;
+    unknown_348c89c = 0;
+    unknown_348c8a0 = 0;
+    NuMtlCreateDefault();
+    memset(rlist_head, 0, sizeof(rlist_head));
+    unknown_348c894 = 0;
+    unknown_348c898 = 0;
 }
 
 /* Replaces the material's shader description, if it has one. */

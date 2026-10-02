@@ -74,7 +74,12 @@ struct numtl_s {
     float alpha;
     short tid; /* int on PS2 */
     short sort_pri;
-    int unknown_7c[(0x9c - 0x7c) / 4];
+    short K; /* PS2 names */
+    unsigned char L;
+    unsigned char unknown_7f;
+    int unknown_80;
+    float unknown_84[4]; /* zeroed by NuMtlCreateBuff */
+    int unknown_94[(0x9c - 0x94) / 4];
     char context;
     unsigned char fxid; /* the shader effect: 0x81 and 0x85 are specular */
     unsigned char special_id; /* index into nurndr_forced_mtl_table */
@@ -113,7 +118,10 @@ typedef struct nushadermtldesc_s {
 extern int numtl_renderplane;
 
 /* pc/numtl.c */
+void NuMtlInit(void);
 void NuMtlRelease(void);
+NUMTL *NuMtlCreateBuff(int cnt, VARIPTR *buff, VARIPTR buffend);
+void NuMtlCreateDefault(void);
 void NuMtlInsert(NUMTL *sm, int renderplane);
 void NuMtlRemove(NUMTL *mtl);
 void NuMtlCountRelease(void);

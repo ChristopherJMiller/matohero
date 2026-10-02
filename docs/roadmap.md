@@ -716,13 +716,27 @@ After that: `nu3d` (renderer-independent parts first), `gamelib`, then `gameapi`
         (`0x541510`) and `NuMtlSetAlphaFail` (`0x5415b0`), names ours. They call
         `d3dSetRenderState` (`0x581230`), now stubbed.
       - Hook test: `NuMtlRenderListAdd` 1.04M calls, the alpha setters 21k and 54k.
-- [ ] `pc/numtl.c` part 4, the rest of the file:
-      - the callback adder `0x540f20` and its caller `0x541900`;
+- [x] `pc/numtl.c` part 4, setup:
+      - `NuMtlCreateBuff` (`0x541f70`, effective) makes one material in a caller's
+        buffer.
+      - `NuMtlInit` (`0x542180`) at 59%.
+      - The statics `NuMtlInit` touches: `smtime` `0x337ceb8`, `render_plane_order`
+        `0x337d390` (right after `smlist`), `render_plane_ix` `0x33803c8`, `initialised`
+        `0x348c888`, and four PC-only ints.
+      - `NUMTL` gains the PS2's `K`/`L` (`0x7c`/`0x7e`).
+      - `tools/offsetmatch.py` now also accepts an offset inside a global, up to one past
+        its end, for loops over big arrays such as the 1800-material store.
+      - Hook test: `NuMtlCreateBuff` 145 calls.
+- [ ] `pc/numtl.c` part 5, the rest of the file:
+      - the callback adder `0x540f20` and its caller `0x541900`, and `0x5419c0` (render
+        list entries from the 3000-entry pool at `0x35e94c0`);
       - `0x541040` (static, register argument) and `0x541670`;
       - `NuMtlAnimate` `0x5410b0` (990 bytes);
       - the shader-description pair `0x541680`/`0x541740`;
-      - `0x5419c0`, `0x541a20`, `0x541d00`, `0x541f70`;
-      - `NuMtlCreateDefault` `0x542020`, `0x542180`, `0x542320`, `0x542390`.
+      - `0x541a20` (727 bytes, material state setup);
+      - the render passes `0x541d00` and `0x542320`, and `0x542390` (from
+        `NuRndrEndScene`);
+      - `NuMtlCreateDefault` `0x542020` (stubbed).
 - [ ] `nudlist.c` leftovers: the near misses `NuDisplayListUpdateSpecial` (79%),
       `NuDisplayListRndrSpecial` (79%), `DisplayListPrintItems` (63%),
       `NuDisplayListDrawRenderScene` (69%), `DisplayListCreateSkinTransformPS` (43%).
